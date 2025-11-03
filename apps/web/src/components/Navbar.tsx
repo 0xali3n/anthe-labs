@@ -41,10 +41,11 @@ export default function Navbar() {
   }, []);
 
   async function signInGoogle() {
-    const origin = window.location.origin;
     await supabase().auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${origin}/auth/callback` },
+      options: {
+        redirectTo: `${window.location.origin}`,
+      },
     });
   }
 
