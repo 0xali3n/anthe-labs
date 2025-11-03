@@ -19,6 +19,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => {
     // Check initial auth state
@@ -35,18 +36,25 @@ export default function Navbar() {
     } = supabase().auth.onAuthStateChange((_event, session) => {
       setIsSignedIn(!!session);
       setLoading(false);
+      setSigningIn(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   async function signInGoogle() {
-    await supabase().auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}`,
-      },
-    });
+    setSigningIn(true);
+    try {
+      await supabase().auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}`,
+        },
+      });
+    } catch (error) {
+      console.error("Sign in error:", error);
+      setSigningIn(false);
+    }
   }
 
   return (
@@ -82,7 +90,11 @@ export default function Navbar() {
 
         {/* RIGHT: Actions */}
         <div className="flex items-center gap-3">
-          {!loading && (
+          {loading ? (
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-20 bg-zinc-800/50 rounded-md animate-pulse"></div>
+            </div>
+          ) : (
             <>
               {isSignedIn ? (
                 <UserButton />
@@ -96,9 +108,36 @@ export default function Navbar() {
                   </button>
                   <button
                     onClick={signInGoogle}
-                    className="signin-glow text-sm font-medium bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-3 py-1.5 rounded-md transition-all"
+                    disabled={signingIn}
+                    className="signin-glow text-sm font-medium bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-4 py-1.5 rounded-md transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2 min-w-[100px] justify-center"
                   >
-                    Sign In
+                    {signingIn ? (
+                      <>
+                        <svg
+                          className="animate-spin h-4 w-4 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        <span>Signing in...</span>
+                      </>
+                    ) : (
+                      "Sign In"
+                    )}
                   </button>
                 </>
               )}

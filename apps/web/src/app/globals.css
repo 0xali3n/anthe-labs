@@ -44,7 +44,35 @@ body {
 
 button.signin-glow {
   box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+  transition: all 0.3s ease;
 }
-button.signin-glow:hover {
-  box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+button.signin-glow:hover:not(:disabled) {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+  transform: translateY(-1px);
+}
+button.signin-glow:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Smooth loading animations */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* User profile hover effect */
+.user-profile-hover {
+  transition: all 0.2s ease;
+}
+
+.user-profile-hover:hover {
+  transform: scale(1.05);
 }
