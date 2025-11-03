@@ -41,3 +41,10 @@ body {
 .nav-link:hover::after {
   width: 100%;
 }
+
+button.signin-glow {
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+}
+button.signin-glow:hover {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+}
