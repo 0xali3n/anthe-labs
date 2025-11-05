@@ -36,5 +36,27 @@ model User {
   last_login       DateTime?
   settings_updated_at DateTime?
 
+  // Relations
+  wallet Wallet?
+
   @@map("users")
+}
+
+model Wallet {
+  id                 String   @id @default(uuid())
+  user_id            String   @unique // One wallet per user
+  address            String   @unique // Aptos wallet address (public)
+  encrypted_private_key String @db.Text // Encrypted private key (AES-256-GCM)
+  network            String   @default("testnet") // testnet, mainnet, devnet
+  
+  // Timestamps
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([address])
+  @@map("wallets")
 }

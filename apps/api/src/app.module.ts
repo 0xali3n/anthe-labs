@@ -3,12 +3,12 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthController } from './health.controller';
 import { UsersModule } from './users/users.module';
-import { PrismaService } from './prisma/prisma.service';
+import { WalletsModule } from './wallets/wallets.module';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
-  imports: [UsersModule],
+  imports: [PrismaModule, UsersModule, WalletsModule], // PrismaModule is Global, so PrismaService available everywhere
   controllers: [AppController, HealthController],
-  providers: [AppService, PrismaService],
-  exports: [PrismaService],
+  providers: [AppService],
 })
 export class AppModule {}

@@ -22,6 +22,7 @@ export interface UserData extends CreateUserData {
   updated_at: string;
   last_login?: string;
   settings_updated_at?: string;
+  wallet_address?: string; // Wallet address automatically included from backend
 }
 
 export interface UpdateUserData {
@@ -37,17 +38,36 @@ export interface UpdateUserData {
   email_notifications?: boolean;
 }
 
-// Create or update user (upsert)
+// Create or update user (upsert) - requires authentication
+// Returns user with wallet_address automatically included
 export async function upsertUser(userData: CreateUserData): Promise<UserData> {
-  return apiRequest<UserData>('/users/upsert', {
+  // Get JWT token from Supabase session
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session?.access_token) {
+    throw new Error('No session found. Please sign in.');
+  }
+
+  // Use authenticated request with JWT token
+  const response = await authenticatedRequest<{ success: boolean; user: UserData }>('/users/upsert', session.access_token, {
     method: 'POST',
     body: JSON.stringify(userData),
   });
+
+  // Debug: Log response to verify structure
+  console.log("🔍 Backend response:", response);
+
+  // Return user object with wallet_address
+  if (!response || !response.user) {
+    throw new Error('Invalid response from server');
+  }
+
+  return response.user;
 }
 
 // Get current user (requires auth)
 export async function getCurrentUser(): Promise<UserData> {
-  const { data: { session } } = await supabase().auth.getSession();
+  const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) {
     throw new Error('No session found');
   }
@@ -58,7 +78,7 @@ export async function getCurrentUser(): Promise<UserData> {
 export async function updateCurrentUser(
   updateData: UpdateUserData
 ): Promise<UserData> {
-  const { data: { session } } = await supabase().auth.getSession();
+  const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) {
     throw new Error('No session found');
   }

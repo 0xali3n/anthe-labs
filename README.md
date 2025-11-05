@@ -4,88 +4,236 @@ A modern **Next.js + Nest.js (Turborepo)** project powered by **Supabase** and *
 
 ---
 
-### 🚀 Quick Setup
+## 📋 Overview
 
-#### 1️⃣ Clone the Repository
+This PR implements:
 
-```bash
-git clone https://github.com/0xali3n/anthe-labs.git
-cd anthe-labs
-```
+- ✅ User authentication with Supabase (Google OAuth)
+- ✅ Automatic Aptos wallet generation for users
+- ✅ Secure wallet encryption (AES-256-GCM)
+- ✅ Backend API with NestJS
+- ✅ Frontend integration with Next.js
 
-#### 2️⃣ Install Dependencies
+---
+
+## 🚀 Quick Start (For Review)
+
+### 1️⃣ Install Dependencies
 
 ```bash
 pnpm install
 ```
 
-> (If you don’t have pnpm)
+### 2️⃣ Environment Variables
 
-```bash
-npm install -g pnpm
-```
+**Backend (`apps/api/.env`):**
 
-#### 3️⃣ Environment Setup
+- `.env` file will be shared separately (contains all required variables)
 
-- Copy `.env.example` → `.env`
-- Add your Supabase database URL:
+**Frontend (`apps/web/.env.local`):**
 
-  ```
-  DATABASE_URL="postgresql://<user>:<password>@<host>:6543/postgres"
-  ```
+- `.env.local` file will be shared separately (contains all required variables)
 
-- Set your server port (optional):
-
-  ```
-  PORT=3001
-  ```
-
----
-
-### 🧩 Run the Apps
-
-#### 🖥 Frontend (Next.js)
-
-```bash
-pnpm --filter web dev
-```
-
-Runs on → [http://localhost:3000](http://localhost:3000)
-
-#### ⚙️ Backend (Nest.js API)
-
-```bash
-pnpm --filter api start:dev
-```
-
-Runs on → [http://localhost:3001](http://localhost:3001)
-
-#### 🔁 Run Both (Monorepo mode)
-
-```bash
-pnpm dev
-```
-
----
-
-### 🗄 Database (Supabase + Prisma)
+### 3️⃣ Generate Prisma Client
 
 ```bash
 cd apps/api
 pnpm dlx prisma generate
 ```
 
-> Use `pnpm dlx prisma db pull` if you want to sync schema with Supabase later.
+### 4️⃣ Run the Apps
+
+```bash
+# Run both frontend and backend
+pnpm dev
+```
+
+Or run separately:
+
+```bash
+# Terminal 1 - Frontend
+pnpm --filter web dev
+# Runs on → http://localhost:3000
+
+# Terminal 2 - Backend
+pnpm --filter api start:dev
+# Runs on → http://localhost:3001/api
+```
 
 ---
 
-### ✅ Project Stack
+## 🏗️ Architecture
 
-- **Frontend:** Next.js + TailwindCSS
-- **Backend:** Nest.js + Prisma
-- **Database:** Supabase (PostgreSQL)
-- **Icons:** lucide-react
-- **Package Manager:** pnpm
-- **Architecture:** Turborepo Monorepo
+### Frontend (Next.js)
+
+- **Location**: `apps/web/`
+- **Framework**: Next.js 16 (App Router)
+- **Styling**: TailwindCSS
+- **Auth**: Supabase client-side authentication
+
+### Backend (NestJS)
+
+- **Location**: `apps/api/`
+- **Framework**: NestJS 11
+- **Database**: Prisma ORM → Supabase PostgreSQL
+- **Auth**: JWT verification with Supabase
+
+### Key Features
+
+- **User Authentication**: Google OAuth via Supabase
+- **Wallet Generation**: Automatic Aptos wallet creation on user signup
+- **Encryption**: AES-256-GCM for private key storage
+- **Security**: Private keys never exposed to frontend
 
 ---
+
+## 📁 Project Structure
+
+```
+anthe/
+├── apps/
+│   ├── web/                    # Next.js frontend
+│   │   ├── src/
+│   │   │   ├── app/            # App Router pages
+│   │   │   ├── components/    # React components
+│   │   │   └── lib/            # Utilities & API clients
+│   │   └── .env.local          # Frontend env vars
+│   │
+│   └── api/                    # NestJS backend
+│       ├── src/
+│       │   ├── users/          # User management
+│       │   ├── wallets/        # Wallet operations
+│       │   ├── auth/           # JWT authentication
+│       │   ├── encryption/     # AES-256-GCM encryption
+│       │   └── prisma/          # Prisma service
+│       ├── prisma/
+│       │   ├── schema.prisma    # Database schema
+│       │   └── wallets-setup.sql # SQL for wallets table
+│       └── .env                 # Backend env vars
+│
+└── README.md                   # This file
+```
+
+---
+
+## 🔄 User Flow
+
+1. User signs in with Google → Supabase OAuth
+2. Frontend calls `/api/users/upsert` with JWT token
+3. Backend verifies JWT → Creates/updates user in database
+4. Backend automatically generates Aptos wallet (if new user)
+5. Private key is encrypted (AES-256-GCM) and stored
+6. Wallet address returned to frontend → Displayed in UI
+
+**Detailed flow**: See `USER_ACCOUNT_FLOW.md` for complete technical documentation.
+
+---
+
+## 🔐 Security Features
+
+- ✅ **JWT Authentication**: All protected endpoints verify Supabase JWT tokens
+- ✅ **Input Validation**: DTOs with `class-validator` prevent injection attacks
+- ✅ **CORS Protection**: Environment-based origin whitelist
+- ✅ **Encryption**: AES-256-GCM for private keys (never exposed to frontend)
+- ✅ **Row Level Security**: RLS enabled in Supabase for wallet data
+- ✅ **Backend-only**: Wallet generation happens only on server-side
+
+---
+
+## 📡 API Endpoints
+
+**Base URL**: `http://localhost:3001/api`
+
+### Protected Endpoints (Require JWT)
+
+- `POST /api/users/upsert` - Create or update user (auto-creates wallet)
+- `GET /api/users/me` - Get current user
+- `PUT /api/users/me` - Update current user
+- `POST /api/wallets` - Create or get wallet (legacy, auto-handled by upsert)
+- `GET /api/wallets/me` - Get current user's wallet
+
+---
+
+## ✅ Testing Checklist
+
+After running the app:
+
+1. **Backend logs should show:**
+
+   ```
+   ✅ Database connected
+   ✅ Encryption service initialized (AES-256-GCM)
+   ✅ Auth Guard initialized
+   🚀 API running on http://localhost:3001/api
+   ```
+
+2. **Frontend logs should show:**
+
+   ```
+   ✅ Supabase client initialized (singleton)
+   ```
+
+3. **Test flow:**
+   - Open http://localhost:3000
+   - Click "Sign In" → Sign in with Google
+   - User should be saved to database
+   - Wallet should be automatically generated
+   - Wallet address should display in navbar
+
+---
+
+## 📚 Documentation
+
+- **User Account Flow**: See `USER_ACCOUNT_FLOW.md` for detailed technical documentation including:
+  - Complete flow diagrams
+  - Encryption/decryption process
+  - Database schema
+  - Troubleshooting guide
+
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Next.js 16 + TailwindCSS + TypeScript
+- **Backend**: NestJS 11 + Prisma + TypeScript
+- **Database**: Supabase (PostgreSQL)
+- **Authentication**: Supabase Auth (Google OAuth, PKCE flow)
+- **Blockchain**: Aptos SDK
+- **Encryption**: AES-256-GCM (Node.js crypto)
+- **Package Manager**: pnpm
+- **Architecture**: Turborepo Monorepo
+
+---
+
+## 📝 Notes
+
+- Database tables (`users` and `wallets`) are already created in Supabase
+- Environment variables will be shared separately
+- All sensitive keys are stored in `.env` files (not committed)
+- Encryption key is required for wallet operations
+
+---
+
+## 🐛 Troubleshooting
+
+**Database connection errors:**
+
+- Ensure `DATABASE_URL` uses port 6543 (connection pooling)
+- `pgbouncer=true` is automatically added by PrismaService
+
+**Wallet not displaying:**
+
+- Check browser console for errors
+- Verify backend logs show wallet creation
+- Ensure `ENCRYPTION_KEY` is set in backend `.env`
+
+**Authentication errors:**
+
+- Verify Supabase environment variables are correct
+- Check Google OAuth is enabled in Supabase dashboard
+
+---
+
+## 📄 License
+
+MIT
