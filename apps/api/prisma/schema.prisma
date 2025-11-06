@@ -18,6 +18,7 @@ model User {
   
   // User metadata
   display_name String?
+  username     String?  @unique // Unique username chosen by user
   bio          String?
   
   // Social connections
@@ -25,16 +26,10 @@ model User {
   twitter_connected Boolean @default(false)
   twitter_user_id   String?
   
-  // Settings
-  theme                String?  @default("dark")
-  notifications_enabled Boolean  @default(true)
-  email_notifications  Boolean  @default(true)
-  
   // Timestamps
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
   last_login       DateTime?
-  settings_updated_at DateTime?
 
   // Relations
   wallet Wallet?

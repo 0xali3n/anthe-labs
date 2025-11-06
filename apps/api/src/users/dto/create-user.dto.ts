@@ -29,6 +29,11 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(30)
+  username?: string;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(500)
   bio?: string;
 
@@ -45,17 +50,4 @@ export class CreateUserDto {
   @IsString()
   @MaxLength(255)
   twitter_user_id?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(50)
-  theme?: string;
-
-  @IsOptional()
-  @IsBoolean()
-  notifications_enabled?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  email_notifications?: boolean;
 }
