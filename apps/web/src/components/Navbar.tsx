@@ -12,6 +12,7 @@ const navLinks = [
   { name: "Trader", path: "/trader" },
   { name: "Copytrade", path: "/copytrade" },
   { name: "Profile", path: "/profile" },
+  { name: "Settings", path: "/settings" },
   { name: "About", path: "/about" },
 ];
 

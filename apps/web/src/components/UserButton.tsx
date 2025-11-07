@@ -6,6 +6,7 @@ import { upsertUser } from "@/lib/usersApi";
 import { formatWalletAddress } from "@/lib/walletsApi";
 import { Settings, LogOut, Wallet, Copy, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 interface User {
   id: string;
@@ -197,12 +198,13 @@ export default function UserButton() {
             <LogOut size={16} className="sm:w-[18px] sm:h-[18px]" />
           )}
         </button>
-        <button 
+        <Link
+          href="/settings"
           className="p-1.5 sm:p-2 hover:bg-zinc-800 rounded-md text-zinc-300 hover:text-indigo-400 transition-all flex-shrink-0"
           title="Settings"
         >
           <Settings size={16} className="sm:w-[18px] sm:h-[18px]" />
-        </button>
+        </Link>
       </div>
     </div>
   );

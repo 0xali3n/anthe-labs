@@ -8,34 +8,24 @@ export interface CreateUserData {
   avatar_url?: string;
   google_id?: string;
   display_name?: string;
+  username?: string;
   bio?: string;
   twitter_username?: string;
   twitter_connected?: boolean;
   twitter_user_id?: string;
-  theme?: string;
-  notifications_enabled?: boolean;
-  email_notifications?: boolean;
 }
 
 export interface UserData extends CreateUserData {
   created_at: string;
   updated_at: string;
   last_login?: string;
-  settings_updated_at?: string;
   wallet_address?: string; // Wallet address automatically included from backend
 }
 
 export interface UpdateUserData {
-  full_name?: string;
-  avatar_url?: string;
   display_name?: string;
+  username?: string;
   bio?: string;
-  twitter_username?: string;
-  twitter_connected?: boolean;
-  twitter_user_id?: string;
-  theme?: string;
-  notifications_enabled?: boolean;
-  email_notifications?: boolean;
 }
 
 // Create or update user (upsert) - requires authentication
@@ -71,7 +61,11 @@ export async function getCurrentUser(): Promise<UserData> {
   if (!session?.access_token) {
     throw new Error('No session found');
   }
-  return authenticatedRequest<UserData>('/users/me', session.access_token);
+  const response = await authenticatedRequest<{ success: boolean; user: UserData }>('/users/me', session.access_token);
+  if (!response || !response.user) {
+    throw new Error('Invalid response from server');
+  }
+  return response.user;
 }
 
 // Update current user (requires auth)
@@ -82,9 +76,13 @@ export async function updateCurrentUser(
   if (!session?.access_token) {
     throw new Error('No session found');
   }
-  return authenticatedRequest<UserData>('/users/me', session.access_token, {
+  const response = await authenticatedRequest<{ success: boolean; user: UserData }>('/users/me', session.access_token, {
     method: 'PUT',
     body: JSON.stringify(updateData),
   });
+  if (!response || !response.user) {
+    throw new Error('Invalid response from server');
+  }
+  return response.user;
 }
 
