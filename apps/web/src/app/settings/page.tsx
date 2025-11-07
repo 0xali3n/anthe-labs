@@ -33,9 +33,13 @@ export default function Settings() {
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
     async function loadUser() {
       try {
+        setLoading(true);
         const userData = await getCurrentUser();
+        if (!mounted) return;
+
         setUser(userData);
         setDisplayName(userData.display_name || userData.full_name || "");
         setUsername(userData.username || "");
@@ -43,11 +47,14 @@ export default function Settings() {
         console.error("Failed to load user:", error);
         router.push("/");
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
 
     loadUser();
+    return () => {
+      mounted = false;
+    };
   }, [router]);
 
   const handleSave = async () => {
