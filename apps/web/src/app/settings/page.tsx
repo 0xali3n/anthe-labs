@@ -4,8 +4,20 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser, updateCurrentUser } from "@/lib/usersApi";
+import { getAvatars, type Avatar } from "@/lib/avatarsApi";
 import { formatWalletAddress } from "@/lib/walletsApi";
-import { LogOut, Mail, Wallet, User, Edit2, Save, X, CheckCircle, AlertCircle } from "lucide-react";
+import {
+  LogOut,
+  Mail,
+  Wallet,
+  User,
+  Edit2,
+  Save,
+  X,
+  CheckCircle,
+  AlertCircle,
+  Image,
+} from "lucide-react";
 
 interface UserData {
   id: string;
@@ -32,6 +44,14 @@ export default function Settings() {
   const [username, setUsername] = useState("");
   const [isEditing, setIsEditing] = useState(false);
 
+  // Avatar selection
+  const [avatars, setAvatars] = useState<Avatar[]>([]);
+  const [loadingAvatars, setLoadingAvatars] = useState(false);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [selectedAvatarUrl, setSelectedAvatarUrl] = useState<string | null>(
+    null
+  );
+
   useEffect(() => {
     let mounted = true;
     async function loadUser() {
@@ -43,6 +63,7 @@ export default function Settings() {
         setUser(userData);
         setDisplayName(userData.display_name || userData.full_name || "");
         setUsername(userData.username || "");
+        setSelectedAvatarUrl(userData.avatar_url || null);
       } catch (error) {
         console.error("Failed to load user:", error);
         router.push("/");
@@ -56,6 +77,25 @@ export default function Settings() {
       mounted = false;
     };
   }, [router]);
+
+  // Load avatars when avatar picker is opened
+  useEffect(() => {
+    async function loadAvatars() {
+      if (!showAvatarPicker || avatars.length > 0) return;
+
+      try {
+        setLoadingAvatars(true);
+        const avatarsList = await getAvatars();
+        setAvatars(avatarsList);
+      } catch (error) {
+        console.error("Failed to load avatars:", error);
+      } finally {
+        setLoadingAvatars(false);
+      }
+    }
+
+    loadAvatars();
+  }, [showAvatarPicker, avatars.length]);
 
   const handleSave = async () => {
     if (!user) return;
@@ -72,21 +112,38 @@ export default function Settings() {
     }
 
     try {
-      const updatedUser = await updateCurrentUser({
+      const updateData: any = {
         display_name: displayName || undefined,
         username: username || undefined,
-      });
+      };
+
+      // Include avatar_url if a new avatar was selected
+      if (selectedAvatarUrl && selectedAvatarUrl !== user.avatar_url) {
+        updateData.avatar_url = selectedAvatarUrl;
+      }
+
+      const updatedUser = await updateCurrentUser(updateData);
 
       setUser(updatedUser);
       setIsEditing(false);
+      setShowAvatarPicker(false);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
       const errorMessage = err.message || "Failed to update profile";
-      setError(errorMessage.includes("already taken") ? "Username is already taken" : errorMessage);
+      setError(
+        errorMessage.includes("already taken")
+          ? "Username is already taken"
+          : errorMessage
+      );
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleAvatarSelect = (avatarUrl: string) => {
+    setSelectedAvatarUrl(avatarUrl);
+    setShowAvatarPicker(false);
   };
 
   const handleCancel = () => {
@@ -140,7 +197,9 @@ export default function Settings() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-indigo-400 mb-2">Settings</h1>
-        <p className="text-zinc-400">Manage your account details and preferences</p>
+        <p className="text-zinc-400">
+          Manage your account details and preferences
+        </p>
       </div>
 
       {/* Success/Error Messages */}
@@ -162,12 +221,21 @@ export default function Settings() {
         {/* Profile Section */}
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 backdrop-blur-sm">
           <div className="flex items-start gap-6 mb-6">
-            <div className="relative">
+            <div className="relative group">
               <img
-                src={avatarUrl}
+                src={selectedAvatarUrl || avatarUrl}
                 alt={displayName || "User"}
-                className="h-20 w-20 rounded-full border-2 border-indigo-500 object-cover shadow-lg"
+                className="h-20 w-20 rounded-full border-2 border-indigo-500 object-cover shadow-lg transition-all group-hover:border-indigo-400"
               />
+              {isEditing && (
+                <button
+                  onClick={() => setShowAvatarPicker(!showAvatarPicker)}
+                  className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Change avatar"
+                >
+                  <Image size={20} className="text-white" />
+                </button>
+              )}
             </div>
             <div className="flex-1">
               <h2 className="text-2xl font-semibold text-zinc-100 mb-1">
@@ -226,7 +294,11 @@ export default function Settings() {
                   <input
                     type="text"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                    onChange={(e) =>
+                      setUsername(
+                        e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "")
+                      )
+                    }
                     placeholder="Choose a username"
                     maxLength={30}
                     className="w-full px-4 py-2.5 bg-zinc-800/50 border border-zinc-700 rounded-lg text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all font-mono"
@@ -244,6 +316,53 @@ export default function Settings() {
                 </div>
               )}
             </div>
+
+            {/* Avatar Picker */}
+            {isEditing && showAvatarPicker && (
+              <div className="pt-4 border-t border-zinc-800">
+                <label className="block text-sm font-medium text-zinc-300 mb-3">
+                  Choose Avatar
+                </label>
+                {loadingAvatars ? (
+                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
+                    {[...Array(6)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="aspect-square bg-zinc-800/50 rounded-lg animate-pulse"
+                      />
+                    ))}
+                  </div>
+                ) : avatars.length > 0 ? (
+                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-3 max-h-64 overflow-y-auto">
+                    {avatars.map((avatar) => (
+                      <button
+                        key={avatar.name}
+                        onClick={() => handleAvatarSelect(avatar.url)}
+                        className={`aspect-square rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${
+                          selectedAvatarUrl === avatar.url
+                            ? "border-indigo-500 ring-2 ring-indigo-500"
+                            : "border-zinc-700 hover:border-indigo-400"
+                        }`}
+                      >
+                        <img
+                          src={avatar.url}
+                          alt={avatar.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-zinc-500 text-sm">No avatars available</p>
+                )}
+                <button
+                  onClick={() => setShowAvatarPicker(false)}
+                  className="mt-3 text-sm text-zinc-400 hover:text-zinc-200"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
 
             {/* Action Buttons */}
             {isEditing && (
@@ -299,14 +418,18 @@ export default function Settings() {
 
         {/* Account Details */}
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 backdrop-blur-sm">
-          <h2 className="text-xl font-semibold text-zinc-100 mb-4">Account Details</h2>
+          <h2 className="text-xl font-semibold text-zinc-100 mb-4">
+            Account Details
+          </h2>
           <div className="space-y-4">
             {/* Email */}
             <div className="flex items-center gap-3 p-4 bg-zinc-800/50 rounded-lg hover:bg-zinc-800/70 transition-colors">
               <Mail size={18} className="text-indigo-400 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-zinc-500 mb-1">Email Address</p>
-                <p className="text-zinc-200 font-medium break-all">{user.email}</p>
+                <p className="text-zinc-200 font-medium break-all">
+                  {user.email}
+                </p>
               </div>
             </div>
 

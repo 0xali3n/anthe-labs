@@ -26,6 +26,7 @@ export interface UpdateUserData {
   display_name?: string;
   username?: string;
   bio?: string;
+  avatar_url?: string;
 }
 
 // Create or update user (upsert) - requires authentication
