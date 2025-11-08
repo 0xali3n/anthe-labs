@@ -400,109 +400,108 @@ export default function Settings() {
                 {displayName || user.email?.split("@")[0] || "User"}
               </h2>
               {username && (
-                <p className="text-indigo-400 font-mono text-sm mb-3">
-                  @{username}
-                </p>
+                <p className="text-indigo-400 font-mono text-sm">@{username}</p>
               )}
               {!username && !isEditing && (
-                <p className="text-zinc-500 text-sm mb-3">No username set</p>
+                <p className="text-zinc-500 text-sm">No username set</p>
               )}
-
-              {/* Twitter Connection - Minimal Design */}
-              <div className="flex items-center gap-2 mt-3">
-                {user.twitter_connected && user.twitter_username ? (
-                  <a
-                    href={`https://twitter.com/${user.twitter_username}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-300 hover:text-indigo-400 transition-all text-sm"
-                  >
-                    <Twitter size={14} className="text-indigo-400" />
-                    <span>@{user.twitter_username}</span>
-                    <Link2 size={12} className="opacity-60" />
-                  </a>
-                ) : (
-                  <button
-                    onClick={handleConnectTwitter}
-                    disabled={connectingTwitter}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/50 text-indigo-400 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                  >
-                    {connectingTwitter ? (
-                      <>
-                        <svg
-                          className="animate-spin h-3.5 w-3.5"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
-                        <span>Connecting...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Twitter size={14} />
-                        <span>Connect Twitter</span>
-                      </>
-                    )}
-                  </button>
-                )}
-                {user.twitter_connected && user.twitter_username && (
-                  <button
-                    onClick={handleDisconnectTwitter}
-                    disabled={disconnectingTwitter}
-                    className="p-1.5 hover:bg-red-600/20 text-red-400 hover:text-red-300 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Disconnect Twitter"
-                  >
-                    {disconnectingTwitter ? (
-                      <svg
-                        className="animate-spin h-3.5 w-3.5"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                    ) : (
-                      <X size={14} />
-                    )}
-                  </button>
-                )}
-              </div>
             </div>
-            {!isEditing && (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all font-medium shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30"
-              >
-                <Edit2 size={18} />
-                Edit Profile
-              </button>
-            )}
+            <div className="flex flex-col items-end gap-3">
+              {!isEditing && (
+                <>
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all font-medium shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30"
+                  >
+                    <Edit2 size={18} />
+                    Edit Profile
+                  </button>
+
+                  {/* Twitter Connection - Minimal & Professional */}
+                  {user.twitter_connected && user.twitter_username ? (
+                    <div className="flex items-center gap-2 group">
+                      <a
+                        href={`https://twitter.com/${user.twitter_username}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all font-medium shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30"
+                      >
+                        <Twitter size={18} />
+                        <span>@{user.twitter_username}</span>
+                      </a>
+                      <button
+                        onClick={handleDisconnectTwitter}
+                        disabled={disconnectingTwitter}
+                        className="p-2.5 text-zinc-400 hover:text-red-400 hover:bg-red-600/10 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed opacity-0 group-hover:opacity-100"
+                        title="Disconnect Twitter"
+                      >
+                        {disconnectingTwitter ? (
+                          <svg
+                            className="animate-spin h-4 w-4"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                        ) : (
+                          <X size={18} />
+                        )}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleConnectTwitter}
+                      disabled={connectingTwitter}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30"
+                    >
+                      {connectingTwitter ? (
+                        <>
+                          <svg
+                            className="animate-spin h-5 w-5"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          <span>Connecting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Twitter size={18} />
+                          <span>Connect Twitter</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
           {/* Editable Fields */}
