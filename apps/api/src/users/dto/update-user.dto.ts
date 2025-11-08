@@ -22,6 +22,13 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   @MaxLength(500)
-  avatar_url?: string;
+  selected_avatar_url?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^(google|custom)$/, {
+    message: 'Avatar source must be either "google" or "custom"',
+  })
+  avatar_source?: 'google' | 'custom';
 }
 

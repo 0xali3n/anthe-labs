@@ -14,14 +14,39 @@ export class UsersService {
   // Upsert user (create or update) - automatically creates wallet if needed
   async upsert(createUserDto: CreateUserDto) {
     try {
+      // Check if user exists
+      const existingUser = await this.prisma.user.findUnique({
+        where: { id: createUserDto.id },
+      });
+
+      const updateData: any = {
+        email: createUserDto.email,
+        full_name: createUserDto.full_name,
+        google_id: createUserDto.google_id,
+        last_login: new Date(),
+      };
+
+      // Only update avatar_url if it's a new user OR if avatar_url is not set
+      // This preserves user's selected avatar
+      if (!existingUser || !existingUser.avatar_url) {
+        updateData.avatar_url = createUserDto.avatar_url;
+        // For new users, set selected_avatar_url to Google photo and source to 'google'
+        if (!existingUser) {
+          updateData.selected_avatar_url = createUserDto.avatar_url;
+          updateData.avatar_source = 'google';
+        }
+      }
+
+      // Don't overwrite selected_avatar_url or avatar_source on update
+      // These are only set when user explicitly chooses an avatar
+
       const user = await this.prisma.user.upsert({
         where: { id: createUserDto.id },
-        update: {
-          ...createUserDto,
-          last_login: new Date(),
-        },
+        update: updateData,
         create: {
           ...createUserDto,
+          selected_avatar_url: createUserDto.avatar_url, // Set to Google photo initially
+          avatar_source: 'google', // Default to Google photo
           last_login: new Date(),
         },
       });

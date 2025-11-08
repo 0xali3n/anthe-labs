@@ -17,6 +17,8 @@ import {
   CheckCircle,
   AlertCircle,
   Image,
+  Copy,
+  Check,
 } from "lucide-react";
 
 interface UserData {
@@ -25,7 +27,9 @@ interface UserData {
   full_name?: string;
   display_name?: string;
   username?: string;
-  avatar_url?: string;
+  avatar_url?: string; // Original Google photo
+  selected_avatar_url?: string; // User's chosen avatar
+  avatar_source?: "google" | "custom"; // Which avatar is selected
   bio?: string;
   wallet_address?: string;
 }
@@ -38,6 +42,7 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Editable fields
   const [displayName, setDisplayName] = useState("");
@@ -54,27 +59,82 @@ export default function Settings() {
 
   useEffect(() => {
     let mounted = true;
+    let timeoutId: NodeJS.Timeout | null = null;
+
     async function loadUser() {
       try {
+        // Check if user is authenticated first
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session) {
+          router.push("/");
+          return;
+        }
+
         setLoading(true);
+        setError(null);
+
+        // Add timeout to prevent infinite loading
+        timeoutId = setTimeout(() => {
+          if (mounted) {
+            console.warn("User loading taking too long...");
+            setError(
+              "Loading is taking longer than expected. Please refresh the page."
+            );
+            setLoading(false);
+          }
+        }, 8000); // 8 second timeout
+
         const userData = await getCurrentUser();
+
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+
         if (!mounted) return;
 
         setUser(userData);
         setDisplayName(userData.display_name || userData.full_name || "");
         setUsername(userData.username || "");
-        setSelectedAvatarUrl(userData.avatar_url || null);
-      } catch (error) {
+        // Use selected_avatar_url if available, otherwise fallback to avatar_url
+        setSelectedAvatarUrl(
+          userData.selected_avatar_url || userData.avatar_url || null
+        );
+      } catch (error: any) {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
         console.error("Failed to load user:", error);
-        router.push("/");
+
+        // If it's an auth error, redirect to home
+        if (
+          error.message?.includes("No session") ||
+          error.message?.includes("Unauthorized")
+        ) {
+          router.push("/");
+          return;
+        }
+
+        // Show error but don't block - allow user to see the page
+        setError(
+          error.message || "Failed to load user data. Please refresh the page."
+        );
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     }
 
     loadUser();
     return () => {
       mounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
   }, [router]);
 
@@ -117,9 +177,14 @@ export default function Settings() {
         username: username || undefined,
       };
 
-      // Always include avatar_url if selected (replaces Google photo)
-      if (selectedAvatarUrl) {
-        updateData.avatar_url = selectedAvatarUrl;
+      // Include selected_avatar_url and avatar_source if changed
+      if (selectedAvatarUrl && user) {
+        const currentSource =
+          user.avatar_source ||
+          (user.selected_avatar_url === user.avatar_url ? "google" : "custom");
+        updateData.selected_avatar_url = selectedAvatarUrl;
+        updateData.avatar_source =
+          selectedAvatarUrl === user.avatar_url ? "google" : "custom";
       }
 
       const updatedUser = await updateCurrentUser(updateData);
@@ -141,38 +206,21 @@ export default function Settings() {
     }
   };
 
-  const handleAvatarSelect = async (avatarUrl: string) => {
-    // Update preview immediately
+  const handleAvatarSelect = async (
+    avatarUrl: string,
+    source: "google" | "custom"
+  ) => {
+    // Update preview immediately (don't save yet - wait for Save button)
     setSelectedAvatarUrl(avatarUrl);
     setShowAvatarPicker(false);
-
-    // Auto-save avatar selection immediately (replaces Google photo)
-    if (user && avatarUrl !== user.avatar_url) {
-      try {
-        setSaving(true);
-        setError(null);
-        const updatedUser = await updateCurrentUser({
-          avatar_url: avatarUrl,
-        });
-        setUser(updatedUser);
-        setSuccess(true);
-        setTimeout(() => setSuccess(false), 3000);
-      } catch (err: any) {
-        console.error("Failed to update avatar:", err);
-        setError("Failed to update avatar. Please try again.");
-        // Revert to original avatar on error
-        setSelectedAvatarUrl(user.avatar_url || null);
-      } finally {
-        setSaving(false);
-      }
-    }
+    // Don't show success message here - only when Save is clicked
   };
 
   const handleCancel = () => {
     if (user) {
       setDisplayName(user.display_name || user.full_name || "");
       setUsername(user.username || "");
-      setSelectedAvatarUrl(user.avatar_url || null);
+      setSelectedAvatarUrl(user.selected_avatar_url || user.avatar_url || null);
     }
     setIsEditing(false);
     setShowAvatarPicker(false);
@@ -213,6 +261,7 @@ export default function Settings() {
   }
 
   const avatarUrl =
+    user.selected_avatar_url ||
     user.avatar_url ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName || user.email?.split("@")[0] || "User")}&background=6366f1&color=fff`;
 
@@ -245,30 +294,25 @@ export default function Settings() {
         {/* Profile Section */}
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 backdrop-blur-sm">
           <div className="flex items-start gap-6 mb-6">
-            <div className="relative group">
+            <div className="relative">
               <div className="relative">
                 <img
-                  src={selectedAvatarUrl || avatarUrl}
+                  src={selectedAvatarUrl || user?.avatar_url || avatarUrl}
                   alt={displayName || "User"}
-                  className="h-24 w-24 rounded-full border-2 border-indigo-500 object-cover shadow-xl transition-all group-hover:border-indigo-400 group-hover:shadow-indigo-500/50 group-hover:scale-105"
+                  className="h-24 w-24 rounded-full border-2 border-indigo-500 object-cover shadow-xl transition-all"
                 />
                 {isEditing && (
                   <button
                     onClick={() => setShowAvatarPicker(!showAvatarPicker)}
-                    className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-full opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm"
-                    title="Change avatar"
+                    className="absolute -bottom-1 -right-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-2 shadow-lg border-2 border-zinc-900 transition-all hover:scale-110"
+                    title="Change profile picture"
                   >
-                    <div className="flex flex-col items-center gap-1">
-                      <Image size={22} className="text-white" />
-                      <span className="text-xs text-white font-medium">
-                        Change
-                      </span>
-                    </div>
+                    <Image size={16} />
                   </button>
                 )}
               </div>
               {saving && (
-                <div className="absolute -bottom-1 -right-1 bg-indigo-600 rounded-full p-1.5">
+                <div className="absolute -bottom-1 -right-1 bg-indigo-600 rounded-full p-1.5 z-10">
                   <svg
                     className="animate-spin h-3 w-3 text-white"
                     xmlns="http://www.w3.org/2000/svg"
@@ -316,6 +360,142 @@ export default function Settings() {
 
           {/* Editable Fields */}
           <div className="space-y-4">
+            {/* Avatar Picker - At the top */}
+            {isEditing && showAvatarPicker && (
+              <div className="mb-6 pb-6 border-b border-zinc-800">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-base font-semibold text-zinc-100 mb-1">
+                      Select Profile Picture
+                    </h3>
+                    <p className="text-xs text-zinc-500">
+                      Choose your Google photo or a custom avatar
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowAvatarPicker(false)}
+                    className="text-zinc-400 hover:text-zinc-200 transition-colors p-1.5 hover:bg-zinc-800 rounded-lg"
+                    title="Close"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Google Photo Option */}
+                {user?.avatar_url && (
+                  <div className="mb-6">
+                    <p className="text-xs text-zinc-400 mb-3 font-medium uppercase tracking-wide">
+                      Your Google Photo
+                    </p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() =>
+                          handleAvatarSelect(user.avatar_url!, "google")
+                        }
+                        className={`relative w-24 h-24 rounded-xl overflow-hidden border-2 transition-all duration-200 group ${
+                          user.avatar_source === "google" ||
+                          (!user.avatar_source &&
+                            selectedAvatarUrl === user.avatar_url)
+                            ? "border-indigo-500 ring-4 ring-indigo-500/30 shadow-lg shadow-indigo-500/20"
+                            : "border-zinc-700 hover:border-indigo-400 hover:shadow-lg"
+                        }`}
+                      >
+                        <img
+                          src={user.avatar_url}
+                          alt="Google Photo"
+                          className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
+                        />
+                        {(user.avatar_source === "google" ||
+                          (!user.avatar_source &&
+                            selectedAvatarUrl === user.avatar_url)) && (
+                          <div className="absolute inset-0 bg-indigo-500/20 flex items-center justify-center">
+                            <div className="bg-indigo-500 rounded-full p-2">
+                              <CheckCircle size={18} className="text-white" />
+                            </div>
+                          </div>
+                        )}
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-2">
+                          <p className="text-[10px] text-white font-semibold text-center">
+                            Google
+                          </p>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Custom Avatars */}
+                {loadingAvatars ? (
+                  <div>
+                    <p className="text-xs text-zinc-400 mb-3 font-medium uppercase tracking-wide">
+                      Custom Avatars
+                    </p>
+                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3">
+                      {[...Array(6)].map((_, i) => (
+                        <div
+                          key={i}
+                          className="aspect-square bg-zinc-800/50 rounded-xl animate-pulse"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : avatars.length > 0 ? (
+                  <div>
+                    <p className="text-xs text-zinc-400 mb-3 font-medium uppercase tracking-wide">
+                      Custom Avatars
+                    </p>
+                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
+                      {avatars.map((avatar) => {
+                        const isSelected =
+                          user?.avatar_source === "custom" &&
+                          selectedAvatarUrl === avatar.url;
+                        return (
+                          <button
+                            key={avatar.name}
+                            onClick={() =>
+                              handleAvatarSelect(avatar.url, "custom")
+                            }
+                            className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all duration-200 group ${
+                              isSelected
+                                ? "border-indigo-500 ring-4 ring-indigo-500/30 shadow-lg shadow-indigo-500/20"
+                                : "border-zinc-700 hover:border-indigo-400 hover:shadow-lg"
+                            }`}
+                          >
+                            <img
+                              src={avatar.url}
+                              alt={avatar.name}
+                              className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
+                            />
+                            {isSelected && (
+                              <div className="absolute inset-0 bg-indigo-500/20 flex items-center justify-center">
+                                <div className="bg-indigo-500 rounded-full p-1.5">
+                                  <CheckCircle
+                                    size={16}
+                                    className="text-white"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Image size={48} className="text-zinc-600 mx-auto mb-3" />
+                    <p className="text-zinc-500 text-sm">
+                      No custom avatars available
+                    </p>
+                    <p className="text-zinc-600 text-xs mt-1">
+                      Contact administrator to add avatars
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Display Name */}
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-2">
@@ -371,100 +551,6 @@ export default function Settings() {
                 </div>
               )}
             </div>
-
-            {/* Avatar Picker */}
-            {isEditing && (
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="block text-sm font-medium text-zinc-300">
-                    Profile Picture
-                  </label>
-                  {!showAvatarPicker && (
-                    <button
-                      onClick={() => setShowAvatarPicker(true)}
-                      className="text-sm text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1.5 transition-colors"
-                    >
-                      <Image size={14} />
-                      Choose Avatar
-                    </button>
-                  )}
-                </div>
-
-                {showAvatarPicker && (
-                  <div className="pt-4 border-t border-zinc-800 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-semibold text-zinc-200">
-                        Select an Avatar
-                      </h3>
-                      <button
-                        onClick={() => setShowAvatarPicker(false)}
-                        className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
-                      >
-                        Close
-                      </button>
-                    </div>
-
-                    {loadingAvatars ? (
-                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
-                        {[...Array(6)].map((_, i) => (
-                          <div
-                            key={i}
-                            className="aspect-square bg-zinc-800/50 rounded-xl animate-pulse"
-                          />
-                        ))}
-                      </div>
-                    ) : avatars.length > 0 ? (
-                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
-                        {avatars.map((avatar) => {
-                          const isSelected = selectedAvatarUrl === avatar.url;
-                          return (
-                            <button
-                              key={avatar.name}
-                              onClick={() => handleAvatarSelect(avatar.url)}
-                              className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all duration-200 group ${
-                                isSelected
-                                  ? "border-indigo-500 ring-4 ring-indigo-500/30 shadow-lg shadow-indigo-500/20 scale-105"
-                                  : "border-zinc-700 hover:border-indigo-400 hover:scale-105 hover:shadow-lg"
-                              }`}
-                            >
-                              <img
-                                src={avatar.url}
-                                alt={avatar.name}
-                                className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
-                              />
-                              {isSelected && (
-                                <div className="absolute inset-0 bg-indigo-500/20 flex items-center justify-center">
-                                  <div className="bg-indigo-500 rounded-full p-1.5">
-                                    <CheckCircle
-                                      size={16}
-                                      className="text-white"
-                                    />
-                                  </div>
-                                </div>
-                              )}
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <Image
-                          size={48}
-                          className="text-zinc-600 mx-auto mb-3"
-                        />
-                        <p className="text-zinc-500 text-sm">
-                          No avatars available
-                        </p>
-                        <p className="text-zinc-600 text-xs mt-1">
-                          Contact administrator to add avatars
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Action Buttons */}
             {isEditing && (
@@ -545,6 +631,24 @@ export default function Settings() {
                     <p className="text-zinc-200 font-mono text-sm break-all">
                       {user.wallet_address}
                     </p>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(user.wallet_address!);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }}
+                      className="ml-auto p-2 hover:bg-zinc-700 rounded-lg transition-all flex-shrink-0"
+                      title={copied ? "Copied!" : "Copy wallet address"}
+                    >
+                      {copied ? (
+                        <Check size={16} className="text-green-400" />
+                      ) : (
+                        <Copy
+                          size={16}
+                          className="text-zinc-400 hover:text-indigo-400"
+                        />
+                      )}
+                    </button>
                   </div>
                 </div>
               </div>

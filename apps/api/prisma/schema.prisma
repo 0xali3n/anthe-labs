@@ -11,7 +11,9 @@ model User {
   id        String   @id @default(uuid())
   email     String   @unique
   full_name String?
-  avatar_url String?
+  avatar_url String?  // Original Google photo (never overwritten after first save)
+  selected_avatar_url String?  // User's chosen avatar (Google or custom)
+  avatar_source String?  // 'google' | 'custom' - tracks which avatar is selected
   
   // Google OAuth data
   google_id String?  @unique

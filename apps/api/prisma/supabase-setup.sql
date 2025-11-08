@@ -5,7 +5,9 @@ CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT UNIQUE NOT NULL,
   full_name TEXT,
-  avatar_url TEXT,
+  avatar_url TEXT, -- Original Google photo (never overwritten after first save)
+  selected_avatar_url TEXT, -- User's chosen avatar (Google or custom)
+  avatar_source TEXT, -- 'google' | 'custom' - tracks which avatar is selected
   
   -- Google OAuth data
   google_id TEXT UNIQUE,

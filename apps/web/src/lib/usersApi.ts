@@ -5,7 +5,9 @@ export interface CreateUserData {
   id: string;
   email: string;
   full_name?: string;
-  avatar_url?: string;
+  avatar_url?: string; // Original Google photo
+  selected_avatar_url?: string; // User's chosen avatar
+  avatar_source?: 'google' | 'custom'; // Which avatar is selected
   google_id?: string;
   display_name?: string;
   username?: string;
@@ -26,7 +28,8 @@ export interface UpdateUserData {
   display_name?: string;
   username?: string;
   bio?: string;
-  avatar_url?: string;
+  selected_avatar_url?: string;
+  avatar_source?: 'google' | 'custom';
 }
 
 // Create or update user (upsert) - requires authentication
