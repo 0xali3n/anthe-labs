@@ -9,13 +9,25 @@ export interface ApiError {
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const error: ApiError = await response.json().catch(() => ({
-      message: response.statusText,
-      statusCode: response.status,
-    }));
-    throw new Error(error.message || `API Error: ${response.status}`);
+    let errorData: ApiError;
+    try {
+      errorData = await response.json();
+    } catch {
+      errorData = {
+        message: response.statusText || `HTTP ${response.status}`,
+        statusCode: response.status,
+      };
+    }
+    throw new Error(errorData.message || `API Error: ${response.status}`);
   }
-  return response.json();
+  
+  try {
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Failed to parse JSON response:', error);
+    throw new Error('Invalid JSON response from server');
+  }
 }
 
 export async function apiRequest<T>(
@@ -23,14 +35,40 @@ export async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_URL}${endpoint}`;
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  });
-  return handleResponse<T>(response);
+  
+  // Add timeout to prevent hanging
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      // Ensure response is fully consumed
+      cache: 'no-store',
+    });
+    
+    clearTimeout(timeoutId);
+    
+    // Ensure response body is fully read
+    if (!response.bodyUsed) {
+      return handleResponse<T>(response);
+    } else {
+      // Response already consumed, try to get data another way
+      const text = await response.text();
+      return JSON.parse(text);
+    }
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Request timeout - server took too long to respond');
+    }
+    throw error;
+  }
 }
 
 export async function authenticatedRequest<T>(

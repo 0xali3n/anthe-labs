@@ -13,6 +13,9 @@ This PR implements:
 - ✅ Secure wallet encryption (AES-256-GCM)
 - ✅ Backend API with NestJS
 - ✅ Frontend integration with Next.js
+- ✅ User settings page with profile editing
+- ✅ Avatar selection (Google photo or custom avatars)
+- ✅ Twitter OAuth integration (connect/disconnect)
 
 ---
 
@@ -84,6 +87,7 @@ pnpm --filter api start:dev
 - **Wallet Generation**: Automatic Aptos wallet creation on user signup
 - **Encryption**: AES-256-GCM for private key storage
 - **Security**: Private keys never exposed to frontend
+- **User Settings**: Profile editing, avatar selection, Twitter integration
 
 ---
 
@@ -105,6 +109,7 @@ anthe/
 │       │   ├── wallets/        # Wallet operations
 │       │   ├── auth/           # JWT authentication
 │       │   ├── encryption/     # AES-256-GCM encryption
+│       │   ├── twitter/        # Twitter OAuth integration
 │       │   └── prisma/          # Prisma service
 │       ├── prisma/
 │       │   ├── schema.prisma    # Database schema
@@ -148,47 +153,11 @@ anthe/
 
 - `POST /api/users/upsert` - Create or update user (auto-creates wallet)
 - `GET /api/users/me` - Get current user
-- `PUT /api/users/me` - Update current user
-- `POST /api/wallets` - Create or get wallet (legacy, auto-handled by upsert)
+- `PUT /api/users/me` - Update user profile (display name, username, avatar)
 - `GET /api/wallets/me` - Get current user's wallet
-
----
-
-## ✅ Testing Checklist
-
-After running the app:
-
-1. **Backend logs should show:**
-
-   ```
-   ✅ Database connected
-   ✅ Encryption service initialized (AES-256-GCM)
-   ✅ Auth Guard initialized
-   🚀 API running on http://localhost:3001/api
-   ```
-
-2. **Frontend logs should show:**
-
-   ```
-   ✅ Supabase client initialized (singleton)
-   ```
-
-3. **Test flow:**
-   - Open http://localhost:3000
-   - Click "Sign In" → Sign in with Google
-   - User should be saved to database
-   - Wallet should be automatically generated
-   - Wallet address should display in navbar
-
----
-
-## 📚 Documentation
-
-- **User Account Flow**: See `USER_ACCOUNT_FLOW.md` for detailed technical documentation including:
-  - Complete flow diagrams
-  - Encryption/decryption process
-  - Database schema
-  - Troubleshooting guide
+- `GET /api/twitter/connect` - Get Twitter OAuth URL
+- `GET /api/twitter/callback` - Twitter OAuth callback
+- `POST /api/twitter/disconnect` - Disconnect Twitter account
 
 ---
 
@@ -213,27 +182,3 @@ After running the app:
 - Encryption key is required for wallet operations
 
 ---
-
-## 🐛 Troubleshooting
-
-**Database connection errors:**
-
-- Ensure `DATABASE_URL` uses port 6543 (connection pooling)
-- `pgbouncer=true` is automatically added by PrismaService
-
-**Wallet not displaying:**
-
-- Check browser console for errors
-- Verify backend logs show wallet creation
-- Ensure `ENCRYPTION_KEY` is set in backend `.env`
-
-**Authentication errors:**
-
-- Verify Supabase environment variables are correct
-- Check Google OAuth is enabled in Supabase dashboard
-
----
-
-## 📄 License
-
-MIT

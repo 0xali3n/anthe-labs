@@ -65,11 +65,27 @@ export async function getCurrentUser(): Promise<UserData> {
   if (!session?.access_token) {
     throw new Error('No session found');
   }
-  const response = await authenticatedRequest<{ success: boolean; user: UserData }>('/users/me', session.access_token);
-  if (!response || !response.user) {
-    throw new Error('Invalid response from server');
+  
+  try {
+    const response = await authenticatedRequest<{ success: boolean; user: UserData }>('/users/me', session.access_token);
+    
+    if (!response) {
+      throw new Error('No response from server');
+    }
+    
+    if (!response.success) {
+      throw new Error((response as any).error || 'Failed to get user data');
+    }
+    
+    if (!response.user) {
+      throw new Error('Invalid response from server: user data missing');
+    }
+    
+    return response.user;
+  } catch (error: any) {
+    console.error('getCurrentUser error:', error);
+    throw error;
   }
-  return response.user;
 }
 
 // Update current user (requires auth)

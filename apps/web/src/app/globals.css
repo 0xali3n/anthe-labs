@@ -95,3 +95,15 @@ button.signin-glow:active:not(:disabled) {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(99, 102, 241, 0.7);
 }
+
+/* Modal animations */
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}

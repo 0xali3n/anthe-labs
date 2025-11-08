@@ -2,9 +2,9 @@ import { authenticatedRequest } from './apiClient';
 import { supabase } from './supabaseClient';
 
 /**
- * Connect Twitter account - gets OAuth URL and redirects to Twitter
+ * Connect Twitter account - opens OAuth in popup window (professional pattern)
  */
-export async function connectTwitter(): Promise<void> {
+export async function connectTwitter(): Promise<{ success: boolean; username?: string; error?: string }> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) {
     throw new Error('No session found');
@@ -20,8 +20,64 @@ export async function connectTwitter(): Promise<void> {
     throw new Error('Failed to get Twitter OAuth URL');
   }
 
-  // Redirect to Twitter OAuth page
-  window.location.href = response.authUrl;
+  // Open OAuth in popup window (professional pattern)
+  return new Promise((resolve, reject) => {
+    const width = 600;
+    const height = 700;
+    const left = (window.screen.width - width) / 2;
+    const top = (window.screen.height - height) / 2;
+
+    const popup = window.open(
+      response.authUrl,
+      'Twitter OAuth',
+      `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes,location=no,status=no`
+    );
+
+    if (!popup) {
+      reject(new Error('Popup blocked. Please allow popups for this site.'));
+      return;
+    }
+
+    // Listen for messages from popup
+    const messageListener = (event: MessageEvent) => {
+      // Security: Only accept messages from our frontend URL
+      const frontendUrl = window.location.origin;
+      if (event.origin !== frontendUrl) {
+        return;
+      }
+
+      if (event.data.type === 'TWITTER_OAUTH_SUCCESS') {
+        window.removeEventListener('message', messageListener);
+        popup.close();
+        resolve({ success: true, username: event.data.username });
+      } else if (event.data.type === 'TWITTER_OAUTH_ERROR') {
+        window.removeEventListener('message', messageListener);
+        popup.close();
+        reject(new Error(event.data.error || 'Twitter connection failed'));
+      }
+    };
+
+    window.addEventListener('message', messageListener);
+
+    // Check if popup is closed manually
+    const checkClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkClosed);
+        window.removeEventListener('message', messageListener);
+        reject(new Error('Connection cancelled'));
+      }
+    }, 500);
+
+    // Cleanup after 10 minutes
+    setTimeout(() => {
+      if (!popup.closed) {
+        popup.close();
+        clearInterval(checkClosed);
+        window.removeEventListener('message', messageListener);
+        reject(new Error('Connection timeout'));
+      }
+    }, 600000);
+  });
 }
 
 /**

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser, updateCurrentUser } from "@/lib/usersApi";
@@ -64,6 +64,7 @@ export default function Settings() {
   const [selectedAvatarUrl, setSelectedAvatarUrl] = useState<string | null>(
     null
   );
+  const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -83,24 +84,6 @@ export default function Settings() {
         setLoading(true);
         setError(null);
 
-        // Check for OAuth callback messages in URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const twitterConnected = urlParams.get("twitter_connected");
-        const twitterUsername = urlParams.get("username");
-        const errorParam = urlParams.get("error");
-
-        if (twitterConnected === "true" && twitterUsername) {
-          setSuccess(true);
-          // Clean URL
-          window.history.replaceState({}, "", "/settings");
-        }
-
-        if (errorParam) {
-          setError(decodeURIComponent(errorParam));
-          // Clean URL
-          window.history.replaceState({}, "", "/settings");
-        }
-
         // Add timeout to prevent infinite loading
         timeoutId = setTimeout(() => {
           if (mounted) {
@@ -112,15 +95,21 @@ export default function Settings() {
           }
         }, 8000); // 8 second timeout
 
+        console.log("🔄 Fetching user data...");
         const userData = await getCurrentUser();
+        console.log("✅ User data received:", userData);
 
         if (timeoutId) {
           clearTimeout(timeoutId);
           timeoutId = null;
         }
 
-        if (!mounted) return;
+        if (!mounted) {
+          console.log("⚠️ Component unmounted, skipping state update");
+          return;
+        }
 
+        console.log("📝 Updating state with user data");
         setUser(userData);
         setDisplayName(userData.display_name || userData.full_name || "");
         setUsername(userData.username || "");
@@ -128,6 +117,7 @@ export default function Settings() {
         setSelectedAvatarUrl(
           userData.selected_avatar_url || userData.avatar_url || null
         );
+        console.log("✅ State updated, setting loading to false");
       } catch (error: any) {
         if (timeoutId) {
           clearTimeout(timeoutId);
@@ -150,7 +140,10 @@ export default function Settings() {
         );
       } finally {
         if (mounted) {
+          console.log("🏁 Finally block: setting loading to false");
           setLoading(false);
+        } else {
+          console.log("⚠️ Component unmounted, not updating loading state");
         }
       }
     }
@@ -162,7 +155,41 @@ export default function Settings() {
         clearTimeout(timeoutId);
       }
     };
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
+
+  // Close modal when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        modalRef.current &&
+        !modalRef.current.contains(event.target as Node) &&
+        showAvatarPicker
+      ) {
+        setShowAvatarPicker(false);
+      }
+    }
+
+    // Close on Escape key
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape" && showAvatarPicker) {
+        setShowAvatarPicker(false);
+      }
+    }
+
+    if (showAvatarPicker) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleEscape);
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = "hidden";
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "unset";
+    };
+  }, [showAvatarPicker]);
 
   // Load avatars when avatar picker is opened
   useEffect(() => {
@@ -269,11 +296,18 @@ export default function Settings() {
     try {
       setConnectingTwitter(true);
       setError(null);
-      await connectTwitter();
-      // connectTwitter redirects, so we don't need to do anything else
+      const result = await connectTwitter();
+      if (result.success) {
+        // Reload user data to get updated Twitter info
+        const userData = await getCurrentUser();
+        setUser(userData);
+        setSuccess(true);
+        setTimeout(() => setSuccess(false), 3000);
+      }
     } catch (error: any) {
       console.error("Twitter connect error:", error);
       setError(error.message || "Failed to connect Twitter");
+    } finally {
       setConnectingTwitter(false);
     }
   };
@@ -351,29 +385,29 @@ export default function Settings() {
 
       <div className="space-y-6">
         {/* Profile Section */}
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 backdrop-blur-sm shadow-lg">
-          <div className="flex items-start gap-6 mb-6">
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-8 backdrop-blur-sm shadow-lg">
+          <div className="flex items-center gap-6">
             <div className="relative">
               <div className="relative">
                 <img
                   src={selectedAvatarUrl || user?.avatar_url || avatarUrl}
                   alt={displayName || "User"}
-                  className="h-24 w-24 rounded-full border-2 border-indigo-500 object-cover shadow-xl transition-all"
+                  className="h-28 w-28 rounded-full border-2 border-indigo-500 object-cover shadow-xl transition-all"
                 />
                 {isEditing && (
                   <button
                     onClick={() => setShowAvatarPicker(!showAvatarPicker)}
-                    className="absolute -bottom-1 -right-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-2 shadow-lg border-2 border-zinc-900 transition-all hover:scale-110"
+                    className="absolute -bottom-1 -right-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-2.5 shadow-lg border-2 border-zinc-900 transition-all hover:scale-110"
                     title="Change profile picture"
                   >
-                    <Image size={16} />
+                    <Image size={18} />
                   </button>
                 )}
               </div>
               {saving && (
-                <div className="absolute -bottom-1 -right-1 bg-indigo-600 rounded-full p-1.5 z-10">
+                <div className="absolute -bottom-1 -right-1 bg-indigo-600 rounded-full p-2 z-10">
                   <svg
-                    className="animate-spin h-3 w-3 text-white"
+                    className="animate-spin h-4 w-4 text-white"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -395,79 +429,126 @@ export default function Settings() {
                 </div>
               )}
             </div>
-            <div className="flex-1">
-              <h2 className="text-2xl font-semibold text-zinc-100 mb-1">
-                {displayName || user.email?.split("@")[0] || "User"}
-              </h2>
-              {username && (
-                <p className="text-indigo-400 font-mono text-sm">@{username}</p>
-              )}
-              {!username && !isEditing && (
-                <p className="text-zinc-500 text-sm">No username set</p>
-              )}
-            </div>
-            <div className="flex flex-col items-end gap-3">
-              {!isEditing && (
-                <>
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all font-medium shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30"
-                  >
-                    <Edit2 size={18} />
-                    Edit Profile
-                  </button>
 
-                  {/* Twitter Connection - Minimal & Professional */}
-                  {user.twitter_connected && user.twitter_username ? (
-                    <div className="flex items-center gap-2 group">
-                      <a
-                        href={`https://twitter.com/${user.twitter_username}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all font-medium shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30"
-                      >
-                        <Twitter size={18} />
-                        <span>@{user.twitter_username}</span>
-                      </a>
+            <div className="flex-1">
+              <div className="flex items-center gap-4 mb-3">
+                <div>
+                  <h2 className="text-3xl font-bold text-zinc-100 mb-1">
+                    {displayName || user.email?.split("@")[0] || "User"}
+                  </h2>
+                  {username ? (
+                    <p className="text-indigo-400 font-mono text-base">
+                      @{username}
+                    </p>
+                  ) : (
+                    <p className="text-zinc-500 text-sm">No username set</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Buttons - Horizontal Layout */}
+              <div className="flex items-center gap-3 flex-wrap">
+                {!isEditing ? (
+                  <>
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all font-medium shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30"
+                    >
+                      <Edit2 size={18} />
+                      Edit Profile
+                    </button>
+
+                    {/* Twitter Connection */}
+                    {user.twitter_connected && user.twitter_username ? (
+                      <div className="flex items-center gap-2 group">
+                        <a
+                          href={`https://twitter.com/${user.twitter_username}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-5 py-2.5 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-xl transition-all font-medium shadow-lg shadow-zinc-900/20 hover:shadow-zinc-900/30"
+                        >
+                          <Twitter size={18} className="text-indigo-400" />
+                          <span>@{user.twitter_username}</span>
+                        </a>
+                        <button
+                          onClick={handleDisconnectTwitter}
+                          disabled={disconnectingTwitter}
+                          className="p-2.5 text-zinc-400 hover:text-red-400 hover:bg-red-600/10 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed opacity-0 group-hover:opacity-100"
+                          title="Disconnect Twitter"
+                        >
+                          {disconnectingTwitter ? (
+                            <svg
+                              className="animate-spin h-4 w-4"
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                            >
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                              ></circle>
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              ></path>
+                            </svg>
+                          ) : (
+                            <X size={18} />
+                          )}
+                        </button>
+                      </div>
+                    ) : (
                       <button
-                        onClick={handleDisconnectTwitter}
-                        disabled={disconnectingTwitter}
-                        className="p-2.5 text-zinc-400 hover:text-red-400 hover:bg-red-600/10 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed opacity-0 group-hover:opacity-100"
-                        title="Disconnect Twitter"
+                        onClick={handleConnectTwitter}
+                        disabled={connectingTwitter}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-zinc-900/20 hover:shadow-zinc-900/30"
                       >
-                        {disconnectingTwitter ? (
-                          <svg
-                            className="animate-spin h-4 w-4"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                          >
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                            ></circle>
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            ></path>
-                          </svg>
+                        {connectingTwitter ? (
+                          <>
+                            <svg
+                              className="animate-spin h-5 w-5"
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                            >
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                              ></circle>
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              ></path>
+                            </svg>
+                            <span>Connecting...</span>
+                          </>
                         ) : (
-                          <X size={18} />
+                          <>
+                            <Twitter size={18} className="text-indigo-400" />
+                            <span>Connect Twitter</span>
+                          </>
                         )}
                       </button>
-                    </div>
-                  ) : (
+                    )}
+                  </>
+                ) : (
+                  <div className="flex items-center gap-3">
                     <button
-                      onClick={handleConnectTwitter}
-                      disabled={connectingTwitter}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30"
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30"
                     >
-                      {connectingTwitter ? (
+                      {saving ? (
                         <>
                           <svg
                             className="animate-spin h-5 w-5"
@@ -489,61 +570,127 @@ export default function Settings() {
                               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                             ></path>
                           </svg>
-                          <span>Connecting...</span>
+                          <span>Saving...</span>
                         </>
                       ) : (
                         <>
-                          <Twitter size={18} />
-                          <span>Connect Twitter</span>
+                          <Save size={18} />
+                          <span>Save Changes</span>
                         </>
                       )}
                     </button>
-                  )}
-                </>
-              )}
+                    <button
+                      onClick={handleCancel}
+                      disabled={saving}
+                      className="flex items-center gap-2 px-6 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed border border-zinc-700"
+                    >
+                      <X size={18} />
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Editable Fields */}
-          <div className="space-y-4">
-            {/* Avatar Picker - At the top */}
-            {isEditing && showAvatarPicker && (
-              <div className="mb-6 pb-6 border-b border-zinc-800">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-base font-semibold text-zinc-100 mb-1">
-                      Select Profile Picture
-                    </h3>
-                    <p className="text-xs text-zinc-500">
-                      Choose your Google photo or a custom avatar
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowAvatarPicker(false)}
-                    className="text-zinc-400 hover:text-zinc-200 transition-colors p-1.5 hover:bg-zinc-800 rounded-lg"
-                    title="Close"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
+          {/* Editable Fields - Only shown when editing */}
+          {isEditing && (
+            <div className="mt-8 pt-8 border-t border-zinc-800 space-y-6">
+              {/* Display Name */}
+              <div>
+                <label className="block text-sm font-semibold text-zinc-300 mb-2.5">
+                  Display Name
+                </label>
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Enter your display name"
+                  className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                />
+              </div>
 
+              {/* Username */}
+              <div>
+                <label className="block text-sm font-semibold text-zinc-300 mb-2.5">
+                  Username{" "}
+                  <span className="text-zinc-500 text-xs font-normal">
+                    (unique)
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) =>
+                    setUsername(
+                      e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "")
+                    )
+                  }
+                  placeholder="Choose a username"
+                  maxLength={30}
+                  className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-mono"
+                />
+                <p className="mt-2 text-xs text-zinc-500">
+                  Only letters, numbers, and underscores allowed
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Avatar Picker Modal */}
+        {showAvatarPicker && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div
+              ref={modalRef}
+              className="bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden transform transition-all"
+              style={{
+                animation: "modalSlideIn 0.2s ease-out",
+              }}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b border-zinc-800 bg-gradient-to-r from-zinc-900 to-zinc-900/50">
+                <div>
+                  <h3 className="text-xl font-bold text-zinc-100 mb-1">
+                    Choose Profile Picture
+                  </h3>
+                  <p className="text-sm text-zinc-400">
+                    Select your Google photo or a custom avatar
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowAvatarPicker(false)}
+                  className="p-2 hover:bg-zinc-800 rounded-xl transition-all text-zinc-400 hover:text-zinc-200"
+                  title="Close"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] custom-scrollbar">
                 {/* Google Photo Option */}
                 {user?.avatar_url && (
-                  <div className="mb-6">
-                    <p className="text-xs text-zinc-400 mb-3 font-medium uppercase tracking-wide">
-                      Your Google Photo
-                    </p>
-                    <div className="flex gap-3">
+                  <div className="mb-8">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="p-1.5 bg-indigo-500/20 rounded-lg border border-indigo-500/30">
+                        <Image size={16} className="text-indigo-400" />
+                      </div>
+                      <p className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+                        Your Google Photo
+                      </p>
+                    </div>
+                    <div className="flex justify-center">
                       <button
                         onClick={() =>
                           handleAvatarSelect(user.avatar_url!, "google")
                         }
-                        className={`relative w-24 h-24 rounded-xl overflow-hidden border-2 transition-all duration-200 group ${
+                        className={`relative w-32 h-32 rounded-2xl overflow-hidden border-2 transition-all duration-200 group ${
                           user.avatar_source === "google" ||
                           (!user.avatar_source &&
                             selectedAvatarUrl === user.avatar_url)
-                            ? "border-indigo-500 ring-4 ring-indigo-500/30 shadow-lg shadow-indigo-500/20"
-                            : "border-zinc-700 hover:border-indigo-400 hover:shadow-lg"
+                            ? "border-indigo-500 ring-4 ring-indigo-500/30 shadow-xl shadow-indigo-500/30 scale-105"
+                            : "border-zinc-700 hover:border-indigo-400 hover:shadow-xl hover:scale-105"
                         }`}
                       >
                         <img
@@ -554,15 +701,15 @@ export default function Settings() {
                         {(user.avatar_source === "google" ||
                           (!user.avatar_source &&
                             selectedAvatarUrl === user.avatar_url)) && (
-                          <div className="absolute inset-0 bg-indigo-500/20 flex items-center justify-center">
-                            <div className="bg-indigo-500 rounded-full p-2">
-                              <CheckCircle size={18} className="text-white" />
+                          <div className="absolute inset-0 bg-indigo-500/30 flex items-center justify-center">
+                            <div className="bg-indigo-500 rounded-full p-2.5 shadow-lg">
+                              <CheckCircle size={20} className="text-white" />
                             </div>
                           </div>
                         )}
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-2">
-                          <p className="text-[10px] text-white font-semibold text-center">
-                            Google
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 via-black/80 to-transparent p-3">
+                          <p className="text-xs text-white font-bold text-center">
+                            Google Photo
                           </p>
                         </div>
                       </button>
@@ -573,10 +720,15 @@ export default function Settings() {
                 {/* Custom Avatars */}
                 {loadingAvatars ? (
                   <div>
-                    <p className="text-xs text-zinc-400 mb-3 font-medium uppercase tracking-wide">
-                      Custom Avatars
-                    </p>
-                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="p-1.5 bg-indigo-500/20 rounded-lg border border-indigo-500/30">
+                        <Image size={16} className="text-indigo-400" />
+                      </div>
+                      <p className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+                        Custom Avatars
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-4">
                       {[...Array(6)].map((_, i) => (
                         <div
                           key={i}
@@ -587,10 +739,15 @@ export default function Settings() {
                   </div>
                 ) : avatars.length > 0 ? (
                   <div>
-                    <p className="text-xs text-zinc-400 mb-3 font-medium uppercase tracking-wide">
-                      Custom Avatars
-                    </p>
-                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="p-1.5 bg-indigo-500/20 rounded-lg border border-indigo-500/30">
+                        <Image size={16} className="text-indigo-400" />
+                      </div>
+                      <p className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+                        Custom Avatars
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-4">
                       {avatars.map((avatar) => {
                         const isSelected =
                           user?.avatar_source === "custom" &&
@@ -603,8 +760,8 @@ export default function Settings() {
                             }
                             className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all duration-200 group ${
                               isSelected
-                                ? "border-indigo-500 ring-4 ring-indigo-500/30 shadow-lg shadow-indigo-500/20"
-                                : "border-zinc-700 hover:border-indigo-400 hover:shadow-lg"
+                                ? "border-indigo-500 ring-4 ring-indigo-500/30 shadow-xl shadow-indigo-500/30 scale-105"
+                                : "border-zinc-700 hover:border-indigo-400 hover:shadow-xl hover:scale-105"
                             }`}
                           >
                             <img
@@ -613,149 +770,38 @@ export default function Settings() {
                               className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
                             />
                             {isSelected && (
-                              <div className="absolute inset-0 bg-indigo-500/20 flex items-center justify-center">
-                                <div className="bg-indigo-500 rounded-full p-1.5">
+                              <div className="absolute inset-0 bg-indigo-500/30 flex items-center justify-center">
+                                <div className="bg-indigo-500 rounded-full p-2 shadow-lg">
                                   <CheckCircle
-                                    size={16}
+                                    size={18}
                                     className="text-white"
                                   />
                                 </div>
                               </div>
                             )}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                           </button>
                         );
                       })}
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <Image size={48} className="text-zinc-600 mx-auto mb-3" />
-                    <p className="text-zinc-500 text-sm">
+                  <div className="text-center py-12">
+                    <div className="p-4 bg-zinc-800/50 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                      <Image size={40} className="text-zinc-600" />
+                    </div>
+                    <p className="text-zinc-400 text-base font-medium mb-2">
                       No custom avatars available
                     </p>
-                    <p className="text-zinc-600 text-xs mt-1">
+                    <p className="text-zinc-600 text-sm">
                       Contact administrator to add avatars
                     </p>
                   </div>
                 )}
               </div>
-            )}
-
-            {/* Display Name */}
-            <div>
-              <label className="block text-sm font-semibold text-zinc-300 mb-2.5">
-                Display Name
-              </label>
-              {isEditing ? (
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Enter your display name"
-                  className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-                />
-              ) : (
-                <div className="flex items-center gap-3 p-4 bg-zinc-800/50 rounded-xl border border-zinc-800/50">
-                  <div className="p-2 bg-indigo-500/20 rounded-lg border border-indigo-500/30 flex-shrink-0">
-                    <User size={16} className="text-indigo-400" />
-                  </div>
-                  <p className="text-zinc-100 font-medium">
-                    {displayName || "Not set"}
-                  </p>
-                </div>
-              )}
             </div>
-
-            {/* Username */}
-            <div>
-              <label className="block text-sm font-semibold text-zinc-300 mb-2.5">
-                Username{" "}
-                <span className="text-zinc-500 text-xs font-normal">
-                  (unique)
-                </span>
-              </label>
-              {isEditing ? (
-                <div>
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) =>
-                      setUsername(
-                        e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "")
-                      )
-                    }
-                    placeholder="Choose a username"
-                    maxLength={30}
-                    className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-mono"
-                  />
-                  <p className="mt-2 text-xs text-zinc-500">
-                    Only letters, numbers, and underscores allowed
-                  </p>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3 p-4 bg-zinc-800/50 rounded-xl border border-zinc-800/50">
-                  <div className="p-2 bg-indigo-500/20 rounded-lg border border-indigo-500/30 flex-shrink-0">
-                    <User size={16} className="text-indigo-400" />
-                  </div>
-                  <p className="text-zinc-100 font-mono">
-                    {username ? `@${username}` : "Not set"}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Action Buttons */}
-            {isEditing && (
-              <div className="flex items-center gap-3 pt-6 border-t border-zinc-800">
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30"
-                >
-                  {saving ? (
-                    <>
-                      <svg
-                        className="animate-spin h-5 w-5"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      <span>Saving...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Save size={18} />
-                      <span>Save Changes</span>
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={handleCancel}
-                  disabled={saving}
-                  className="flex items-center gap-2 px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed border border-zinc-700"
-                >
-                  <X size={18} />
-                  Cancel
-                </button>
-              </div>
-            )}
           </div>
-        </div>
+        )}
 
         {/* Account Details */}
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 backdrop-blur-sm shadow-lg">

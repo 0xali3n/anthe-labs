@@ -66,13 +66,13 @@ export class TwitterController {
 
       if (error) {
         return res.redirect(
-          `${frontendUrl}/settings?error=${encodeURIComponent(error)}`,
+          `${frontendUrl}/twitter-callback?error=${encodeURIComponent(error)}`,
         );
       }
 
       if (!code || !state) {
         return res.redirect(
-          `${frontendUrl}/settings?error=${encodeURIComponent('Missing authorization code')}`,
+          `${frontendUrl}/twitter-callback?error=${encodeURIComponent('Missing authorization code')}`,
         );
       }
 
@@ -80,7 +80,7 @@ export class TwitterController {
       const stored = this.twitterService.getCodeVerifier(state);
       if (!stored) {
         return res.redirect(
-          `${frontendUrl}/settings?error=${encodeURIComponent('Session expired. Please try again.')}`,
+          `${frontendUrl}/twitter-callback?error=${encodeURIComponent('Session expired. Please try again.')}`,
         );
       }
 
@@ -102,15 +102,15 @@ export class TwitterController {
         twitterUser.username,
       );
 
-      // Redirect to settings with success
+      // Redirect to callback page (which will close popup and notify parent)
       res.redirect(
-        `${frontendUrl}/settings?twitter_connected=true&username=${twitterUser.username}`,
+        `${frontendUrl}/twitter-callback?twitter_connected=true&username=${twitterUser.username}`,
       );
     } catch (error: any) {
       console.error('Twitter callback error:', error);
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       res.redirect(
-        `${frontendUrl}/settings?error=${encodeURIComponent(error.message || 'Failed to connect Twitter')}`,
+        `${frontendUrl}/twitter-callback?error=${encodeURIComponent(error.message || 'Failed to connect Twitter')}`,
       );
     }
   }

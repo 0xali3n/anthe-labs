@@ -21,7 +21,9 @@ export class UsersController {
   @UseGuards(AuthGuard) // Protect endpoint - only authenticated users
   async getMe(@Request() req: any) {
     const userId = req.user?.id;
-    return this.usersService.getMe(userId);
+    const result = await this.usersService.getMe(userId);
+    console.log(`📤 Sending user response for ${userId}, success: ${result.success}`);
+    return result;
   }
 
   // Update current user - requires authentication
