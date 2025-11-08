@@ -22,6 +22,7 @@ import {
   Check,
   Twitter,
   Link2,
+  Info,
 } from "lucide-react";
 
 interface UserData {
@@ -65,6 +66,9 @@ export default function Settings() {
     null
   );
   const modalRef = useRef<HTMLDivElement>(null);
+
+  // kept for compatibility (not used for hover tooltip)
+  const [showUsernameInfo, setShowUsernameInfo] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -361,18 +365,14 @@ export default function Settings() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-indigo-400 mb-2">Settings</h1>
-        <p className="text-zinc-400">
-          Manage your account details and preferences
-        </p>
+        <p className="text-zinc-400">Manage your account details and preferences</p>
       </div>
 
       {/* Success/Error Messages */}
       {success && (
         <div className="mb-6 p-4 bg-green-900/20 border border-green-500/50 rounded-xl flex items-center gap-3 backdrop-blur-sm">
           <CheckCircle size={20} className="text-green-400 flex-shrink-0" />
-          <p className="text-green-400 font-medium">
-            Profile updated successfully!
-          </p>
+          <p className="text-green-400 font-medium">Profile updated successfully!</p>
         </div>
       )}
 
@@ -385,7 +385,56 @@ export default function Settings() {
 
       <div className="space-y-6">
         {/* Profile Section */}
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-8 backdrop-blur-sm shadow-lg">
+        <div className="relative bg-zinc-900/50 border border-zinc-800 rounded-2xl p-8 backdrop-blur-sm shadow-lg">
+          {/* Top-right action area: Edit OR Save/Cancel */}
+          <div className="absolute top-8 right-4 flex items-center gap-3">
+            {!isEditing ? (
+              // Bigger pill-like button (shape similar to small rounded X connect button but larger)
+              <button
+                onClick={() => setIsEditing(true)}
+                aria-label="Edit profile"
+                className="flex items-center gap-2 px-4 py-2 rounded-[14px] bg-gradient-to-r from-[#1E3A8A] via-[#1D4ED8] to-[#3B82F6] text-white shadow-[0_8px_24px_rgba(30,64,175,0.35)] hover:brightness-110 transition transform hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed"
+>
+                <Edit2 size={18} />
+                <span className="text-base font-medium">Edit Profile</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-3">
+                {/* Save button matching the same larger style */}
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  aria-label="Save changes"
+                  className="flex items-center gap-2 px-4 py-2 rounded-[14px] bg-gradient-to-r from-[#1E3A8A] via-[#1D4ED8] to-[#3B82F6] text-white shadow-[0_8px_24px_rgba(30,64,175,0.35)] hover:brightness-110 transition transform hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {saving ? (
+                    <svg
+                      className="animate-spin h-5 w-5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <Save size={18} />
+                  )}
+                  <span className="text-base font-medium">Save</span>
+                </button>
+
+                <button
+                  onClick={handleCancel}
+                  disabled={saving}
+                  className="w-11 h-11 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-full transition-shadow border border-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Cancel"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="flex items-center gap-6">
             <div className="relative">
               <div className="relative">
@@ -412,19 +461,8 @@ export default function Settings() {
                     fill="none"
                     viewBox="0 0 24 24"
                   >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                 </div>
               )}
@@ -433,174 +471,80 @@ export default function Settings() {
             <div className="flex-1">
               <div className="flex items-center gap-4 mb-3">
                 <div>
-                  <h2 className="text-3xl font-bold text-zinc-100 mb-1">
-                    {displayName || user.email?.split("@")[0] || "User"}
-                  </h2>
+                  <h2 className="text-3xl font-bold text-zinc-100 mb-1">{displayName || user.email?.split("@")[0] || "User"}</h2>
                   {username ? (
-                    <p className="text-indigo-400 font-mono text-base">
-                      @{username}
-                    </p>
+                    <p className="text-indigo-400 font-mono text-base">@{username}</p>
                   ) : (
                     <p className="text-zinc-500 text-sm">No username set</p>
                   )}
                 </div>
               </div>
 
-              {/* Action Buttons - Horizontal Layout */}
+              {/* Twitter Connection (kept inside main flow) */}
               <div className="flex items-center gap-3 flex-wrap">
-                {!isEditing ? (
-                  <>
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all font-medium shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30"
+                {user.twitter_connected && user.twitter_username ? (
+                  <div className="flex items-center gap-2 group">
+                    <a
+                      href={`https://twitter.com/${user.twitter_username}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-5 py-2.5 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-xl transition-all font-medium shadow-lg shadow-zinc-900/20 hover:shadow-zinc-900/30"
                     >
-                      <Edit2 size={18} />
-                      Edit Profile
-                    </button>
-
-                    {/* Twitter Connection */}
-                    {user.twitter_connected && user.twitter_username ? (
-                      <div className="flex items-center gap-2 group">
-                        <a
-                          href={`https://twitter.com/${user.twitter_username}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 px-5 py-2.5 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-xl transition-all font-medium shadow-lg shadow-zinc-900/20 hover:shadow-zinc-900/30"
-                        >
-                          <Twitter size={18} className="text-indigo-400" />
-                          <span>@{user.twitter_username}</span>
-                        </a>
-                        <button
-                          onClick={handleDisconnectTwitter}
-                          disabled={disconnectingTwitter}
-                          className="p-2.5 text-zinc-400 hover:text-red-400 hover:bg-red-600/10 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed opacity-0 group-hover:opacity-100"
-                          title="Disconnect Twitter"
-                        >
-                          {disconnectingTwitter ? (
-                            <svg
-                              className="animate-spin h-4 w-4"
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                              ></circle>
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                              ></path>
-                            </svg>
-                          ) : (
-                            <X size={18} />
-                          )}
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={handleConnectTwitter}
-                        disabled={connectingTwitter}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-zinc-900/20 hover:shadow-zinc-900/30"
-                      >
-                        {connectingTwitter ? (
-                          <>
-                            <svg
-                              className="animate-spin h-5 w-5"
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                              ></circle>
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                              ></path>
-                            </svg>
-                            <span>Connecting...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Twitter size={18} className="text-indigo-400" />
-                            <span>Connect Twitter</span>
-                          </>
-                        )}
-                      </button>
-                    )}
-                  </>
-                ) : (
-                  <div className="flex items-center gap-3">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-twitter-x" viewBox="0 0 16 16">
+                        <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865z" />
+                      </svg>
+                      <span>@{user.twitter_username}</span>
+                    </a>
                     <button
-                      onClick={handleSave}
-                      disabled={saving}
-                      className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30"
+                      onClick={handleDisconnectTwitter}
+                      disabled={disconnectingTwitter}
+                      className="p-2.5 text-zinc-400 hover:text-red-400 hover:bg-red-600/10 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed opacity-0 group-hover:opacity-100"
+                      title="Disconnect Twitter"
                     >
-                      {saving ? (
-                        <>
-                          <svg
-                            className="animate-spin h-5 w-5"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                          >
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                            ></circle>
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            ></path>
-                          </svg>
-                          <span>Saving...</span>
-                        </>
+                      {disconnectingTwitter ? (
+                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
                       ) : (
-                        <>
-                          <Save size={18} />
-                          <span>Save Changes</span>
-                        </>
+                        <X size={18} />
                       )}
                     </button>
-                    <button
-                      onClick={handleCancel}
-                      disabled={saving}
-                      className="flex items-center gap-2 px-6 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed border border-zinc-700"
-                    >
-                      <X size={18} />
-                      Cancel
-                    </button>
                   </div>
+                ) : (
+                  <button
+                    onClick={handleConnectTwitter}
+                    disabled={connectingTwitter}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-zinc-900/20 hover:shadow-zinc-900/30"
+                  >
+                    {connectingTwitter ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Connecting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-twitter-x" viewBox="0 0 16 16">
+                          <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865z" />
+                        </svg>
+                        <span>Connect</span>
+                      </>
+                    )}
+                  </button>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Editable Fields - Only shown when editing */}
+          {/* Editable Fields - Only shown when editing (kept below header) */}
           {isEditing && (
             <div className="mt-8 pt-8 border-t border-zinc-800 space-y-6">
               {/* Display Name */}
               <div>
-                <label className="block text-sm font-semibold text-zinc-300 mb-2.5">
-                  Display Name
-                </label>
+                <label className="block text-sm font-semibold text-zinc-300 mb-2.5">Display Name</label>
                 <input
                   type="text"
                   value={displayName}
@@ -612,27 +556,41 @@ export default function Settings() {
 
               {/* Username */}
               <div>
-                <label className="block text-sm font-semibold text-zinc-300 mb-2.5">
-                  Username{" "}
-                  <span className="text-zinc-500 text-xs font-normal">
-                    (unique)
-                  </span>
+                {/* Use a group so tooltip appears on hover */}
+                <label className="flex items-center gap-2 text-sm font-semibold text-zinc-300 mb-2.5">
+                  <span>Username</span>
+
+                  {/* Info button with hover-only tooltip (no click) */}
+                  <div className="relative inline-flex group">
+                    <button
+                      type="button"
+                      aria-label="Username rules"
+                      className="p-1 rounded-full hover:bg-zinc-800/60 text-zinc-400"
+                    >
+                      <Info size={14} />
+                    </button>
+
+                    {/* Tooltip: appears to the right on hover */}
+                    <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 hidden group-hover:block">
+                      <div className="rounded-md bg-zinc-900 border border-zinc-700 text-zinc-200 text-xs py-2 px-3 shadow-lg whitespace-nowrap">
+                        Only letters, numbers, and underscores allowed
+                      </div>
+                      <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 rotate-45 bg-zinc-900 border-t border-l border-zinc-700" />
+                    </div>
+                  </div>
                 </label>
+
                 <input
                   type="text"
                   value={username}
                   onChange={(e) =>
-                    setUsername(
-                      e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "")
-                    )
+                    setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))
                   }
                   placeholder="Choose a username"
                   maxLength={30}
                   className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-mono"
                 />
-                <p className="mt-2 text-xs text-zinc-500">
-                  Only letters, numbers, and underscores allowed
-                </p>
+                {/* Tooltip handled by hover above; we do not show text on click */}
               </div>
             </div>
           )}
@@ -651,17 +609,12 @@ export default function Settings() {
               {/* Modal Header */}
               <div className="flex items-center justify-between p-6 border-b border-zinc-800 bg-gradient-to-r from-zinc-900 to-zinc-900/50">
                 <div>
-                  <h3 className="text-xl font-bold text-zinc-100 mb-1">
-                    Choose Profile Picture
-                  </h3>
-                  <p className="text-sm text-zinc-400">
-                    Select your Google photo or a custom avatar
-                  </p>
+                  <h3 className="text-xl font-bold text-zinc-100 mb-1">Choose Profile Picture</h3>
+                  <p className="text-sm text-zinc-400">Select your Google photo or a custom avatar</p>
                 </div>
                 <button
                   onClick={() => setShowAvatarPicker(false)}
                   className="p-2 hover:bg-zinc-800 rounded-xl transition-all text-zinc-400 hover:text-zinc-200"
-                  title="Close"
                 >
                   <X size={20} />
                 </button>
@@ -676,15 +629,11 @@ export default function Settings() {
                       <div className="p-1.5 bg-indigo-500/20 rounded-lg border border-indigo-500/30">
                         <Image size={16} className="text-indigo-400" />
                       </div>
-                      <p className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
-                        Your Google Photo
-                      </p>
+                      <p className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">Your Google Photo</p>
                     </div>
                     <div className="flex justify-center">
                       <button
-                        onClick={() =>
-                          handleAvatarSelect(user.avatar_url!, "google")
-                        }
+                        onClick={() => handleAvatarSelect(user.avatar_url!, "google")}
                         className={`relative w-32 h-32 rounded-2xl overflow-hidden border-2 transition-all duration-200 group ${
                           user.avatar_source === "google" ||
                           (!user.avatar_source &&
@@ -693,11 +642,7 @@ export default function Settings() {
                             : "border-zinc-700 hover:border-indigo-400 hover:shadow-xl hover:scale-105"
                         }`}
                       >
-                        <img
-                          src={user.avatar_url}
-                          alt="Google Photo"
-                          className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
-                        />
+                        <img src={user.avatar_url} alt="Google Photo" className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-110" />
                         {(user.avatar_source === "google" ||
                           (!user.avatar_source &&
                             selectedAvatarUrl === user.avatar_url)) && (
@@ -708,9 +653,7 @@ export default function Settings() {
                           </div>
                         )}
                         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 via-black/80 to-transparent p-3">
-                          <p className="text-xs text-white font-bold text-center">
-                            Google Photo
-                          </p>
+                          <p className="text-xs text-white font-bold text-center">Google Photo</p>
                         </div>
                       </button>
                     </div>
@@ -724,16 +667,11 @@ export default function Settings() {
                       <div className="p-1.5 bg-indigo-500/20 rounded-lg border border-indigo-500/30">
                         <Image size={16} className="text-indigo-400" />
                       </div>
-                      <p className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
-                        Custom Avatars
-                      </p>
+                      <p className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">Custom Avatars</p>
                     </div>
                     <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-4">
                       {[...Array(6)].map((_, i) => (
-                        <div
-                          key={i}
-                          className="aspect-square bg-zinc-800/50 rounded-xl animate-pulse"
-                        />
+                        <div key={i} className="aspect-square bg-zinc-800/50 rounded-xl animate-pulse" />
                       ))}
                     </div>
                   </div>
@@ -743,9 +681,7 @@ export default function Settings() {
                       <div className="p-1.5 bg-indigo-500/20 rounded-lg border border-indigo-500/30">
                         <Image size={16} className="text-indigo-400" />
                       </div>
-                      <p className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
-                        Custom Avatars
-                      </p>
+                      <p className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">Custom Avatars</p>
                     </div>
                     <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-4">
                       {avatars.map((avatar) => {
@@ -755,27 +691,18 @@ export default function Settings() {
                         return (
                           <button
                             key={avatar.name}
-                            onClick={() =>
-                              handleAvatarSelect(avatar.url, "custom")
-                            }
+                            onClick={() => handleAvatarSelect(avatar.url, "custom")}
                             className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all duration-200 group ${
                               isSelected
                                 ? "border-indigo-500 ring-4 ring-indigo-500/30 shadow-xl shadow-indigo-500/30 scale-105"
                                 : "border-zinc-700 hover:border-indigo-400 hover:shadow-xl hover:scale-105"
                             }`}
                           >
-                            <img
-                              src={avatar.url}
-                              alt={avatar.name}
-                              className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
-                            />
+                            <img src={avatar.url} alt={avatar.name} className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-110" />
                             {isSelected && (
                               <div className="absolute inset-0 bg-indigo-500/30 flex items-center justify-center">
                                 <div className="bg-indigo-500 rounded-full p-2 shadow-lg">
-                                  <CheckCircle
-                                    size={18}
-                                    className="text-white"
-                                  />
+                                  <CheckCircle size={18} className="text-white" />
                                 </div>
                               </div>
                             )}
@@ -790,12 +717,8 @@ export default function Settings() {
                     <div className="p-4 bg-zinc-800/50 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
                       <Image size={40} className="text-zinc-600" />
                     </div>
-                    <p className="text-zinc-400 text-base font-medium mb-2">
-                      No custom avatars available
-                    </p>
-                    <p className="text-zinc-600 text-sm">
-                      Contact administrator to add avatars
-                    </p>
+                    <p className="text-zinc-400 text-base font-medium mb-2">No custom avatars available</p>
+                    <p className="text-zinc-600 text-sm">Contact administrator to add avatars</p>
                   </div>
                 )}
               </div>
@@ -809,9 +732,7 @@ export default function Settings() {
             <div className="p-2 bg-indigo-500/20 rounded-lg border border-indigo-500/30">
               <User size={20} className="text-indigo-400" />
             </div>
-            <h2 className="text-xl font-semibold text-zinc-100">
-              Account Details
-            </h2>
+            <h2 className="text-xl font-semibold text-zinc-100">Account Details</h2>
           </div>
           <div className="space-y-3">
             {/* Email */}
@@ -820,12 +741,8 @@ export default function Settings() {
                 <Mail size={18} className="text-indigo-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-zinc-500 mb-1.5 font-medium uppercase tracking-wide">
-                  Email Address
-                </p>
-                <p className="text-zinc-100 font-medium break-all">
-                  {user.email}
-                </p>
+                <p className="text-xs text-zinc-500 mb-1.5 font-medium uppercase tracking-wide">Email Address</p>
+                <p className="text-zinc-100 font-medium break-all">{user.email}</p>
               </div>
             </div>
 
@@ -836,13 +753,9 @@ export default function Settings() {
                   <Wallet size={18} className="text-indigo-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-zinc-500 mb-1.5 font-medium uppercase tracking-wide">
-                    Wallet Address
-                  </p>
+                  <p className="text-xs text-zinc-500 mb-1.5 font-medium uppercase tracking-wide">Wallet Address</p>
                   <div className="flex items-center gap-3">
-                    <p className="text-zinc-100 font-mono text-sm break-all">
-                      {user.wallet_address}
-                    </p>
+                    <p className="text-zinc-100 font-mono text-sm break-all">{user.wallet_address}</p>
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(user.wallet_address!);
@@ -855,10 +768,7 @@ export default function Settings() {
                       {copied ? (
                         <Check size={18} className="text-green-400" />
                       ) : (
-                        <Copy
-                          size={18}
-                          className="text-zinc-400 hover:text-indigo-400"
-                        />
+                        <Copy size={18} className="text-zinc-400 hover:text-indigo-400" />
                       )}
                     </button>
                   </div>
@@ -877,25 +787,9 @@ export default function Settings() {
           >
             {signingOut ? (
               <>
-                <svg
-                  className="animate-spin h-5 w-5"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
+                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
                 <span>Signing out...</span>
               </>
