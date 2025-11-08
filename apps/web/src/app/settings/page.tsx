@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser, updateCurrentUser } from "@/lib/usersApi";
 import { getAvatars, type Avatar } from "@/lib/avatarsApi";
 import { formatWalletAddress } from "@/lib/walletsApi";
+import { connectTwitter, disconnectTwitter } from "@/lib/twitterApi";
 import {
   LogOut,
   Mail,
@@ -19,6 +20,8 @@ import {
   Image,
   Copy,
   Check,
+  Twitter,
+  Link2,
 } from "lucide-react";
 
 interface UserData {
@@ -32,6 +35,9 @@ interface UserData {
   avatar_source?: "google" | "custom"; // Which avatar is selected
   bio?: string;
   wallet_address?: string;
+  twitter_username?: string;
+  twitter_connected?: boolean;
+  twitter_user_id?: string;
 }
 
 export default function Settings() {
@@ -43,6 +49,8 @@ export default function Settings() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [connectingTwitter, setConnectingTwitter] = useState(false);
+  const [disconnectingTwitter, setDisconnectingTwitter] = useState(false);
 
   // Editable fields
   const [displayName, setDisplayName] = useState("");
@@ -74,6 +82,24 @@ export default function Settings() {
 
         setLoading(true);
         setError(null);
+
+        // Check for OAuth callback messages in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const twitterConnected = urlParams.get("twitter_connected");
+        const twitterUsername = urlParams.get("username");
+        const errorParam = urlParams.get("error");
+
+        if (twitterConnected === "true" && twitterUsername) {
+          setSuccess(true);
+          // Clean URL
+          window.history.replaceState({}, "", "/settings");
+        }
+
+        if (errorParam) {
+          setError(decodeURIComponent(errorParam));
+          // Clean URL
+          window.history.replaceState({}, "", "/settings");
+        }
 
         // Add timeout to prevent infinite loading
         timeoutId = setTimeout(() => {
@@ -239,6 +265,37 @@ export default function Settings() {
     }
   };
 
+  const handleConnectTwitter = async () => {
+    try {
+      setConnectingTwitter(true);
+      setError(null);
+      await connectTwitter();
+      // connectTwitter redirects, so we don't need to do anything else
+    } catch (error: any) {
+      console.error("Twitter connect error:", error);
+      setError(error.message || "Failed to connect Twitter");
+      setConnectingTwitter(false);
+    }
+  };
+
+  const handleDisconnectTwitter = async () => {
+    try {
+      setDisconnectingTwitter(true);
+      setError(null);
+      await disconnectTwitter();
+      // Reload user data
+      const userData = await getCurrentUser();
+      setUser(userData);
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (error: any) {
+      console.error("Twitter disconnect error:", error);
+      setError(error.message || "Failed to disconnect Twitter");
+    } finally {
+      setDisconnectingTwitter(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto py-8">
@@ -266,7 +323,7 @@ export default function Settings() {
     `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName || user.email?.split("@")[0] || "User")}&background=6366f1&color=fff`;
 
   return (
-    <div className="max-w-3xl mx-auto py-8 px-4">
+    <div className="max-w-4xl mx-auto py-8 px-4">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-indigo-400 mb-2">Settings</h1>
@@ -277,22 +334,24 @@ export default function Settings() {
 
       {/* Success/Error Messages */}
       {success && (
-        <div className="mb-6 p-4 bg-green-900/20 border border-green-500/50 rounded-lg flex items-center gap-3">
+        <div className="mb-6 p-4 bg-green-900/20 border border-green-500/50 rounded-xl flex items-center gap-3 backdrop-blur-sm">
           <CheckCircle size={20} className="text-green-400 flex-shrink-0" />
-          <p className="text-green-400">Profile updated successfully!</p>
+          <p className="text-green-400 font-medium">
+            Profile updated successfully!
+          </p>
         </div>
       )}
 
       {error && (
-        <div className="mb-6 p-4 bg-red-900/20 border border-red-500/50 rounded-lg flex items-center gap-3">
+        <div className="mb-6 p-4 bg-red-900/20 border border-red-500/50 rounded-xl flex items-center gap-3 backdrop-blur-sm">
           <AlertCircle size={20} className="text-red-400 flex-shrink-0" />
-          <p className="text-red-400">{error}</p>
+          <p className="text-red-400 font-medium">{error}</p>
         </div>
       )}
 
       <div className="space-y-6">
         {/* Profile Section */}
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 backdrop-blur-sm">
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 backdrop-blur-sm shadow-lg">
           <div className="flex items-start gap-6 mb-6">
             <div className="relative">
               <div className="relative">
@@ -341,18 +400,106 @@ export default function Settings() {
                 {displayName || user.email?.split("@")[0] || "User"}
               </h2>
               {username && (
-                <p className="text-indigo-400 font-mono text-sm">@{username}</p>
+                <p className="text-indigo-400 font-mono text-sm mb-3">
+                  @{username}
+                </p>
               )}
               {!username && !isEditing && (
-                <p className="text-zinc-500 text-sm">No username set</p>
+                <p className="text-zinc-500 text-sm mb-3">No username set</p>
               )}
+
+              {/* Twitter Connection - Minimal Design */}
+              <div className="flex items-center gap-2 mt-3">
+                {user.twitter_connected && user.twitter_username ? (
+                  <a
+                    href={`https://twitter.com/${user.twitter_username}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-300 hover:text-indigo-400 transition-all text-sm"
+                  >
+                    <Twitter size={14} className="text-indigo-400" />
+                    <span>@{user.twitter_username}</span>
+                    <Link2 size={12} className="opacity-60" />
+                  </a>
+                ) : (
+                  <button
+                    onClick={handleConnectTwitter}
+                    disabled={connectingTwitter}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/50 text-indigo-400 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  >
+                    {connectingTwitter ? (
+                      <>
+                        <svg
+                          className="animate-spin h-3.5 w-3.5"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        <span>Connecting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Twitter size={14} />
+                        <span>Connect Twitter</span>
+                      </>
+                    )}
+                  </button>
+                )}
+                {user.twitter_connected && user.twitter_username && (
+                  <button
+                    onClick={handleDisconnectTwitter}
+                    disabled={disconnectingTwitter}
+                    className="p-1.5 hover:bg-red-600/20 text-red-400 hover:text-red-300 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Disconnect Twitter"
+                  >
+                    {disconnectingTwitter ? (
+                      <svg
+                        className="animate-spin h-3.5 w-3.5"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                    ) : (
+                      <X size={14} />
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
             {!isEditing && (
               <button
                 onClick={() => setIsEditing(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all font-medium"
+                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all font-medium shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30"
               >
-                <Edit2 size={16} />
+                <Edit2 size={18} />
                 Edit Profile
               </button>
             )}
@@ -498,7 +645,7 @@ export default function Settings() {
 
             {/* Display Name */}
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">
+              <label className="block text-sm font-semibold text-zinc-300 mb-2.5">
                 Display Name
               </label>
               {isEditing ? (
@@ -507,12 +654,14 @@ export default function Settings() {
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="Enter your display name"
-                  className="w-full px-4 py-2.5 bg-zinc-800/50 border border-zinc-700 rounded-lg text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                 />
               ) : (
-                <div className="flex items-center gap-3 p-3 bg-zinc-800/50 rounded-lg">
-                  <User size={18} className="text-indigo-400 flex-shrink-0" />
-                  <p className="text-zinc-200 font-medium">
+                <div className="flex items-center gap-3 p-4 bg-zinc-800/50 rounded-xl border border-zinc-800/50">
+                  <div className="p-2 bg-indigo-500/20 rounded-lg border border-indigo-500/30 flex-shrink-0">
+                    <User size={16} className="text-indigo-400" />
+                  </div>
+                  <p className="text-zinc-100 font-medium">
                     {displayName || "Not set"}
                   </p>
                 </div>
@@ -521,8 +670,11 @@ export default function Settings() {
 
             {/* Username */}
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">
-                Username <span className="text-zinc-500 text-xs">(unique)</span>
+              <label className="block text-sm font-semibold text-zinc-300 mb-2.5">
+                Username{" "}
+                <span className="text-zinc-500 text-xs font-normal">
+                  (unique)
+                </span>
               </label>
               {isEditing ? (
                 <div>
@@ -536,16 +688,18 @@ export default function Settings() {
                     }
                     placeholder="Choose a username"
                     maxLength={30}
-                    className="w-full px-4 py-2.5 bg-zinc-800/50 border border-zinc-700 rounded-lg text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all font-mono"
+                    className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-700 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-mono"
                   />
-                  <p className="mt-1.5 text-xs text-zinc-500">
+                  <p className="mt-2 text-xs text-zinc-500">
                     Only letters, numbers, and underscores allowed
                   </p>
                 </div>
               ) : (
-                <div className="flex items-center gap-3 p-3 bg-zinc-800/50 rounded-lg">
-                  <User size={18} className="text-indigo-400 flex-shrink-0" />
-                  <p className="text-zinc-200 font-mono">
+                <div className="flex items-center gap-3 p-4 bg-zinc-800/50 rounded-xl border border-zinc-800/50">
+                  <div className="p-2 bg-indigo-500/20 rounded-lg border border-indigo-500/30 flex-shrink-0">
+                    <User size={16} className="text-indigo-400" />
+                  </div>
+                  <p className="text-zinc-100 font-mono">
                     {username ? `@${username}` : "Not set"}
                   </p>
                 </div>
@@ -554,16 +708,16 @@ export default function Settings() {
 
             {/* Action Buttons */}
             {isEditing && (
-              <div className="flex items-center gap-3 pt-4 border-t border-zinc-800">
+              <div className="flex items-center gap-3 pt-6 border-t border-zinc-800">
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30"
                 >
                   {saving ? (
                     <>
                       <svg
-                        className="animate-spin h-4 w-4"
+                        className="animate-spin h-5 w-5"
                         xmlns="http://www.w3.org/2000/svg"
                         fill="none"
                         viewBox="0 0 24 24"
@@ -586,7 +740,7 @@ export default function Settings() {
                     </>
                   ) : (
                     <>
-                      <Save size={16} />
+                      <Save size={18} />
                       <span>Save Changes</span>
                     </>
                   )}
@@ -594,9 +748,9 @@ export default function Settings() {
                 <button
                   onClick={handleCancel}
                   disabled={saving}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed border border-zinc-700"
                 >
-                  <X size={16} />
+                  <X size={18} />
                   Cancel
                 </button>
               </div>
@@ -605,17 +759,26 @@ export default function Settings() {
         </div>
 
         {/* Account Details */}
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 backdrop-blur-sm">
-          <h2 className="text-xl font-semibold text-zinc-100 mb-4">
-            Account Details
-          </h2>
-          <div className="space-y-4">
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 backdrop-blur-sm shadow-lg">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-indigo-500/20 rounded-lg border border-indigo-500/30">
+              <User size={20} className="text-indigo-400" />
+            </div>
+            <h2 className="text-xl font-semibold text-zinc-100">
+              Account Details
+            </h2>
+          </div>
+          <div className="space-y-3">
             {/* Email */}
-            <div className="flex items-center gap-3 p-4 bg-zinc-800/50 rounded-lg hover:bg-zinc-800/70 transition-colors">
-              <Mail size={18} className="text-indigo-400 flex-shrink-0" />
+            <div className="flex items-center gap-4 p-4 bg-zinc-800/50 rounded-xl hover:bg-zinc-800/70 transition-all border border-zinc-800/50">
+              <div className="p-2.5 bg-indigo-500/20 rounded-lg border border-indigo-500/30 flex-shrink-0">
+                <Mail size={18} className="text-indigo-400" />
+              </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-zinc-500 mb-1">Email Address</p>
-                <p className="text-zinc-200 font-medium break-all">
+                <p className="text-xs text-zinc-500 mb-1.5 font-medium uppercase tracking-wide">
+                  Email Address
+                </p>
+                <p className="text-zinc-100 font-medium break-all">
                   {user.email}
                 </p>
               </div>
@@ -623,12 +786,16 @@ export default function Settings() {
 
             {/* Wallet Address */}
             {user.wallet_address && (
-              <div className="flex items-center gap-3 p-4 bg-zinc-800/50 rounded-lg hover:bg-zinc-800/70 transition-colors">
-                <Wallet size={18} className="text-indigo-400 flex-shrink-0" />
+              <div className="flex items-center gap-4 p-4 bg-zinc-800/50 rounded-xl hover:bg-zinc-800/70 transition-all border border-zinc-800/50">
+                <div className="p-2.5 bg-indigo-500/20 rounded-lg border border-indigo-500/30 flex-shrink-0">
+                  <Wallet size={18} className="text-indigo-400" />
+                </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-zinc-500 mb-1">Wallet Address</p>
-                  <div className="flex items-center gap-2">
-                    <p className="text-zinc-200 font-mono text-sm break-all">
+                  <p className="text-xs text-zinc-500 mb-1.5 font-medium uppercase tracking-wide">
+                    Wallet Address
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <p className="text-zinc-100 font-mono text-sm break-all">
                       {user.wallet_address}
                     </p>
                     <button
@@ -637,14 +804,14 @@ export default function Settings() {
                         setCopied(true);
                         setTimeout(() => setCopied(false), 2000);
                       }}
-                      className="ml-auto p-2 hover:bg-zinc-700 rounded-lg transition-all flex-shrink-0"
+                      className="ml-auto p-2.5 hover:bg-zinc-700 rounded-lg transition-all flex-shrink-0 border border-zinc-700 hover:border-indigo-500/50"
                       title={copied ? "Copied!" : "Copy wallet address"}
                     >
                       {copied ? (
-                        <Check size={16} className="text-green-400" />
+                        <Check size={18} className="text-green-400" />
                       ) : (
                         <Copy
-                          size={16}
+                          size={18}
                           className="text-zinc-400 hover:text-indigo-400"
                         />
                       )}
@@ -657,11 +824,11 @@ export default function Settings() {
         </div>
 
         {/* Logout Button */}
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 backdrop-blur-sm">
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 backdrop-blur-sm shadow-lg">
           <button
             onClick={handleSignOut}
             disabled={signingOut}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 text-red-400 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 text-red-400 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg shadow-red-500/10 hover:shadow-red-500/20"
           >
             {signingOut ? (
               <>
