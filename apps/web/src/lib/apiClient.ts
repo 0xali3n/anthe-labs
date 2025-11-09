@@ -35,24 +35,32 @@ export async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_URL}${endpoint}`;
+  console.log(`📡 API Request: ${options.method || 'GET'} ${url}`);
   
-  // Add timeout to prevent hanging
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+  // Use provided signal or create new one with timeout
+  const providedSignal = options.signal;
+  const controller = providedSignal ? null : new AbortController();
+  const signal = providedSignal || controller?.signal;
+  
+  const timeoutId = signal && !providedSignal 
+    ? setTimeout(() => controller!.abort(), 15000) // 15 second timeout
+    : null;
   
   try {
     const response = await fetch(url, {
       ...options,
-      signal: controller.signal,
+      signal,
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
       },
-      // Ensure response is fully consumed
+      // Ensure response is fully consumed - prevent caching issues
       cache: 'no-store',
     });
     
-    clearTimeout(timeoutId);
+    console.log(`📡 API Response: ${response.status} ${response.statusText} for ${url}`);
+    
+    if (timeoutId) clearTimeout(timeoutId);
     
     // Ensure response body is fully read
     if (!response.bodyUsed) {
@@ -63,8 +71,13 @@ export async function apiRequest<T>(
       return JSON.parse(text);
     }
   } catch (error: any) {
-    clearTimeout(timeoutId);
+    if (timeoutId) clearTimeout(timeoutId);
+    console.error(`❌ API Request failed for ${url}:`, error);
     if (error.name === 'AbortError') {
+      // Don't throw error if it was aborted intentionally (component unmount)
+      if (providedSignal?.aborted) {
+        throw new Error('Request aborted');
+      }
       throw new Error('Request timeout - server took too long to respond');
     }
     throw error;

@@ -23,6 +23,11 @@ export class TwitterService {
     } else {
       console.log('✅ Twitter service initialized');
     }
+
+    // Periodic cleanup of expired entries (every 5 minutes)
+    setInterval(() => {
+      this.cleanupExpiredEntries();
+    }, 300000); // 5 minutes
   }
 
   /**

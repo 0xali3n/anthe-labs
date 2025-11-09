@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Query,
   Res,
   Req,
@@ -119,7 +120,7 @@ export class TwitterController {
    * Disconnect Twitter account
    * POST /api/twitter/disconnect
    */
-  @Get('disconnect')
+  @Post('disconnect')
   @UseGuards(AuthGuard)
   async disconnect(@Request() req: any) {
     try {

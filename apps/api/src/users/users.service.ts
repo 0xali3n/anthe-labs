@@ -149,10 +149,12 @@ export class UsersService {
         },
       };
     } catch (error: any) {
+      // Re-throw ConflictException so NestJS can handle it as HTTP 409
       if (error instanceof ConflictException) {
         throw error;
       }
-      return { success: false, error: error.message };
+      // For other errors, return error response format (frontend checks response.success)
+      return { success: false, error: error.message || 'Failed to update user' };
     }
   }
 }

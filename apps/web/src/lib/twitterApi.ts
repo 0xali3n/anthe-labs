@@ -91,7 +91,10 @@ export async function disconnectTwitter(): Promise<{ success: boolean; message: 
 
   const response = await authenticatedRequest<{ success: boolean; message: string }>(
     '/twitter/disconnect',
-    session.access_token
+    session.access_token,
+    {
+      method: 'POST',
+    }
   );
 
   return response;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser, updateCurrentUser } from "@/lib/usersApi";
 import { getAvatars, type Avatar } from "@/lib/avatarsApi";
@@ -21,7 +21,6 @@ import {
   Copy,
   Check,
   Twitter,
-  Link2,
   Info,
 } from "lucide-react";
 
@@ -43,6 +42,7 @@ interface UserData {
 
 export default function Settings() {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
@@ -65,102 +65,132 @@ export default function Settings() {
   const [selectedAvatarUrl, setSelectedAvatarUrl] = useState<string | null>(
     null
   );
+  const [selectedAvatarSource, setSelectedAvatarSource] = useState<
+    "google" | "custom" | null
+  >(null);
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
+  const isLoadingRef = useRef(false);
 
-  // kept for compatibility (not used for hover tooltip)
-  const [showUsernameInfo, setShowUsernameInfo] = useState(false);
-
+  // Load user data when navigating to /settings
   useEffect(() => {
+    console.log(
+      "🔍 Settings useEffect triggered, pathname:",
+      pathname,
+      "isLoading:",
+      isLoadingRef.current
+    );
+
+    // Only load if we're on the settings page
+    if (pathname !== "/settings") {
+      // Reset state when leaving settings page
+      setUser(null);
+      setLoading(true);
+      isLoadingRef.current = false; // Reset when leaving
+      return;
+    }
+
+    // Prevent re-loading if we're already loading (avoid infinite loop)
+    if (isLoadingRef.current) {
+      console.log("⏭️ Already loading, skipping...");
+      return;
+    }
+
     let mounted = true;
-    let timeoutId: NodeJS.Timeout | null = null;
+    const abortController = new AbortController();
+    isLoadingRef.current = true; // Mark as loading
 
     async function loadUser() {
+      console.log("🔄 Starting to load user data...");
+      // Always reset loading state when starting to load (important for navigation)
+      setLoading(true);
+      setError(null);
+
       try {
-        // Check if user is authenticated first
+        console.log("🔐 Getting session...");
         const {
           data: { session },
         } = await supabase.auth.getSession();
+
+        console.log("🔐 Session check:", session ? "Found" : "Not found");
+
+        if (!mounted || abortController.signal.aborted) {
+          console.log("⚠️ Component unmounted or aborted before session check");
+          setLoading(false);
+          isLoadingRef.current = false;
+          return;
+        }
+
         if (!session) {
+          console.log("❌ No session, redirecting to home");
+          isLoadingRef.current = false;
           router.push("/");
           return;
         }
 
-        setLoading(true);
-        setError(null);
+        console.log("📡 Calling getCurrentUser API...");
+        const userData = await getCurrentUser(abortController.signal);
+        console.log("✅ User data received:", userData ? "Success" : "Failed");
 
-        // Add timeout to prevent infinite loading
-        timeoutId = setTimeout(() => {
-          if (mounted) {
-            console.warn("User loading taking too long...");
-            setError(
-              "Loading is taking longer than expected. Please refresh the page."
-            );
-            setLoading(false);
-          }
-        }, 8000); // 8 second timeout
-
-        console.log("🔄 Fetching user data...");
-        const userData = await getCurrentUser();
-        console.log("✅ User data received:", userData);
-
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-
-        if (!mounted) {
-          console.log("⚠️ Component unmounted, skipping state update");
+        if (!mounted || abortController.signal.aborted) {
+          console.log("⚠️ Component unmounted or aborted after API call");
+          setLoading(false);
+          isLoadingRef.current = false;
           return;
         }
 
-        console.log("📝 Updating state with user data");
         setUser(userData);
         setDisplayName(userData.display_name || userData.full_name || "");
         setUsername(userData.username || "");
-        // Use selected_avatar_url if available, otherwise fallback to avatar_url
         setSelectedAvatarUrl(
           userData.selected_avatar_url || userData.avatar_url || null
         );
-        console.log("✅ State updated, setting loading to false");
+        setSelectedAvatarSource(userData.avatar_source || null);
+        setAvatarFailed(false);
+        setLoading(false);
+        isLoadingRef.current = false; // Mark as done
+        console.log("✅ User data loaded successfully");
       } catch (error: any) {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-        console.error("Failed to load user:", error);
+        console.error("❌ Error loading user data:", error);
+        isLoadingRef.current = false; // Reset on error
 
-        // If it's an auth error, redirect to home
+        if (
+          error.message === "Request aborted" ||
+          abortController.signal.aborted
+        ) {
+          console.log("⚠️ Request was aborted");
+          return;
+        }
+
+        if (!mounted) {
+          console.log("⚠️ Component not mounted, ignoring error");
+          return;
+        }
+
         if (
           error.message?.includes("No session") ||
           error.message?.includes("Unauthorized")
         ) {
+          console.log("❌ Unauthorized, redirecting to home");
           router.push("/");
           return;
         }
 
-        // Show error but don't block - allow user to see the page
-        setError(
-          error.message || "Failed to load user data. Please refresh the page."
-        );
-      } finally {
-        if (mounted) {
-          console.log("🏁 Finally block: setting loading to false");
-          setLoading(false);
-        } else {
-          console.log("⚠️ Component unmounted, not updating loading state");
-        }
+        setError(error.message || "Failed to load user data");
+        setLoading(false);
       }
     }
 
+    // Always load when pathname is /settings (but only if not already loading)
     loadUser();
+
     return () => {
+      console.log("🧹 Cleaning up settings useEffect");
       mounted = false;
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
+      isLoadingRef.current = false;
+      abortController.abort();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+  }, [pathname]);
 
   // Close modal when clicking outside
   useEffect(() => {
@@ -235,13 +265,20 @@ export default function Settings() {
       };
 
       // Include selected_avatar_url and avatar_source if changed
-      if (selectedAvatarUrl && user) {
+      if (selectedAvatarUrl && selectedAvatarSource && user) {
+        // Only update if avatar actually changed
+        const currentUrl = user.selected_avatar_url || user.avatar_url;
         const currentSource =
           user.avatar_source ||
           (user.selected_avatar_url === user.avatar_url ? "google" : "custom");
-        updateData.selected_avatar_url = selectedAvatarUrl;
-        updateData.avatar_source =
-          selectedAvatarUrl === user.avatar_url ? "google" : "custom";
+
+        if (
+          selectedAvatarUrl !== currentUrl ||
+          selectedAvatarSource !== currentSource
+        ) {
+          updateData.selected_avatar_url = selectedAvatarUrl;
+          updateData.avatar_source = selectedAvatarSource;
+        }
       }
 
       const updatedUser = await updateCurrentUser(updateData);
@@ -267,10 +304,10 @@ export default function Settings() {
     avatarUrl: string,
     source: "google" | "custom"
   ) => {
-    // Update preview immediately (don't save yet - wait for Save button)
     setSelectedAvatarUrl(avatarUrl);
+    setSelectedAvatarSource(source);
+    setAvatarFailed(false); // Reset error state for new selection
     setShowAvatarPicker(false);
-    // Don't show success message here - only when Save is clicked
   };
 
   const handleCancel = () => {
@@ -278,6 +315,8 @@ export default function Settings() {
       setDisplayName(user.display_name || user.full_name || "");
       setUsername(user.username || "");
       setSelectedAvatarUrl(user.selected_avatar_url || user.avatar_url || null);
+      setSelectedAvatarSource(user.avatar_source || null);
+      setAvatarFailed(false); // Reset error state
     }
     setIsEditing(false);
     setShowAvatarPicker(false);
@@ -355,24 +394,39 @@ export default function Settings() {
     return null;
   }
 
-  const avatarUrl =
-    user.selected_avatar_url ||
-    user.avatar_url ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName || user.email?.split("@")[0] || "User")}&background=6366f1&color=fff`;
+  // Helper to check if URL is a Google avatar
+  const isGoogleAvatar = (url?: string) =>
+    !!url && url.includes("googleusercontent.com");
+
+  // Primary avatar URL (user's selected or original)
+  const primaryAvatarUrl =
+    selectedAvatarUrl || user.selected_avatar_url || user.avatar_url;
+
+  // Fallback URL (initials)
+  const fallbackAvatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName || user.email?.split("@")[0] || "User")}&background=6366f1&color=fff`;
+
+  // Use fallback only if primary failed
+  const avatarUrl = avatarFailed
+    ? fallbackAvatarUrl
+    : primaryAvatarUrl || fallbackAvatarUrl;
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-indigo-400 mb-2">Settings</h1>
-        <p className="text-zinc-400">Manage your account details and preferences</p>
+        <p className="text-zinc-400">
+          Manage your account details and preferences
+        </p>
       </div>
 
       {/* Success/Error Messages */}
       {success && (
         <div className="mb-6 p-4 bg-green-900/20 border border-green-500/50 rounded-xl flex items-center gap-3 backdrop-blur-sm">
           <CheckCircle size={20} className="text-green-400 flex-shrink-0" />
-          <p className="text-green-400 font-medium">Profile updated successfully!</p>
+          <p className="text-green-400 font-medium">
+            Profile updated successfully!
+          </p>
         </div>
       )}
 
@@ -394,7 +448,7 @@ export default function Settings() {
                 onClick={() => setIsEditing(true)}
                 aria-label="Edit profile"
                 className="flex items-center gap-2 px-4 py-2 rounded-[14px] bg-gradient-to-r from-[#1E3A8A] via-[#1D4ED8] to-[#3B82F6] text-white shadow-[0_8px_24px_rgba(30,64,175,0.35)] hover:brightness-110 transition transform hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed"
->
+              >
                 <Edit2 size={18} />
                 <span className="text-base font-medium">Edit Profile</span>
               </button>
@@ -414,8 +468,19 @@ export default function Settings() {
                       fill="none"
                       viewBox="0 0 24 24"
                     >
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                   ) : (
                     <Save size={18} />
@@ -439,9 +504,22 @@ export default function Settings() {
             <div className="relative">
               <div className="relative">
                 <img
-                  src={selectedAvatarUrl || user?.avatar_url || avatarUrl}
+                  src={avatarUrl}
                   alt={displayName || "User"}
                   className="h-28 w-28 rounded-full border-2 border-indigo-500 object-cover shadow-xl transition-all"
+                  referrerPolicy={
+                    isGoogleAvatar(avatarUrl) ? "no-referrer" : undefined
+                  }
+                  crossOrigin="anonymous"
+                  onError={() => {
+                    if (
+                      !avatarFailed &&
+                      primaryAvatarUrl &&
+                      avatarUrl === primaryAvatarUrl
+                    ) {
+                      setAvatarFailed(true);
+                    }
+                  }}
                 />
                 {isEditing && (
                   <button
@@ -461,8 +539,19 @@ export default function Settings() {
                     fill="none"
                     viewBox="0 0 24 24"
                   >
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                 </div>
               )}
@@ -471,9 +560,13 @@ export default function Settings() {
             <div className="flex-1">
               <div className="flex items-center gap-4 mb-3">
                 <div>
-                  <h2 className="text-3xl font-bold text-zinc-100 mb-1">{displayName || user.email?.split("@")[0] || "User"}</h2>
+                  <h2 className="text-3xl font-bold text-zinc-100 mb-1">
+                    {displayName || user.email?.split("@")[0] || "User"}
+                  </h2>
                   {username ? (
-                    <p className="text-indigo-400 font-mono text-base">@{username}</p>
+                    <p className="text-indigo-400 font-mono text-base">
+                      @{username}
+                    </p>
                   ) : (
                     <p className="text-zinc-500 text-sm">No username set</p>
                   )}
@@ -490,7 +583,14 @@ export default function Settings() {
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 px-5 py-2.5 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-xl transition-all font-medium shadow-lg shadow-zinc-900/20 hover:shadow-zinc-900/30"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-twitter-x" viewBox="0 0 16 16">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        fill="currentColor"
+                        className="bi bi-twitter-x"
+                        viewBox="0 0 16 16"
+                      >
                         <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865z" />
                       </svg>
                       <span>@{user.twitter_username}</span>
@@ -502,9 +602,25 @@ export default function Settings() {
                       title="Disconnect Twitter"
                     >
                       {disconnectingTwitter ? (
-                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <svg
+                          className="animate-spin h-4 w-4"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
                         </svg>
                       ) : (
                         <X size={18} />
@@ -519,15 +635,38 @@ export default function Settings() {
                   >
                     {connectingTwitter ? (
                       <>
-                        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <svg
+                          className="animate-spin h-5 w-5"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
                         </svg>
                         <span>Connecting...</span>
                       </>
                     ) : (
                       <>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-twitter-x" viewBox="0 0 16 16">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          fill="currentColor"
+                          className="bi bi-twitter-x"
+                          viewBox="0 0 16 16"
+                        >
                           <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865z" />
                         </svg>
                         <span>Connect</span>
@@ -544,7 +683,9 @@ export default function Settings() {
             <div className="mt-8 pt-8 border-t border-zinc-800 space-y-6">
               {/* Display Name */}
               <div>
-                <label className="block text-sm font-semibold text-zinc-300 mb-2.5">Display Name</label>
+                <label className="block text-sm font-semibold text-zinc-300 mb-2.5">
+                  Display Name
+                </label>
                 <input
                   type="text"
                   value={displayName}
@@ -584,7 +725,9 @@ export default function Settings() {
                   type="text"
                   value={username}
                   onChange={(e) =>
-                    setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))
+                    setUsername(
+                      e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "")
+                    )
                   }
                   placeholder="Choose a username"
                   maxLength={30}
@@ -609,8 +752,12 @@ export default function Settings() {
               {/* Modal Header */}
               <div className="flex items-center justify-between p-6 border-b border-zinc-800 bg-gradient-to-r from-zinc-900 to-zinc-900/50">
                 <div>
-                  <h3 className="text-xl font-bold text-zinc-100 mb-1">Choose Profile Picture</h3>
-                  <p className="text-sm text-zinc-400">Select your Google photo or a custom avatar</p>
+                  <h3 className="text-xl font-bold text-zinc-100 mb-1">
+                    Choose Profile Picture
+                  </h3>
+                  <p className="text-sm text-zinc-400">
+                    Select your Google photo or a custom avatar
+                  </p>
                 </div>
                 <button
                   onClick={() => setShowAvatarPicker(false)}
@@ -629,11 +776,15 @@ export default function Settings() {
                       <div className="p-1.5 bg-indigo-500/20 rounded-lg border border-indigo-500/30">
                         <Image size={16} className="text-indigo-400" />
                       </div>
-                      <p className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">Your Google Photo</p>
+                      <p className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+                        Your Google Photo
+                      </p>
                     </div>
                     <div className="flex justify-center">
                       <button
-                        onClick={() => handleAvatarSelect(user.avatar_url!, "google")}
+                        onClick={() =>
+                          handleAvatarSelect(user.avatar_url!, "google")
+                        }
                         className={`relative w-32 h-32 rounded-2xl overflow-hidden border-2 transition-all duration-200 group ${
                           user.avatar_source === "google" ||
                           (!user.avatar_source &&
@@ -642,7 +793,30 @@ export default function Settings() {
                             : "border-zinc-700 hover:border-indigo-400 hover:shadow-xl hover:scale-105"
                         }`}
                       >
-                        <img src={user.avatar_url} alt="Google Photo" className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-110" />
+                        <img
+                          src={user.avatar_url}
+                          alt="Google Photo"
+                          className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
+                          referrerPolicy="no-referrer"
+                          crossOrigin="anonymous"
+                          onError={(e) => {
+                            // Hide broken image and show placeholder
+                            (e.target as HTMLImageElement).style.display =
+                              "none";
+                            const parent = (e.target as HTMLImageElement)
+                              .parentElement;
+                            if (
+                              parent &&
+                              !parent.querySelector(".avatar-error-placeholder")
+                            ) {
+                              const placeholder = document.createElement("div");
+                              placeholder.className =
+                                "avatar-error-placeholder w-full h-full bg-zinc-800 flex items-center justify-center text-zinc-500";
+                              placeholder.textContent = "Failed to load";
+                              parent.appendChild(placeholder);
+                            }
+                          }}
+                        />
                         {(user.avatar_source === "google" ||
                           (!user.avatar_source &&
                             selectedAvatarUrl === user.avatar_url)) && (
@@ -653,7 +827,9 @@ export default function Settings() {
                           </div>
                         )}
                         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 via-black/80 to-transparent p-3">
-                          <p className="text-xs text-white font-bold text-center">Google Photo</p>
+                          <p className="text-xs text-white font-bold text-center">
+                            Google Photo
+                          </p>
                         </div>
                       </button>
                     </div>
@@ -667,11 +843,16 @@ export default function Settings() {
                       <div className="p-1.5 bg-indigo-500/20 rounded-lg border border-indigo-500/30">
                         <Image size={16} className="text-indigo-400" />
                       </div>
-                      <p className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">Custom Avatars</p>
+                      <p className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+                        Custom Avatars
+                      </p>
                     </div>
                     <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-4">
                       {[...Array(6)].map((_, i) => (
-                        <div key={i} className="aspect-square bg-zinc-800/50 rounded-xl animate-pulse" />
+                        <div
+                          key={i}
+                          className="aspect-square bg-zinc-800/50 rounded-xl animate-pulse"
+                        />
                       ))}
                     </div>
                   </div>
@@ -681,7 +862,9 @@ export default function Settings() {
                       <div className="p-1.5 bg-indigo-500/20 rounded-lg border border-indigo-500/30">
                         <Image size={16} className="text-indigo-400" />
                       </div>
-                      <p className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">Custom Avatars</p>
+                      <p className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+                        Custom Avatars
+                      </p>
                     </div>
                     <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-4">
                       {avatars.map((avatar) => {
@@ -691,18 +874,47 @@ export default function Settings() {
                         return (
                           <button
                             key={avatar.name}
-                            onClick={() => handleAvatarSelect(avatar.url, "custom")}
+                            onClick={() =>
+                              handleAvatarSelect(avatar.url, "custom")
+                            }
                             className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all duration-200 group ${
                               isSelected
                                 ? "border-indigo-500 ring-4 ring-indigo-500/30 shadow-xl shadow-indigo-500/30 scale-105"
                                 : "border-zinc-700 hover:border-indigo-400 hover:shadow-xl hover:scale-105"
                             }`}
                           >
-                            <img src={avatar.url} alt={avatar.name} className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-110" />
+                            <img
+                              src={avatar.url}
+                              alt={avatar.name}
+                              className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
+                              onError={(e) => {
+                                // Hide broken image and show placeholder
+                                (e.target as HTMLImageElement).style.display =
+                                  "none";
+                                const parent = (e.target as HTMLImageElement)
+                                  .parentElement;
+                                if (
+                                  parent &&
+                                  !parent.querySelector(
+                                    ".avatar-error-placeholder"
+                                  )
+                                ) {
+                                  const placeholder =
+                                    document.createElement("div");
+                                  placeholder.className =
+                                    "avatar-error-placeholder w-full h-full bg-zinc-800 flex items-center justify-center text-zinc-500 text-xs";
+                                  placeholder.textContent = "Error";
+                                  parent.appendChild(placeholder);
+                                }
+                              }}
+                            />
                             {isSelected && (
                               <div className="absolute inset-0 bg-indigo-500/30 flex items-center justify-center">
                                 <div className="bg-indigo-500 rounded-full p-2 shadow-lg">
-                                  <CheckCircle size={18} className="text-white" />
+                                  <CheckCircle
+                                    size={18}
+                                    className="text-white"
+                                  />
                                 </div>
                               </div>
                             )}
@@ -717,8 +929,12 @@ export default function Settings() {
                     <div className="p-4 bg-zinc-800/50 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
                       <Image size={40} className="text-zinc-600" />
                     </div>
-                    <p className="text-zinc-400 text-base font-medium mb-2">No custom avatars available</p>
-                    <p className="text-zinc-600 text-sm">Contact administrator to add avatars</p>
+                    <p className="text-zinc-400 text-base font-medium mb-2">
+                      No custom avatars available
+                    </p>
+                    <p className="text-zinc-600 text-sm">
+                      Contact administrator to add avatars
+                    </p>
                   </div>
                 )}
               </div>
@@ -732,7 +948,9 @@ export default function Settings() {
             <div className="p-2 bg-indigo-500/20 rounded-lg border border-indigo-500/30">
               <User size={20} className="text-indigo-400" />
             </div>
-            <h2 className="text-xl font-semibold text-zinc-100">Account Details</h2>
+            <h2 className="text-xl font-semibold text-zinc-100">
+              Account Details
+            </h2>
           </div>
           <div className="space-y-3">
             {/* Email */}
@@ -741,8 +959,12 @@ export default function Settings() {
                 <Mail size={18} className="text-indigo-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-zinc-500 mb-1.5 font-medium uppercase tracking-wide">Email Address</p>
-                <p className="text-zinc-100 font-medium break-all">{user.email}</p>
+                <p className="text-xs text-zinc-500 mb-1.5 font-medium uppercase tracking-wide">
+                  Email Address
+                </p>
+                <p className="text-zinc-100 font-medium break-all">
+                  {user.email}
+                </p>
               </div>
             </div>
 
@@ -753,9 +975,13 @@ export default function Settings() {
                   <Wallet size={18} className="text-indigo-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-zinc-500 mb-1.5 font-medium uppercase tracking-wide">Wallet Address</p>
+                  <p className="text-xs text-zinc-500 mb-1.5 font-medium uppercase tracking-wide">
+                    Wallet Address
+                  </p>
                   <div className="flex items-center gap-3">
-                    <p className="text-zinc-100 font-mono text-sm break-all">{user.wallet_address}</p>
+                    <p className="text-zinc-100 font-mono text-sm break-all">
+                      {user.wallet_address}
+                    </p>
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(user.wallet_address!);
@@ -768,7 +994,10 @@ export default function Settings() {
                       {copied ? (
                         <Check size={18} className="text-green-400" />
                       ) : (
-                        <Copy size={18} className="text-zinc-400 hover:text-indigo-400" />
+                        <Copy
+                          size={18}
+                          className="text-zinc-400 hover:text-indigo-400"
+                        />
                       )}
                     </button>
                   </div>
@@ -787,9 +1016,25 @@ export default function Settings() {
           >
             {signingOut ? (
               <>
-                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg
+                  className="animate-spin h-5 w-5"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
                 <span>Signing out...</span>
               </>

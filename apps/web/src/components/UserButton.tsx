@@ -141,6 +141,10 @@ export default function UserButton() {
     user.user_metadata?.picture ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6366f1&color=fff`;
 
+  // Helper to check if URL is a Google avatar
+  const isGoogleAvatar = (url?: string) =>
+    !!url && url.includes("googleusercontent.com");
+
   return (
     <div className="relative flex items-center gap-1.5 sm:gap-2 flex-shrink-0" ref={dropdownRef}>
       {/* Wallet Address - Show if exists */}
@@ -174,6 +178,8 @@ export default function UserButton() {
             src={avatarUrl}
             alt={displayName}
             className="h-6 w-6 sm:h-7 sm:w-7 rounded-full border-2 border-indigo-500 object-cover transition-transform group-hover/user:scale-110 flex-shrink-0"
+            referrerPolicy={isGoogleAvatar(avatarUrl) ? "no-referrer" : undefined}
+            crossOrigin="anonymous"
           />
           <span className="text-xs sm:text-sm text-zinc-200 hidden lg:inline font-medium truncate max-w-[120px]">
             {displayName}
