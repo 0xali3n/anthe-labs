@@ -74,8 +74,9 @@ export class EncryptionService {
 
       // Return: iv:tag:encryptedData (all hex encoded)
       return `${iv.toString('hex')}:${tag.toString('hex')}:${encrypted}`;
-    } catch (error: any) {
-      throw new Error(`Encryption failed: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Encryption failed: ${errorMessage}`);
     }
   }
 
@@ -114,8 +115,9 @@ export class EncryptionService {
       decrypted += decipher.final('utf8');
 
       return decrypted;
-    } catch (error: any) {
-      throw new Error(`Decryption failed: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Decryption failed: ${errorMessage}`);
     }
   }
 

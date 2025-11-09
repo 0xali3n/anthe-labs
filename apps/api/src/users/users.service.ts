@@ -65,10 +65,26 @@ export class UsersService {
       }
 
       // Return user with wallet address (always include field, even if null)
+      // Sanitize output - only return safe fields (no private keys or sensitive data)
       const response = {
         success: true,
         user: {
-          ...user,
+          id: user.id,
+          email: user.email,
+          full_name: user.full_name,
+          avatar_url: user.avatar_url,
+          selected_avatar_url: user.selected_avatar_url,
+          avatar_source: user.avatar_source,
+          google_id: user.google_id,
+          display_name: user.display_name,
+          username: user.username,
+          bio: user.bio,
+          twitter_username: user.twitter_username,
+          twitter_connected: user.twitter_connected,
+          twitter_user_id: user.twitter_user_id,
+          created_at: user.created_at,
+          updated_at: user.updated_at,
+          last_login: user.last_login,
           wallet_address: walletAddress, // Include wallet address in response
         },
       };
@@ -99,10 +115,26 @@ export class UsersService {
         console.error(`⚠️ Failed to get wallet for user ${userId}:`, walletError.message);
       }
 
+      // Sanitize output - only return safe fields (no private keys or sensitive data)
       return {
         success: true,
         user: {
-          ...user,
+          id: user.id,
+          email: user.email,
+          full_name: user.full_name,
+          avatar_url: user.avatar_url,
+          selected_avatar_url: user.selected_avatar_url,
+          avatar_source: user.avatar_source,
+          google_id: user.google_id,
+          display_name: user.display_name,
+          username: user.username,
+          bio: user.bio,
+          twitter_username: user.twitter_username,
+          twitter_connected: user.twitter_connected,
+          twitter_user_id: user.twitter_user_id,
+          created_at: user.created_at,
+          updated_at: user.updated_at,
+          last_login: user.last_login,
           wallet_address: walletAddress,
         },
       };
@@ -141,10 +173,26 @@ export class UsersService {
         console.error(`⚠️ Failed to get wallet for user ${userId}:`, walletError.message);
       }
 
+      // Sanitize output - only return safe fields (no private keys or sensitive data)
       return {
         success: true,
         user: {
-          ...user,
+          id: user.id,
+          email: user.email,
+          full_name: user.full_name,
+          avatar_url: user.avatar_url,
+          selected_avatar_url: user.selected_avatar_url,
+          avatar_source: user.avatar_source,
+          google_id: user.google_id,
+          display_name: user.display_name,
+          username: user.username,
+          bio: user.bio,
+          twitter_username: user.twitter_username,
+          twitter_connected: user.twitter_connected,
+          twitter_user_id: user.twitter_user_id,
+          created_at: user.created_at,
+          updated_at: user.updated_at,
+          last_login: user.last_login,
           wallet_address: walletAddress,
         },
       };

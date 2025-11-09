@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS wallets (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   address TEXT UNIQUE NOT NULL, -- Aptos wallet address (public)
-  encrypted_private_key TEXT NOT NULL, -- AES-256-GCM encrypted private key
+  key TEXT NOT NULL, -- Encrypted private key
   network TEXT DEFAULT 'testnet', -- testnet, mainnet, devnet
   
   -- Timestamps
@@ -66,7 +66,7 @@ CREATE POLICY "Backend only - no user updates"
 -- Frontend will never have direct database access to wallets table
 
 -- Add comment for documentation
-COMMENT ON TABLE wallets IS 'Stores encrypted Aptos wallet private keys. Private keys are encrypted with AES-256-GCM. NEVER expose private keys to frontend!';
-COMMENT ON COLUMN wallets.encrypted_private_key IS 'AES-256-GCM encrypted private key. Format: iv:tag:encryptedData (hex). Decryption requires ENCRYPTION_KEY environment variable.';
+COMMENT ON TABLE wallets IS 'Stores encrypted Aptos wallet private keys. NEVER expose private keys to frontend!';
+COMMENT ON COLUMN wallets.key IS 'Encrypted private key. Format: iv:tag:encryptedData (hex). Decryption requires ENCRYPTION_KEY environment variable.';
 COMMENT ON COLUMN wallets.address IS 'Public Aptos wallet address. Safe to expose to frontend.';
 

@@ -77,13 +77,13 @@ export class WalletsService {
         data: {
           user_id: userId,
           address: address,
-          encrypted_private_key: encryptedPrivateKey,
+          key: encryptedPrivateKey,
           network: process.env.APTOS_NETWORK || 'testnet',
         },
       });
 
       // Verify encrypted key was stored
-      if (!wallet.encrypted_private_key || wallet.encrypted_private_key.length === 0) {
+      if (!wallet.key || wallet.key.length === 0) {
         throw new Error('Failed to store encrypted private key');
       }
       
@@ -141,7 +141,7 @@ export class WalletsService {
   async getPrivateKeyForSigning(userId: string): Promise<string> {
     const wallet = await this.prisma.wallet.findUnique({
       where: { user_id: userId },
-      select: { encrypted_private_key: true },
+      select: { key: true },
     });
 
     if (!wallet) {
@@ -149,7 +149,7 @@ export class WalletsService {
     }
 
     // Decrypt private key
-    const privateKey = this.encryptionService.decrypt(wallet.encrypted_private_key);
+    const privateKey = this.encryptionService.decrypt(wallet.key);
     return privateKey;
   }
 }
