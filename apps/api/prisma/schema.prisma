@@ -6,3 +6,57 @@ datasource db {
 generator client {
   provider = "prisma-client-js"
 }
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  full_name String?
+  avatar_url String?
+  
+  // Google OAuth data
+  google_id String?  @unique
+  
+  // User metadata
+  display_name String?
+  bio          String?
+  
+  // Social connections
+  twitter_username  String?
+  twitter_connected Boolean @default(false)
+  twitter_user_id   String?
+  
+  // Settings
+  theme                String?  @default("dark")
+  notifications_enabled Boolean  @default(true)
+  email_notifications  Boolean  @default(true)
+  
+  // Timestamps
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  last_login       DateTime?
+  settings_updated_at DateTime?
+
+  // Relations
+  wallet Wallet?
+
+  @@map("users")
+}
+
+model Wallet {
+  id                 String   @id @default(uuid())
+  user_id            String   @unique // One wallet per user
+  address            String   @unique // Aptos wallet address (public)
+  encrypted_private_key String @db.Text // Encrypted private key (AES-256-GCM)
+  network            String   @default("testnet") // testnet, mainnet, devnet
+  
+  // Timestamps
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([address])
+  @@map("wallets")
+}
