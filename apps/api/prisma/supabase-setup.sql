@@ -5,13 +5,16 @@ CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT UNIQUE NOT NULL,
   full_name TEXT,
-  avatar_url TEXT,
+  avatar_url TEXT, -- Original Google photo (never overwritten after first save)
+  selected_avatar_url TEXT, -- User's chosen avatar (Google or custom)
+  avatar_source TEXT, -- 'google' | 'custom' - tracks which avatar is selected
   
   -- Google OAuth data
   google_id TEXT UNIQUE,
   
   -- User metadata
   display_name TEXT,
+  username TEXT UNIQUE, -- Unique username chosen by user
   bio TEXT,
   
   -- Social connections
@@ -19,21 +22,16 @@ CREATE TABLE IF NOT EXISTS users (
   twitter_connected BOOLEAN DEFAULT false,
   twitter_user_id TEXT,
   
-  -- Settings
-  theme TEXT DEFAULT 'dark',
-  notifications_enabled BOOLEAN DEFAULT true,
-  email_notifications BOOLEAN DEFAULT true,
-  
   -- Timestamps
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  last_login TIMESTAMPTZ,
-  settings_updated_at TIMESTAMPTZ
+  last_login TIMESTAMPTZ
 );
 
 -- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
 
 -- Create function to automatically update updated_at timestamp

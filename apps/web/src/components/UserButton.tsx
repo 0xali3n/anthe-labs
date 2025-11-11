@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { upsertUser } from "@/lib/usersApi";
 import { formatWalletAddress } from "@/lib/walletsApi";
-import { Settings, LogOut, Wallet, Copy, Check } from "lucide-react";
+import { Settings, LogOut, Wallet, Copy, Check, ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 interface User {
   id: string;
@@ -24,6 +25,8 @@ export default function UserButton() {
   const [signingOut, setSigningOut] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -52,20 +55,12 @@ export default function UserButton() {
               session.user.user_metadata?.sub,
           });
           
-          // Debug: Log the full result to see what we're getting
-          console.log("📦 User upsert result:", result);
-          
           // Wallet address is automatically included in user response
-          // No separate API call needed!
           if (result?.wallet_address) {
             setWalletAddress(result.wallet_address);
-            console.log("✅ Wallet address loaded:", result.wallet_address);
-          } else {
-            console.warn("⚠️ No wallet_address in response:", result);
           }
         } catch (error) {
           console.error("❌ Failed to save user to database:", error);
-          // Don't block UI if database save fails
         }
       } else {
         setUser(null);
@@ -81,8 +76,26 @@ export default function UserButton() {
     };
   }, []);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+
+    if (showDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showDropdown]);
+
   const handleSignOut = async () => {
     setSigningOut(true);
+    setShowDropdown(false);
     try {
       await supabase.auth.signOut();
       router.push("/");
@@ -110,7 +123,6 @@ export default function UserButton() {
           <div className="h-7 w-7 rounded-full bg-zinc-700"></div>
           <div className="h-4 w-20 bg-zinc-700 rounded hidden sm:block"></div>
         </div>
-        <div className="h-9 w-9 rounded-md bg-zinc-800/50 animate-pulse"></div>
       </div>
     );
   }
@@ -129,8 +141,12 @@ export default function UserButton() {
     user.user_metadata?.picture ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6366f1&color=fff`;
 
+  // Helper to check if URL is a Google avatar
+  const isGoogleAvatar = (url?: string) =>
+    !!url && url.includes("googleusercontent.com");
+
   return (
-    <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+    <div className="relative flex items-center gap-1.5 sm:gap-2 flex-shrink-0" ref={dropdownRef}>
       {/* Wallet Address - Show if exists */}
       {walletAddress && (
         <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-md bg-zinc-800/50 hover:bg-zinc-800 transition-all group">
@@ -152,57 +168,79 @@ export default function UserButton() {
         </div>
       )}
 
-      {/* User Info */}
-      <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-md bg-zinc-800/50 hover:bg-zinc-800 transition-all cursor-pointer group/user">
-        <img
-          src={avatarUrl}
-          alt={displayName}
-          className="h-6 w-6 sm:h-7 sm:w-7 rounded-full border-2 border-indigo-500 object-cover transition-transform group-hover/user:scale-110 flex-shrink-0"
-        />
-        <span className="text-xs sm:text-sm text-zinc-200 hidden lg:inline font-medium truncate max-w-[120px]">
-          {displayName}
-        </span>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex items-center gap-1">
+      {/* User Profile with Dropdown */}
+      <div className="relative">
         <button
-          onClick={handleSignOut}
-          disabled={signingOut}
-          className="p-1.5 sm:p-2 hover:bg-zinc-800 rounded-md text-zinc-300 hover:text-red-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed relative group flex-shrink-0"
-          title={signingOut ? "Signing out..." : "Sign Out"}
+          onClick={() => setShowDropdown(!showDropdown)}
+          className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-md bg-zinc-800/50 hover:bg-zinc-800 transition-all cursor-pointer group/user"
         >
-          {signingOut ? (
-            <svg
-              className="animate-spin h-3 w-3 sm:h-4 sm:w-4 text-red-400"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-          ) : (
-            <LogOut size={16} className="sm:w-[18px] sm:h-[18px]" />
-          )}
+          <img
+            src={avatarUrl}
+            alt={displayName}
+            className="h-6 w-6 sm:h-7 sm:w-7 rounded-full border-2 border-indigo-500 object-cover transition-transform group-hover/user:scale-110 flex-shrink-0"
+            referrerPolicy={isGoogleAvatar(avatarUrl) ? "no-referrer" : undefined}
+            crossOrigin="anonymous"
+          />
+          <span className="text-xs sm:text-sm text-zinc-200 hidden lg:inline font-medium truncate max-w-[120px]">
+            {displayName}
+          </span>
+          <ChevronDown 
+            size={14} 
+            className={`text-zinc-400 transition-transform flex-shrink-0 ${showDropdown ? 'rotate-180' : ''}`}
+          />
         </button>
-        <button 
-          className="p-1.5 sm:p-2 hover:bg-zinc-800 rounded-md text-zinc-300 hover:text-indigo-400 transition-all flex-shrink-0"
-          title="Settings"
-        >
-          <Settings size={16} className="sm:w-[18px] sm:h-[18px]" />
-        </button>
+
+        {/* Dropdown Menu */}
+        {showDropdown && (
+          <div className="absolute right-0 top-full mt-2 w-48 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl z-50 overflow-hidden">
+            <div className="py-1">
+              <Link
+                href="/settings"
+                onClick={() => setShowDropdown(false)}
+                className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-200 hover:bg-zinc-800 transition-colors"
+              >
+                <Settings size={16} className="text-indigo-400" />
+                <span>Settings</span>
+              </Link>
+              <button
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {signingOut ? (
+                  <>
+                    <svg
+                      className="animate-spin h-4 w-4 text-red-400"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    <span>Signing out...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogOut size={16} />
+                    <span>Sign Out</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -82,22 +82,23 @@ export class AuthGuard implements CanActivate {
       }
 
       // Attach user to request for use in controllers
+      // Only include necessary fields - sanitize output
       request.user = {
         id: user.id,
         email: user.email,
-        ...user,
       };
 
       // Log user ID only (not email for security)
       console.log(`✅ JWT verified for user: ${user.id}`);
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-      console.error('JWT verification error:', error.message);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('JWT verification error:', errorMessage);
       throw new UnauthorizedException(
-        `Token verification failed: ${error.message}`,
+        `Token verification failed: ${errorMessage}`,
       );
     }
   }

@@ -77,7 +77,7 @@ pnpm dlx prisma generate
 
 > Use `pnpm dlx prisma db pull` if you want to sync schema with Supabase later.
 
----
+## 🔄 Recent Changes
 
 ### ✅ Project Stack
 
