@@ -57,3 +57,22 @@ model Wallet {
   @@index([address])
   @@map("wallets")
 }
+
+model Trader {
+  id            String   @id @default(uuid())
+  address       String   @unique // Aptos wallet address
+  bot_name      String?  // Bot/trader display name (separate from user username)
+  avatar_url    String?  // Profile picture URL for the trader bot
+  numberOfTxns  Int      @default(0)
+  totalVolume   Decimal  @db.Decimal(20, 2) // Store as decimal for precision
+  pnl           Decimal  @db.Decimal(20, 2)
+  roi           Decimal  @db.Decimal(10, 2)
+  
+  // Timestamps
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@index([address])
+  @@index([bot_name])
+  @@map("traders")
+}
