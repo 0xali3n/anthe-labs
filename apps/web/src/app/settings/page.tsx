@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser, updateCurrentUser } from "@/lib/usersApi";
+import { AbortError } from "@/lib/apiClient";
 import { getAvatars, type Avatar } from "@/lib/avatarsApi";
 import { formatWalletAddress } from "@/lib/walletsApi";
 import { connectTwitter, disconnectTwitter } from "@/lib/twitterApi";
@@ -74,67 +75,41 @@ export default function Settings() {
 
   // Load user data when navigating to /settings
   useEffect(() => {
-    console.log(
-      "🔍 Settings useEffect triggered, pathname:",
-      pathname,
-      "isLoading:",
-      isLoadingRef.current
-    );
-
-    // Only load if we're on the settings page
     if (pathname !== "/settings") {
-      // Reset state when leaving settings page
       setUser(null);
       setLoading(true);
-      isLoadingRef.current = false; // Reset when leaving
+      isLoadingRef.current = false;
       return;
     }
 
-    // Prevent re-loading if we're already loading (avoid infinite loop)
-    if (isLoadingRef.current) {
-      console.log("⏭️ Already loading, skipping...");
-      return;
-    }
+    // Prevent re-loading if already loading
+    if (isLoadingRef.current) return;
 
     let mounted = true;
     const abortController = new AbortController();
-    isLoadingRef.current = true; // Mark as loading
+    isLoadingRef.current = true;
 
     async function loadUser() {
-      console.log("🔄 Starting to load user data...");
-      // Always reset loading state when starting to load (important for navigation)
       setLoading(true);
       setError(null);
 
       try {
-        console.log("🔐 Getting session...");
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        console.log("🔐 Session check:", session ? "Found" : "Not found");
+        const { data: { session } } = await supabase.auth.getSession();
 
         if (!mounted || abortController.signal.aborted) {
-          console.log("⚠️ Component unmounted or aborted before session check");
-          setLoading(false);
           isLoadingRef.current = false;
           return;
         }
 
         if (!session) {
-          console.log("❌ No session, redirecting to home");
           isLoadingRef.current = false;
           router.push("/");
           return;
         }
 
-        console.log("📡 Calling getCurrentUser API...");
         const userData = await getCurrentUser(abortController.signal);
-        console.log("✅ User data received:", userData ? "Success" : "Failed");
 
         if (!mounted || abortController.signal.aborted) {
-          console.log("⚠️ Component unmounted or aborted after API call");
-          setLoading(false);
           isLoadingRef.current = false;
           return;
         }
@@ -148,30 +123,21 @@ export default function Settings() {
         setSelectedAvatarSource(userData.avatar_source || null);
         setAvatarFailed(false);
         setLoading(false);
-        isLoadingRef.current = false; // Mark as done
-        console.log("✅ User data loaded successfully");
+        isLoadingRef.current = false;
       } catch (error: any) {
-        console.error("❌ Error loading user data:", error);
-        isLoadingRef.current = false; // Reset on error
+        isLoadingRef.current = false;
 
-        if (
-          error.message === "Request aborted" ||
-          abortController.signal.aborted
-        ) {
-          console.log("⚠️ Request was aborted");
+        // Silently handle abort errors (intentional cancellation)
+        if (error instanceof AbortError || error.message === "Request aborted") {
           return;
         }
 
-        if (!mounted) {
-          console.log("⚠️ Component not mounted, ignoring error");
-          return;
-        }
+        if (!mounted) return;
 
         if (
           error.message?.includes("No session") ||
           error.message?.includes("Unauthorized")
         ) {
-          console.log("❌ Unauthorized, redirecting to home");
           router.push("/");
           return;
         }
@@ -181,16 +147,17 @@ export default function Settings() {
       }
     }
 
-    // Always load when pathname is /settings (but only if not already loading)
     loadUser();
 
     return () => {
-      console.log("🧹 Cleaning up settings useEffect");
       mounted = false;
       isLoadingRef.current = false;
-      abortController.abort();
+      // Only abort if not already aborted
+      if (!abortController.signal.aborted) {
+        abortController.abort();
+      }
     };
-  }, [pathname]);
+  }, [pathname, router]);
 
   // Close modal when clicking outside
   useEffect(() => {

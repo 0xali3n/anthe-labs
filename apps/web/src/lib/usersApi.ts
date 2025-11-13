@@ -1,4 +1,4 @@
-import { authenticatedRequest, apiRequest } from "./apiClient";
+import { authenticatedRequest, apiRequest, AbortError } from "./apiClient";
 import { supabase } from "./supabaseClient";
 
 export interface CreateUserData {
@@ -69,17 +69,14 @@ export async function upsertUser(userData: CreateUserData): Promise<UserData> {
 
 // Get current user (requires auth)
 export async function getCurrentUser(signal?: AbortSignal): Promise<UserData> {
-  console.log("🔍 getCurrentUser called");
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
   if (!session?.access_token) {
-    console.error("❌ No session or access token found");
     throw new Error("No session found");
   }
 
-  console.log("✅ Session found, making API request...");
   try {
     const response = await authenticatedRequest<{
       success: boolean;
@@ -87,30 +84,25 @@ export async function getCurrentUser(signal?: AbortSignal): Promise<UserData> {
       error?: string;
     }>("/users/me", session.access_token, { signal });
 
-    console.log("📥 API response received:", response);
-
     if (!response) {
-      console.error("❌ No response from server");
       throw new Error("No response from server");
     }
 
     if (!response.success) {
-      console.error("❌ API returned error:", (response as any).error);
       throw new Error((response as any).error || "Failed to get user data");
     }
 
     if (!response.user) {
-      console.error("❌ No user data in response");
       throw new Error("Invalid response from server: user data missing");
     }
 
-    console.log("✅ User data extracted successfully");
     return response.user;
   } catch (error: any) {
-    // Don't log if request was aborted (component unmounted)
-    if (error.message !== "Request aborted") {
-      console.error("❌ getCurrentUser error:", error);
+    // Silently re-throw abort errors (intentional cancellation)
+    if (error instanceof AbortError || error.message === "Request aborted") {
+      throw error;
     }
+    console.error("❌ getCurrentUser error:", error);
     throw error;
   }
 }

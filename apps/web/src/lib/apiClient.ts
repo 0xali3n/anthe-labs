@@ -7,6 +7,14 @@ export interface ApiError {
   error?: string;
 }
 
+// Custom error class for aborted requests (should be handled silently)
+export class AbortError extends Error {
+  constructor(message: string = 'Request aborted') {
+    super(message);
+    this.name = 'AbortError';
+  }
+}
+
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     let errorData: ApiError;
@@ -35,7 +43,6 @@ export async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_URL}${endpoint}`;
-  console.log(`📡 API Request: ${options.method || 'GET'} ${url}`);
   
   // Use provided signal or create new one with timeout
   const providedSignal = options.signal;
@@ -54,32 +61,32 @@ export async function apiRequest<T>(
         'Content-Type': 'application/json',
         ...options.headers,
       },
-      // Ensure response is fully consumed - prevent caching issues
       cache: 'no-store',
     });
     
-    console.log(`📡 API Response: ${response.status} ${response.statusText} for ${url}`);
-    
     if (timeoutId) clearTimeout(timeoutId);
     
-    // Ensure response body is fully read
     if (!response.bodyUsed) {
       return handleResponse<T>(response);
     } else {
-      // Response already consumed, try to get data another way
       const text = await response.text();
       return JSON.parse(text);
     }
   } catch (error: any) {
     if (timeoutId) clearTimeout(timeoutId);
-    console.error(`❌ API Request failed for ${url}:`, error);
-    if (error.name === 'AbortError') {
-      // Don't throw error if it was aborted intentionally (component unmount)
+    
+    // Handle abort errors silently (intentional cancellation)
+    if (error.name === 'AbortError' || error.message === 'The user aborted a request.') {
       if (providedSignal?.aborted) {
-        throw new Error('Request aborted');
+        // Intentional abort from component cleanup - throw silent error
+        throw new AbortError('Request aborted');
       }
+      // Timeout abort - this is an actual error
       throw new Error('Request timeout - server took too long to respond');
     }
+    
+    // Log other errors but not aborts
+    console.error(`❌ API Request failed for ${url}:`, error);
     throw error;
   }
 }
