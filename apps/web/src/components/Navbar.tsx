@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import UserButton from "./UserButton";
 
 const navLinks = [
-  { name: "Home", path: "/" },
+  { name: "Leaderboard", path: "/leaderboard" },
   { name: "Dashboard", path: "/dashboard" },
   { name: "Trader", path: "/trader" },
   { name: "Copytrade", path: "/copytrade" },

@@ -7,9 +7,10 @@ import { WalletsModule } from './wallets/wallets.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AvatarsModule } from './avatars/avatars.module';
 import { TwitterModule } from './twitter/twitter.module';
+import { TradersModule } from './traders/traders.module';
 
 @Module({
-  imports: [PrismaModule, UsersModule, WalletsModule, AvatarsModule, TwitterModule], // PrismaModule is Global, so PrismaService available everywhere
+  imports: [PrismaModule, UsersModule, WalletsModule, AvatarsModule, TwitterModule, TradersModule], // PrismaModule is Global, so PrismaService available everywhere
   controllers: [AppController, HealthController],
   providers: [AppService],
 })
