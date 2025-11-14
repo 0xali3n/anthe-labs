@@ -1,761 +1,578 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { getTraders, type Trader } from "@/lib/tradersApi";
 import {
-  fetchTopPnlUsers,
-  fetchTopVolumeUsers,
-  fetchTopRoiUsers,
-  fetchUserStats,
-  testEndpoint,
-  type Period,
-  type LeaderboardUser,
-} from "@/lib/leaderboardApi";
-import {
-  Search,
-  RefreshCw,
-  TrendingUp,
-  Users,
-  DollarSign,
-  Activity,
   AlertCircle,
-  Trophy,
-  BarChart3,
-  Target,
+  RefreshCw,
+  ChevronDown,
+  Plus,
+  TrendingUp,
+  Info,
 } from "lucide-react";
 
-type LeaderboardType = "pnl" | "volume" | "roi";
+type SortOption = "pnl" | "roi" | "volume" | "trades";
 
 export default function LeaderboardPage() {
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<any>(null);
+  const [traders, setTraders] = useState<Trader[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [period, setPeriod] = useState<Period>("overall");
-  const [searchAddress, setSearchAddress] = useState("");
-  const [leaderboardType, setLeaderboardType] =
-    useState<LeaderboardType>("pnl");
-  const [testResults, setTestResults] = useState<Record<string, any>>({});
-  const [testingEndpoints, setTestingEndpoints] = useState(false);
-  const [userStats, setUserStats] = useState<any>(null);
-  const [userStatsLoading, setUserStatsLoading] = useState(false);
-  const [topTraders, setTopTraders] = useState<LeaderboardUser[]>([]);
-  const [topTradersLoading, setTopTradersLoading] = useState(false);
+  const [sortBy, setSortBy] = useState<SortOption>("pnl");
+  const [pnlValues, setPnlValues] = useState<{ [key: string]: number }>({});
+  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
+  const [tooltip, setTooltip] = useState<{
+    show: boolean;
+    text: string;
+    x: number;
+    y: number;
+  }>({ show: false, text: "", x: 0, y: 0 });
 
-  // Specific wallet addresses to fetch
-  const topTraderAddresses = [
-    "0x7a0c9c8518b2d160f584807137d207fb1cfac3907b8a9ec92a5ceb37c82510af",
-    "0x28c01f6d36b550aa3c1420f91e86c461c155e7fef309ecf453078550f9c19bde",
-    "0x1067563fbe3d3c0b9afac1584f97860e1712aef1eb7a3e2a2a8659205f1edb89",
-    "0x4c4eab8302fc99c1e36310599ac5fe693356723de33320e0bb92436a144b4d0e",
-    "0xd04547df48f5930351871d9c4ee7dae46c820fa6516aaba16152370d8aeea2ed",
-    "0x59af92b856148bcf4e83129554147ae598613bed55ed314ca1d6af3cd0cc968e",
-    "0x903c9d0e519d4049ad2e36bfc6a7cc7511741b50fb2249d9c3cf9e2c24218444",
-    "0xf8afbb9b6e8146b09e6e25301dc647c2e352c570406527bd5a3b6936c1d57ed9",
-    "0x54855aae195eef97f8250ca50c43c47404ddb3b3c50d5b26696eaceb3ce8e03f",
-    "0x43cd76f68916165e67ecc9df67b67721fe4e92e8aaa12a01ad895ad47187b7cc",
-  ];
-
-  // Comprehensive list of endpoints to test
-  const testEndpoints = [
-    // Main endpoints
-    { path: "/fetchTopPnlUsers", params: { period: "overall" } },
-    { path: "/fetchTopVolumeUsers", params: { period: "overall" } },
-    { path: "/fetchTopRoiUsers", params: { period: "overall" } },
-    {
-      path: "/fetchUserStats",
-      params: {
-        address:
-          "0x61733ede5ead283951befc49822d0505f0e0fb1b9127c244de010dd2926c5907",
-        period: "overall",
-      },
-    },
-
-    // Time-based variations
-    { path: "/fetchTopPnlUsers", params: { period: "daily" } },
-    { path: "/fetchTopPnlUsers", params: { period: "weekly" } },
-    { path: "/fetchTopPnlUsers", params: { period: "monthly" } },
-    { path: "/fetchTopPnlUsers", params: { period: "yearly" } },
-    { path: "/fetchTopVolumeUsers", params: { period: "daily" } },
-    { path: "/fetchTopVolumeUsers", params: { period: "weekly" } },
-    { path: "/fetchTopRoiUsers", params: { period: "daily" } },
-
-    // Other potential endpoints
-    { path: "/fetchRecentUsers", params: {} },
-    { path: "/fetchRecentTransactions", params: {} },
-    { path: "/getLeaderboard", params: { period: "overall" } },
-    { path: "/leaderboard", params: { period: "overall" } },
-    { path: "/topUsers", params: {} },
-    { path: "/stats", params: {} },
-    { path: "/health", params: {} },
-    { path: "/ping", params: {} },
-    { path: "/", params: {} },
-    { path: "/api", params: {} },
-    { path: "/api/leaderboard", params: {} },
-  ];
-
-  const periods: Period[] = ["overall", "daily", "weekly", "monthly", "yearly"];
-
-  const handleFetch = async () => {
-    setLoading(true);
-    setError(null);
-    setData(null);
-
+  const fetchTraders = async () => {
     try {
-      let result;
-      switch (leaderboardType) {
-        case "pnl":
-          result = await fetchTopPnlUsers(period, searchAddress || undefined);
-          break;
-        case "volume":
-          result = await fetchTopVolumeUsers(
-            period,
-            searchAddress || undefined
-          );
-          break;
-        case "roi":
-          result = await fetchTopRoiUsers(period, searchAddress || undefined);
-          break;
-        default:
-          result = await fetchTopPnlUsers(period, searchAddress || undefined);
+      setLoading(true);
+      setError(null);
+      const response = await getTraders();
+      if (response.success) {
+        setTraders(response.data);
+        // Initialize PNL counters
+        const initialPnl: { [key: string]: number } = {};
+        response.data.forEach((trader) => {
+          initialPnl[trader.id] = 0;
+        });
+        setPnlValues(initialPnl);
+        // Animate PNL values
+        setTimeout(() => {
+          response.data.forEach((trader) => {
+            animatePnl(trader.id, parseFloat(trader.pnl));
+          });
+        }, 300);
+      } else {
+        setError("Failed to fetch traders");
       }
-      setData(result);
     } catch (err: any) {
-      setError(err.message || "Failed to fetch data");
+      setError(err.message || "Failed to load traders");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFetchUserStats = async () => {
-    if (!searchAddress) {
-      setError("Please enter a wallet address to fetch user stats");
-      return;
-    }
+  const animatePnl = (id: string, targetValue: number) => {
+    const duration = 1500;
+    const steps = 60;
+    const increment = targetValue / steps;
+    let current = 0;
 
-    setUserStatsLoading(true);
-    setUserStats(null);
-
-    try {
-      const result = await fetchUserStats(searchAddress, period);
-      setUserStats(result);
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch user stats");
-    } finally {
-      setUserStatsLoading(false);
-    }
-  };
-
-  const testAllEndpoints = async () => {
-    setTestingEndpoints(true);
-    setTestResults({});
-    const results: Record<string, any> = {};
-
-    for (const endpoint of testEndpoints) {
-      const endpointKey = `${endpoint.path}${Object.keys(endpoint.params).length > 0 ? `?${new URLSearchParams(endpoint.params as any).toString()}` : ""}`;
-      // Filter out undefined values to fix TypeScript error
-      const filteredParams = Object.fromEntries(
-        Object.entries(endpoint.params).filter(([_, v]) => v !== undefined)
-      ) as Record<string, string>;
-      const result = await testEndpoint(
-        endpoint.path,
-        Object.keys(filteredParams).length > 0 ? filteredParams : undefined
-      );
-      results[endpointKey] = result;
-      setTestResults({ ...results });
-      // Small delay to avoid rate limiting
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    }
-
-    setTestingEndpoints(false);
-  };
-
-  // Fetch top traders data
-  const fetchTopTraders = async () => {
-    setTopTradersLoading(true);
-    const traders: LeaderboardUser[] = [];
-
-    for (const address of topTraderAddresses) {
-      try {
-        const result = await fetchTopPnlUsers(period, address);
-        if (result.success && result.data && result.data.length > 0) {
-          traders.push(result.data[0]);
-        }
-      } catch (error) {
-        console.error(`Failed to fetch data for ${address}:`, error);
+    const timer = setInterval(() => {
+      current += increment;
+      if (Math.abs(current) >= Math.abs(targetValue)) {
+        setPnlValues((prev) => ({ ...prev, [id]: targetValue }));
+        clearInterval(timer);
+      } else {
+        setPnlValues((prev) => ({ ...prev, [id]: current }));
       }
-      // Small delay to avoid rate limiting
-      await new Promise((resolve) => setTimeout(resolve, 200));
-    }
-
-    // Sort by PNL descending
-    traders.sort((a, b) => parseFloat(b.PNL) - parseFloat(a.PNL));
-    setTopTraders(traders);
-    setTopTradersLoading(false);
+    }, duration / steps);
   };
 
-  // Auto-fetch on mount
   useEffect(() => {
-    handleFetch();
-    fetchTopTraders();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period]);
+    fetchTraders();
+  }, []);
+
+  const formatAddress = (address: string) => {
+    // Show first 6-8 characters and last 6 characters
+    const start = address.slice(0, 8);
+    const end = address.slice(-6);
+    return `${start}...${end}`;
+  };
+
+  const formatCurrency = (value: number | string) => {
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    if (num >= 1000000) {
+      return `$${(num / 1000000).toFixed(2)}M`;
+    } else if (num >= 1000) {
+      return `$${(num / 1000).toFixed(2)}K`;
+    }
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(num);
+  };
+
+  const formatNumber = (value: string) => {
+    const num = parseFloat(value);
+    return new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(num);
+  };
+
+  const handleCopyTrade = (trader: Trader) => {
+    // TODO: Implement copy trade functionality
+    console.log("Starting copy trade for:", trader.address);
+  };
+
+  const showTooltip = (e: React.MouseEvent, text: string) => {
+    setTooltip({
+      show: true,
+      text,
+      x: e.clientX,
+      y: e.clientY,
+    });
+  };
+
+  const hideTooltip = () => {
+    setTooltip({ show: false, text: "", x: 0, y: 0 });
+  };
+
+  // Sort traders based on selected option
+  const sortedTraders = [...traders].sort((a, b) => {
+    switch (sortBy) {
+      case "pnl":
+        return parseFloat(b.pnl) - parseFloat(a.pnl);
+      case "roi":
+        return parseFloat(b.roi) - parseFloat(a.roi);
+      case "volume":
+        return parseFloat(b.totalVolume) - parseFloat(a.totalVolume);
+      case "trades":
+        return b.numberOfTxns - a.numberOfTxns;
+      default:
+        return 0;
+    }
+  });
+
+  const getRankStyle = (rank: number) => {
+    if (rank === 1) {
+      return {
+        badge: "bg-yellow-500/10 border-yellow-500/30 text-yellow-400",
+        border: "border-yellow-500/20",
+        icon: "🥇",
+      };
+    } else if (rank === 2) {
+      return {
+        badge: "bg-slate-400/10 border-slate-400/30 text-slate-300",
+        border: "border-slate-400/20",
+        icon: "🥈",
+      };
+    } else if (rank === 3) {
+      return {
+        badge: "bg-orange-600/10 border-orange-600/30 text-orange-400",
+        border: "border-orange-600/20",
+        icon: "🥉",
+      };
+    }
+    return {
+      badge: "bg-slate-800 border-slate-700 text-slate-400",
+      border: "border-slate-800",
+      icon: null,
+    };
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center relative">
+        {/* Background Pattern */}
+        <div
+          className="fixed inset-0 opacity-[0.02] pointer-events-none"
+          style={{
+            backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+            backgroundSize: "50px 50px",
+          }}
+        />
+        <div className="text-center relative z-10">
+          <RefreshCw className="animate-spin h-12 w-12 text-blue-400 mx-auto mb-4" />
+          <p className="text-slate-400">Loading top traders...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4 relative">
+        {/* Background Pattern */}
+        <div
+          className="fixed inset-0 opacity-[0.02] pointer-events-none"
+          style={{
+            backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+            backgroundSize: "50px 50px",
+          }}
+        />
+        <div className="bg-red-900/20 border border-red-500/50 rounded-xl p-6 flex items-center gap-3 max-w-md relative z-10">
+          <AlertCircle size={20} className="text-red-400 flex-shrink-0" />
+          <div>
+            <p className="text-red-400 font-medium">{error}</p>
+            <button
+              onClick={fetchTraders}
+              className="mt-2 text-sm text-red-300 hover:text-red-200 underline"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-7xl mx-auto py-8 px-4">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-indigo-400 mb-2">
-          PNL Leaderboard
-        </h1>
-        <p className="text-zinc-400">
-          Test and explore the perpetual leaderboard API endpoints
-        </p>
-      </div>
+    <div className="min-h-screen bg-slate-950 relative">
+      {/* Background Pattern */}
+      <div
+        className="fixed inset-0 opacity-[0.02] pointer-events-none"
+        style={{
+          backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+          backgroundSize: "50px 50px",
+        }}
+      />
+      {/* Subtle gradient overlay */}
+      <div className="fixed inset-0 bg-gradient-to-b from-blue-950/5 via-transparent to-slate-950/5 pointer-events-none" />
 
-      {/* Controls */}
-      <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 mb-6 backdrop-blur-sm">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-          {/* Leaderboard Type */}
-          <div>
-            <label className="block text-sm font-semibold text-zinc-300 mb-2">
-              Leaderboard Type
-            </label>
-            <select
-              value={leaderboardType}
-              onChange={(e) =>
-                setLeaderboardType(e.target.value as LeaderboardType)
-              }
-              className="w-full px-4 py-2.5 bg-zinc-800/50 border border-zinc-700 rounded-xl text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="pnl">Top PNL</option>
-              <option value="volume">Top Volume</option>
-              <option value="roi">Top ROI</option>
-            </select>
-          </div>
-
-          {/* Period Selector */}
-          <div>
-            <label className="block text-sm font-semibold text-zinc-300 mb-2">
-              Time Period
-            </label>
-            <select
-              value={period}
-              onChange={(e) => setPeriod(e.target.value as Period)}
-              className="w-full px-4 py-2.5 bg-zinc-800/50 border border-zinc-700 rounded-xl text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              {periods.map((p) => (
-                <option key={p} value={p}>
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Search Address */}
-          <div>
-            <label className="block text-sm font-semibold text-zinc-300 mb-2">
-              Wallet Address (Optional)
-            </label>
-            <input
-              type="text"
-              value={searchAddress}
-              onChange={(e) => setSearchAddress(e.target.value)}
-              placeholder="0x..."
-              className="w-full px-4 py-2.5 bg-zinc-800/50 border border-zinc-700 rounded-xl text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
-            />
-          </div>
-
-          {/* Fetch Buttons */}
-          <div className="flex items-end gap-2">
-            <button
-              onClick={handleFetch}
-              disabled={loading}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
-            >
-              {loading ? (
-                <>
-                  <RefreshCw size={16} className="animate-spin" />
-                  <span>Loading...</span>
-                </>
-              ) : (
-                <>
-                  <Search size={16} />
-                  <span>Fetch</span>
-                </>
-              )}
-            </button>
-            {searchAddress && (
-              <button
-                onClick={handleFetchUserStats}
-                disabled={userStatsLoading}
-                className="px-4 py-2.5 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Fetch user stats"
-              >
-                {userStatsLoading ? (
-                  <RefreshCw size={16} className="animate-spin" />
-                ) : (
-                  <Target size={16} />
-                )}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Test All Endpoints Button */}
-        <div className="pt-4 border-t border-zinc-800">
-          <button
-            onClick={testAllEndpoints}
-            disabled={testingEndpoints}
-            className="flex items-center gap-2 px-4 py-2 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-xl transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {testingEndpoints ? (
-              <>
-                <RefreshCw size={16} className="animate-spin" />
-                <span>Testing Endpoints...</span>
-              </>
-            ) : (
-              <>
-                <Activity size={16} />
-                <span>Test All Endpoints ({testEndpoints.length})</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Error Display */}
-      {error && (
-        <div className="mb-6 p-4 bg-red-900/20 border border-red-500/50 rounded-xl flex items-center gap-3">
-          <AlertCircle size={20} className="text-red-400 flex-shrink-0" />
-          <p className="text-red-400 font-medium">{error}</p>
+      {/* Tooltip */}
+      {tooltip.show && (
+        <div
+          className="fixed z-50 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-300 shadow-xl pointer-events-none"
+          style={{
+            left: `${tooltip.x + 10}px`,
+            top: `${tooltip.y - 10}px`,
+          }}
+        >
+          {tooltip.text}
         </div>
       )}
 
-      {/* User Stats Display */}
-      {userStats && (
-        <div className="mb-6 bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 backdrop-blur-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <Target size={20} className="text-indigo-400" />
-            <h2 className="text-xl font-semibold text-zinc-100">
-              User Statistics
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {userStats.rank && (
-              <div className="p-4 bg-zinc-800/50 rounded-xl">
-                <p className="text-xs text-zinc-500 mb-1">Overall Rank</p>
-                <p className="text-2xl font-bold text-indigo-400">
-                  #{userStats.rank}
-                </p>
-              </div>
-            )}
-            {userStats.totalVolume && (
-              <div className="p-4 bg-zinc-800/50 rounded-xl">
-                <p className="text-xs text-zinc-500 mb-1">Trading Volume</p>
-                <p className="text-2xl font-bold text-zinc-100">
-                  $
-                  {parseFloat(userStats.totalVolume).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </p>
-              </div>
-            )}
-            {userStats.roi !== undefined && (
-              <div className="p-4 bg-zinc-800/50 rounded-xl">
-                <p className="text-xs text-zinc-500 mb-1">ROI</p>
-                <p
-                  className={`text-2xl font-bold ${
-                    parseFloat(userStats.roi) >= 0
-                      ? "text-green-400"
-                      : "text-red-400"
-                  }`}
-                >
-                  {parseFloat(userStats.roi).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                  %
-                </p>
-              </div>
-            )}
-          </div>
-          <pre className="mt-4 text-xs text-zinc-400 overflow-x-auto bg-zinc-950/50 p-4 rounded-xl border border-zinc-800">
-            {JSON.stringify(userStats, null, 2)}
-          </pre>
-        </div>
-      )}
-
-      {/* Main Data Display */}
-      {data && (
-        <div className="space-y-6">
-          {/* Response Info */}
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 backdrop-blur-sm">
-            <div className="flex items-center gap-3 mb-4">
-              <TrendingUp size={20} className="text-indigo-400" />
-              <h2 className="text-xl font-semibold text-zinc-100">
-                Response Information
-              </h2>
+      <div className="max-w-7xl mx-auto py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8 xl:px-12 relative z-10">
+        {/* Header Section */}
+        <div className="mb-6 sm:mb-8 lg:mb-12">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 mb-6 sm:mb-8 lg:mb-10">
+            <div>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent mb-2 sm:mb-3 lg:mb-4">
+                Top Traders to Copy
+              </h1>
+              <p className="text-slate-300 text-sm sm:text-base font-semibold">
+                Discover elite traders and mirror their strategies
+              </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 bg-zinc-800/50 rounded-xl">
-                <p className="text-xs text-zinc-500 mb-1">Status</p>
-                <p
-                  className={`text-lg font-bold ${data.success ? "text-green-400" : "text-red-400"}`}
-                >
-                  {data.success ? "Success" : "Failed"}
-                </p>
-              </div>
-              <div className="p-4 bg-zinc-800/50 rounded-xl">
-                <p className="text-xs text-zinc-500 mb-1">Message</p>
-                <p className="text-zinc-100 font-medium">
-                  {data.message || "N/A"}
-                </p>
-              </div>
-              {data.pagination && (
-                <div className="p-4 bg-zinc-800/50 rounded-xl">
-                  <p className="text-xs text-zinc-500 mb-1">Total Results</p>
-                  <p className="text-zinc-100 font-bold text-lg">
-                    {data.pagination.total}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Leaderboard Table */}
-          {data.data && data.data.length > 0 && (
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden backdrop-blur-sm">
-              <div className="p-6 border-b border-zinc-800">
-                <div className="flex items-center gap-3">
-                  {leaderboardType === "pnl" && (
-                    <Trophy size={20} className="text-indigo-400" />
-                  )}
-                  {leaderboardType === "volume" && (
-                    <DollarSign size={20} className="text-indigo-400" />
-                  )}
-                  {leaderboardType === "roi" && (
-                    <BarChart3 size={20} className="text-indigo-400" />
-                  )}
-                  <h2 className="text-xl font-semibold text-zinc-100">
-                    Top Traders ({data.data.length} users)
-                  </h2>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-zinc-800/50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                        Rank
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                        Address
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                        Transactions
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                        Total Volume
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                        PNL
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                        ROI
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-800">
-                    {data.data.map((user: LeaderboardUser, index: number) => (
-                      <tr
-                        key={user.Address}
-                        className="hover:bg-zinc-800/30 transition-colors"
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            {user.Rank <= 3 && (
-                              <span className="text-indigo-400 font-bold">
-                                #{user.Rank}
-                              </span>
-                            )}
-                            {user.Rank > 3 && (
-                              <span className="text-zinc-400">{user.Rank}</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <code className="text-sm text-zinc-300 font-mono">
-                            {user.Address.slice(0, 10)}...
-                            {user.Address.slice(-8)}
-                          </code>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-zinc-300">
-                          {user.NumberOfTxns.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <span className="text-zinc-300 font-medium">
-                            $
-                            {parseFloat(user.TotalVolume).toLocaleString(
-                              undefined,
-                              {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              }
-                            )}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <span
-                            className={`font-bold ${
-                              parseFloat(user.PNL) >= 0
-                                ? "text-green-400"
-                                : "text-red-400"
-                            }`}
-                          >
-                            {parseFloat(user.PNL) >= 0 ? "+" : ""}$
-                            {parseFloat(user.PNL).toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <span className="text-indigo-400 font-bold">
-                            {parseFloat(user.ROI).toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                            %
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Pagination Info */}
-          {data.pagination && (
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 backdrop-blur-sm">
-              <div className="flex items-center justify-between text-sm text-zinc-400">
-                <span>
-                  Page {data.pagination.currentPage} of{" "}
-                  {data.pagination.totalPages}
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              {/* Sort by */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+                  Sort by:
                 </span>
-                <span>{data.pagination.perPage} per page</span>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Test Results */}
-      {Object.keys(testResults).length > 0 && (
-        <div className="mt-6 bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 backdrop-blur-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <Activity size={20} className="text-indigo-400" />
-              <h2 className="text-xl font-semibold text-zinc-100">
-                Endpoint Test Results
-              </h2>
-            </div>
-            <div className="text-sm text-zinc-400">
-              {Object.values(testResults).filter((r: any) => r.success).length}{" "}
-              / {Object.keys(testResults).length} successful
-            </div>
-          </div>
-          <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
-            {Object.entries(testResults)
-              .sort(
-                ([, a]: any, [, b]: any) =>
-                  (b.success ? 1 : 0) - (a.success ? 1 : 0)
-              )
-              .map(([endpoint, result]: [string, any]) => (
-                <div
-                  key={endpoint}
-                  className={`p-4 rounded-xl border ${
-                    result.success
-                      ? "bg-green-900/10 border-green-500/30"
-                      : "bg-red-900/10 border-red-500/30"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <code className="text-sm font-mono text-zinc-300 break-all">
-                      {endpoint}
-                    </code>
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-semibold ml-2 flex-shrink-0 ${
-                        result.success
-                          ? "bg-green-500/20 text-green-400"
-                          : "bg-red-500/20 text-red-400"
-                      }`}
-                    >
-                      {result.success
-                        ? `✓ ${result.status || 200}`
-                        : `✗ ${result.status || "Error"}`}
-                    </span>
-                  </div>
-                  {result.success && (
-                    <div className="mt-2">
-                      <p className="text-xs text-green-400 mb-1">
-                        Response Preview:
-                      </p>
-                      <pre className="text-xs text-zinc-400 overflow-x-auto bg-zinc-950/50 p-2 rounded border border-zinc-800 max-h-32 overflow-y-auto">
-                        {JSON.stringify(result.data, null, 2).slice(0, 500)}
-                        {JSON.stringify(result.data, null, 2).length > 500 &&
-                          "..."}
-                      </pre>
-                    </div>
-                  )}
-                  {result.error && (
-                    <p className="text-xs text-red-400 mt-2">{result.error}</p>
-                  )}
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
-
-      {/* Top Traders Section */}
-      <div className="mt-6 bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden backdrop-blur-sm">
-        <div className="p-6 border-b border-zinc-800">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Trophy size={20} className="text-indigo-400" />
-              <h2 className="text-xl font-semibold text-zinc-100">
-                Top Traders
-              </h2>
-            </div>
-            <button
-              onClick={fetchTopTraders}
-              disabled={topTradersLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-xl transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {topTradersLoading ? (
-                <>
-                  <RefreshCw size={16} className="animate-spin" />
-                  <span>Loading...</span>
-                </>
-              ) : (
-                <>
-                  <RefreshCw size={16} />
-                  <span>Refresh</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-        {topTradersLoading && topTraders.length === 0 ? (
-          <div className="p-8 text-center">
-            <RefreshCw
-              size={32}
-              className="animate-spin text-indigo-400 mx-auto mb-4"
-            />
-            <p className="text-zinc-400">Loading top traders...</p>
-          </div>
-        ) : topTraders.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-zinc-800/50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                    Rank
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                    Address
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                    Transactions
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                    Total Volume
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                    PNL
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                    ROI
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-800">
-                {topTraders.map((user, index) => (
-                  <tr
-                    key={user.Address}
-                    className="hover:bg-zinc-800/30 transition-colors"
+                <div className="relative">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortOption)}
+                    className="appearance-none bg-slate-900/80 border border-slate-700 rounded-2xl px-4 py-2.5 pr-8 text-sm text-slate-200 font-medium cursor-pointer hover:border-slate-600 hover:bg-slate-900 transition-all focus:outline-none focus:border-slate-600"
+                    style={{ borderRadius: "0.75rem" }}
                   >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-indigo-400 font-bold">
-                        #{index + 1}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <code className="text-sm text-zinc-300 font-mono">
-                        {user.Address.slice(0, 10)}...
-                        {user.Address.slice(-8)}
-                      </code>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-zinc-300">
-                      {user.NumberOfTxns.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <span className="text-zinc-300 font-medium">
-                        $
-                        {parseFloat(user.TotalVolume).toLocaleString(
-                          undefined,
-                          { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-                        )}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <span
-                        className={`font-bold ${
-                          parseFloat(user.PNL) >= 0
-                            ? "text-green-400"
-                            : "text-red-400"
-                        }`}
-                      >
-                        {parseFloat(user.PNL) >= 0 ? "+" : ""}$
-                        {parseFloat(user.PNL).toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <span className="text-indigo-400 font-bold">
-                        {parseFloat(user.ROI).toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                        %
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    <option value="pnl">PNL</option>
+                    <option value="roi">ROI</option>
+                    <option value="volume">Volume</option>
+                    <option value="trades">Trades</option>
+                  </select>
+                  <ChevronDown
+                    size={16}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                  />
+                </div>
+              </div>
+              {/* Refresh Button */}
+              <button
+                onClick={fetchTraders}
+                disabled={loading}
+                title="Refresh leaderboard"
+                className="flex items-center gap-2 px-4 py-2.5 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded-xl text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RefreshCw
+                  size={16}
+                  className={loading ? "animate-spin" : ""}
+                />
+                <span>Refresh</span>
+              </button>
+            </div>
           </div>
-        ) : (
-          <div className="p-8 text-center text-zinc-400">
-            No trader data available. Click refresh to fetch.
+        </div>
+
+        {/* Traders Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          {sortedTraders.map((trader, index) => {
+            const pnl = parseFloat(trader.pnl);
+            const roi = parseFloat(trader.roi);
+            const isPositive = pnl >= 0;
+            const rank = index + 1;
+            const rankStyle = getRankStyle(rank);
+            const displayPnl =
+              pnlValues[trader.id] !== undefined ? pnlValues[trader.id] : pnl;
+            const isHovered = hoveredCard === trader.id;
+
+            return (
+              <div
+                key={trader.id}
+                onMouseEnter={() => setHoveredCard(trader.id)}
+                onMouseLeave={() => setHoveredCard(null)}
+                className={`group relative bg-slate-900/80 border rounded-xl p-4 sm:p-5 lg:p-6 overflow-hidden ${
+                  rank <= 3 ? rankStyle.border : "border-slate-800"
+                }`}
+                style={{
+                  willChange: "transform",
+                  transform: isHovered
+                    ? "translateY(-8px) scale(1.02) translateZ(0)"
+                    : "translateZ(0)",
+                  transition: "transform 0.2s cubic-bezier(0.2, 0.9, 0.2, 1)",
+                }}
+              >
+                {/* Base shadow layer - static, no animation */}
+                <div
+                  className="absolute inset-0 rounded-xl pointer-events-none"
+                  style={{
+                    boxShadow: "0 6px 18px rgba(2, 8, 20, 0.45)",
+                  }}
+                />
+
+                {/* Glow overlay - animate opacity only, synced timing */}
+                <div
+                  className="absolute inset-0 rounded-xl pointer-events-none"
+                  style={{
+                    background:
+                      "radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.15), transparent 50%)",
+                    opacity: isHovered ? 1 : 0,
+                    transition: "opacity 0.2s cubic-bezier(0.2, 0.9, 0.2, 1)",
+                    transform: "translateZ(0)",
+                  }}
+                />
+
+                {/* Gradient border overlay - animate opacity only, synced timing */}
+                <div
+                  className="absolute inset-0 rounded-xl pointer-events-none"
+                  style={{
+                    background:
+                      "linear-gradient(to right, rgba(59, 130, 246, 0.12), rgba(99, 102, 241, 0.1), rgba(103, 232, 249, 0.12))",
+                    opacity: isHovered ? 0.6 : 0,
+                    transition: "opacity 0.2s cubic-bezier(0.2, 0.9, 0.2, 1)",
+                    transform: "translateZ(0)",
+                  }}
+                />
+                {/* Rank Badge & Header */}
+                <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-5">
+                  {/* Rank Badge */}
+                  <div
+                    className={`w-7 h-7 sm:w-8 sm:h-8 lg:w-9 lg:h-9 rounded-lg flex items-center justify-center font-bold text-xs sm:text-sm flex-shrink-0 border ${
+                      rank <= 3
+                        ? rankStyle.badge
+                        : "bg-slate-800 border-slate-700 text-slate-400"
+                    }`}
+                  >
+                    {rank <= 3 ? rankStyle.icon : `#${rank}`}
+                  </div>
+
+                  {/* Avatar with Border */}
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg border-2 border-slate-700 p-0.5 flex-shrink-0">
+                    {trader.avatarUrl ? (
+                      <img
+                        src={trader.avatarUrl}
+                        alt={trader.botName || formatAddress(trader.address)}
+                        className="w-full h-full rounded-lg object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 font-medium text-sm">
+                        {(trader.botName || formatAddress(trader.address))
+                          .charAt(0)
+                          .toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bot Name and Address */}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-base sm:text-lg text-slate-200 font-bold mb-0.5 break-words">
+                      {trader.botName || formatAddress(trader.address)}
+                    </p>
+                    <p className="text-xs text-slate-500 font-mono break-all">
+                      {formatAddress(trader.address)}
+                    </p>
+                  </div>
+
+                  {/* Copy Button - Premium & Synced */}
+                  <button
+                    onClick={() => handleCopyTrade(trader)}
+                    onMouseEnter={() => setHoveredCard(trader.id)}
+                    onMouseLeave={() => setHoveredCard(null)}
+                    className="flex-shrink-0 px-3 py-1.5 sm:px-4 sm:py-2 text-white rounded-lg text-xs sm:text-sm font-semibold bg-blue-600 overflow-hidden ml-2"
+                    style={{
+                      willChange: "transform",
+                      transform: isHovered
+                        ? "translateY(-3px) scale(1.08) translateZ(0)"
+                        : "translateZ(0)",
+                      transition:
+                        "transform 0.2s cubic-bezier(0.2, 0.9, 0.2, 1), background-color 0.2s ease",
+                      backgroundColor: isHovered
+                        ? "rgb(29, 78, 216)"
+                        : "rgb(37, 99, 235)",
+                    }}
+                  >
+                    {/* Button glow overlay - synced with card */}
+                    <div
+                      className="absolute inset-0 rounded-lg pointer-events-none"
+                      style={{
+                        background:
+                          "radial-gradient(circle, rgba(255, 255, 255, 0.15), transparent 70%)",
+                        opacity: isHovered ? 1 : 0,
+                        transition:
+                          "opacity 0.2s cubic-bezier(0.2, 0.9, 0.2, 1)",
+                        transform: "translateZ(0)",
+                      }}
+                    />
+                    <span className="relative z-10">Copy</span>
+                  </button>
+                </div>
+
+                {/* Main Metrics - Vertical Split Layout */}
+                <div className="flex flex-col gap-3 sm:gap-4 lg:gap-5">
+                  {/* Upper Half - Large PNL with Animation */}
+                  <div className="flex flex-col justify-center">
+                    <div className="flex items-center gap-1.5 mb-1 sm:mb-2">
+                      <p className="text-xs text-slate-500">PNL (USD)</p>
+                      <div
+                        onMouseEnter={(e) =>
+                          showTooltip(
+                            e,
+                            "Profit and Loss: Total profit or loss in USD"
+                          )
+                        }
+                        onMouseLeave={hideTooltip}
+                        className="cursor-help"
+                      >
+                        <Info size={12} className="text-slate-500" />
+                      </div>
+                    </div>
+                    <p
+                      className={`text-3xl sm:text-4xl lg:text-5xl font-bold ${
+                        isPositive ? "text-green-400" : "text-red-400"
+                      }`}
+                      style={
+                        isPositive
+                          ? {
+                              textShadow: "0 0 15px rgba(74, 222, 128, 0.25)",
+                              animation: "pnlGlow 3s ease-in-out infinite",
+                            }
+                          : {}
+                      }
+                    >
+                      {isPositive ? "+" : ""}
+                      {formatCurrency(displayPnl)}
+                    </p>
+                  </div>
+
+                  {/* Separator Line */}
+                  <div className="h-px bg-slate-800/50 opacity-40" />
+
+                  {/* Lower Half - Volume, ROI, Trades Side by Side */}
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    <div className="bg-slate-950/50 rounded-lg p-2 sm:p-2.5 border border-slate-800/30">
+                      <div className="flex items-center gap-1 mb-1">
+                        <p className="text-xs text-slate-500">Volume</p>
+                        <div
+                          onMouseEnter={(e) =>
+                            showTooltip(e, "Total trading volume in USD")
+                          }
+                          onMouseLeave={hideTooltip}
+                          className="cursor-help"
+                        >
+                          <Info size={10} className="text-slate-500" />
+                        </div>
+                      </div>
+                      <p className="text-sm sm:text-base font-semibold text-slate-300">
+                        {formatCurrency(trader.totalVolume)}
+                      </p>
+                    </div>
+                    <div className="bg-slate-950/50 rounded-lg p-2 sm:p-2.5 border border-slate-800/30">
+                      <div className="flex items-center gap-1 mb-1">
+                        <p className="text-xs text-slate-500">ROI</p>
+                        <div
+                          onMouseEnter={(e) =>
+                            showTooltip(
+                              e,
+                              "Return on Investment: Percentage return on executed trades"
+                            )
+                          }
+                          onMouseLeave={hideTooltip}
+                          className="cursor-help"
+                        >
+                          <Info size={10} className="text-slate-500" />
+                        </div>
+                      </div>
+                      <p className="text-sm sm:text-base font-semibold text-blue-400">
+                        {formatNumber(trader.roi)}%
+                      </p>
+                    </div>
+                    <div className="bg-slate-950/50 rounded-lg p-2 sm:p-2.5 border border-slate-800/30">
+                      <div className="flex items-center gap-1 mb-1">
+                        <p className="text-xs text-slate-500">Trades</p>
+                        <div
+                          onMouseEnter={(e) =>
+                            showTooltip(e, "Total number of executed trades")
+                          }
+                          onMouseLeave={hideTooltip}
+                          className="cursor-help"
+                        >
+                          <Info size={10} className="text-slate-500" />
+                        </div>
+                      </div>
+                      <p className="text-sm sm:text-base font-semibold text-slate-300">
+                        {trader.numberOfTxns}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Custom Bot CTA Card */}
+          <div
+            onMouseEnter={() => setHoveredCard("custom")}
+            onMouseLeave={() => setHoveredCard(null)}
+            className="group relative bg-slate-900/80 border-2 border-dashed border-slate-800 rounded-xl p-6 sm:p-8 lg:p-10 hover:border-slate-700 transition-all duration-200 flex flex-col items-center justify-center min-h-[280px] sm:min-h-[300px] lg:min-h-[320px] cursor-pointer"
+          >
+            <div className="flex flex-col items-center justify-center gap-5 text-center">
+              <div className="w-20 h-20 rounded-full bg-slate-800/50 border-2 border-slate-700 flex items-center justify-center transition-colors group-hover:border-slate-600">
+                <Plus
+                  size={40}
+                  className="text-slate-400 group-hover:text-slate-300 transition-colors"
+                />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-white mb-3">
+                  Create Your Own Bot
+                </h3>
+                <p className="text-sm text-slate-400 max-w-xs leading-relaxed">
+                  Use known target wallet addresses to build custom trading
+                  bots.
+                </p>
+              </div>
+              <button className="mt-2 px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors duration-200 flex items-center gap-2">
+                Build Now
+                <TrendingUp size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Empty State */}
+        {traders.length === 0 && !loading && (
+          <div className="text-center py-16">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-800/50 border border-slate-700/50 mb-4">
+              <AlertCircle size={24} className="text-slate-500" />
+            </div>
+            <p className="text-slate-400 text-sm">
+              No traders available at the moment.
+            </p>
           </div>
         )}
       </div>
-
-      {/* Raw JSON Display */}
-      {data && (
-        <div className="mt-6 bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 backdrop-blur-sm">
-          <h2 className="text-xl font-semibold text-zinc-100 mb-4">
-            Raw Response JSON
-          </h2>
-          <pre className="text-xs text-zinc-400 overflow-x-auto bg-zinc-950/50 p-4 rounded-xl border border-zinc-800">
-            {JSON.stringify(data, null, 2)}
-          </pre>
-        </div>
-      )}
     </div>
   );
 }

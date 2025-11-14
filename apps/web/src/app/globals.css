@@ -19,6 +19,10 @@
   }
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -105,5 +109,153 @@ button.signin-glow:active:not(:disabled) {
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
+  }
+}
+
+/* Landing page animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes floatDelayed {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-15px);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.8s ease-out both;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: floatDelayed 8s ease-in-out infinite;
+  animation-delay: 2s;
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Gradient animation */
+@keyframes gradientShift {
+  0%, 100% {
+    opacity: 0.15;
+    transform: translate(0, 0);
+  }
+  50% {
+    opacity: 0.25;
+    transform: translate(10px, -10px);
+  }
+}
+
+.animate-gradient-shift {
+  animation: gradientShift 12s ease-in-out infinite;
+}
+
+.animate-gradient-shift-delayed {
+  animation: gradientShift 15s ease-in-out infinite;
+  animation-delay: 3s;
+}
+
+/* Chart line animation */
+@keyframes chartLine {
+  0% {
+    stroke-dasharray: 0, 400;
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dasharray: 400, 0;
+    opacity: 1;
+  }
+}
+
+.animate-chart-line {
+  animation: chartLine 2s ease-out forwards;
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+}
+
+.animate-chart-wave {
+  animation: chartLine 2s ease-out forwards, float 4s ease-in-out infinite;
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+  transform-origin: center;
+}
+
+/* PNL Glow Pulse Animation */
+@keyframes pnlGlow {
+  0%, 100% {
+    text-shadow: 0 0 20px rgba(74, 222, 128, 0.3);
+  }
+  50% {
+    text-shadow: 0 0 30px rgba(74, 222, 128, 0.5);
+  }
+}
+
+@keyframes pnlGlowRed {
+  0%, 100% {
+    text-shadow: 0 0 20px rgba(248, 113, 113, 0.3);
+  }
+  50% {
+    text-shadow: 0 0 30px rgba(248, 113, 113, 0.5);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transform: none !important;
+  }
+  
+  /* Disable hover transforms for reduced motion */
+  [style*="transform"] {
+    transform: none !important;
   }
 }
