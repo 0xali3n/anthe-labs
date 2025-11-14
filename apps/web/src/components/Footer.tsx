@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Twitter, Github, Mail } from "lucide-react";
+import { Twitter, Linkedin, Send, Mail } from "lucide-react";
 
 export default function Footer() {
   return (
@@ -29,10 +29,11 @@ export default function Footer() {
             </p>
             <div className="flex items-center gap-3">
               <a
-                href="https://twitter.com"
+                href="https://twitter.com/intent/follow?screen_name=AntheLabs"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center hover:bg-slate-800 hover:border-blue-500/40 hover:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-200"
+                aria-label="Follow Anthé Labs on Twitter"
               >
                 <Twitter
                   size={18}
@@ -40,19 +41,33 @@ export default function Footer() {
                 />
               </a>
               <a
-                href="https://github.com"
+                href="https://www.linkedin.com/company/anthe-labs/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center hover:bg-slate-800 hover:border-blue-500/40 hover:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-200"
+                aria-label="Follow Anthé Labs on LinkedIn"
               >
-                <Github
+                <Linkedin
                   size={18}
                   className="text-slate-400 hover:text-blue-400 transition-colors"
                 />
               </a>
               <a
-                href="mailto:contact@anthelabs.com"
+                href="https://t.me/AntheLabs"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-10 h-10 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center hover:bg-slate-800 hover:border-blue-500/40 hover:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-200"
+                aria-label="Join Anthé Labs on Telegram"
+              >
+                <Send
+                  size={18}
+                  className="text-slate-400 hover:text-blue-400 transition-colors"
+                />
+              </a>
+              <a
+                href="mailto:anthefinance@gmail.com"
+                className="w-10 h-10 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center hover:bg-slate-800 hover:border-blue-500/40 hover:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-200"
+                aria-label="Email Anthé Labs"
               >
                 <Mail
                   size={18}
@@ -103,10 +118,10 @@ export default function Footer() {
             <ul className="space-y-3">
               <li>
                 <a
-                  href="mailto:support@anthelabs.com"
+                  href="mailto:anthefinance@gmail.com"
                   className="text-slate-400 hover:text-blue-400 text-sm transition-colors duration-200 inline-block"
                 >
-                  support@anthelabs.com
+                  anthefinance@gmail.com
                 </a>
               </li>
               <li>

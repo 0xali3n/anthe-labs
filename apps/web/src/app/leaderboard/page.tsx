@@ -549,8 +549,8 @@ export default function LeaderboardPage() {
                   Create Your Own Bot
                 </h3>
                 <p className="text-sm text-slate-400 max-w-xs leading-relaxed">
-                  Use your strategy or connect APIs to build custom trading bots
-                  tailored to your needs.
+                  Use known target wallet addresses to build custom trading
+                  bots.
                 </p>
               </div>
               <button className="mt-2 px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors duration-200 flex items-center gap-2">
