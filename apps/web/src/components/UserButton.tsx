@@ -163,7 +163,7 @@ export default function UserButton() {
     return (
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/50 border border-slate-700/50 animate-pulse">
-          <div className="h-9 w-9 rounded-full bg-slate-700"></div>
+          <div className="h-8 w-8 rounded-full bg-slate-700"></div>
           <div className="h-4 w-20 bg-slate-700 rounded hidden lg:block"></div>
         </div>
       </div>
@@ -199,15 +199,15 @@ export default function UserButton() {
           <img
             src={avatarUrl}
             alt={displayName}
-            className="h-9 w-9 rounded-full border-2 border-slate-700 object-cover transition-transform duration-200 group-hover/user:scale-110 flex-shrink-0"
+            className="h-7 w-7 rounded-full border-2 border-slate-700 object-cover transition-transform duration-200 group-hover/user:scale-110 flex-shrink-0"
             referrerPolicy={isGoogleAvatar(avatarUrl) ? "no-referrer" : undefined}
             crossOrigin="anonymous"
           />
-          <span className="text-sm text-white hidden lg:inline font-medium truncate max-w-[100px]">
+          <span className="text-sm text-white hidden lg:inline font-medium truncate max-w-[90px]">
             {displayName}
           </span>
           <ChevronDown 
-            size={14} 
+            size={13} 
             strokeWidth={2.5}
             className={`text-slate-400 transition-transform duration-200 flex-shrink-0 ${showDropdown ? 'rotate-180' : ''}`}
           />
