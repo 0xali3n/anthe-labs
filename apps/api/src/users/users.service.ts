@@ -11,6 +11,39 @@ export class UsersService {
     private walletsService: WalletsService,
   ) {}
 
+  // Generate a unique random username like "user_3267"
+  private async generateUniqueUsername(): Promise<string> {
+    let username: string;
+    let isUnique = false;
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (!isUnique && attempts < maxAttempts) {
+      // Generate random number between 1000 and 999999
+      const randomNum = Math.floor(Math.random() * (999999 - 1000 + 1)) + 1000;
+      username = `user_${randomNum}`;
+
+      // Check if username already exists
+      const existingUser = await this.prisma.user.findUnique({
+        where: { username },
+      });
+
+      if (!existingUser) {
+        isUnique = true;
+      } else {
+        attempts++;
+      }
+    }
+
+    if (!isUnique) {
+      // Fallback: use timestamp if we can't find a unique random number
+      const timestamp = Date.now();
+      username = `user_${timestamp}`;
+    }
+
+    return username!;
+  }
+
   // Upsert user (create or update) - automatically creates wallet if needed
   async upsert(createUserDto: CreateUserDto) {
     try {
@@ -26,6 +59,14 @@ export class UsersService {
         last_login: new Date(),
       };
 
+      // For existing users: generate username if they don't have one yet
+      if (existingUser && (!existingUser.username || existingUser.username.trim() === '')) {
+        if (!createUserDto.username || createUserDto.username.trim() === '') {
+          updateData.username = await this.generateUniqueUsername();
+          console.log(`✅ Generated username for existing user ${createUserDto.id}: ${updateData.username}`);
+        }
+      }
+
       // Only update avatar_url if it's a new user OR if avatar_url is not set
       // This preserves user's selected avatar
       if (!existingUser || !existingUser.avatar_url) {
@@ -40,15 +81,25 @@ export class UsersService {
       // Don't overwrite selected_avatar_url or avatar_source on update
       // These are only set when user explicitly chooses an avatar
 
+      const createData: any = {
+        ...createUserDto,
+        selected_avatar_url: createUserDto.avatar_url, // Set to Google photo initially
+        avatar_source: 'google', // Default to Google photo
+        last_login: new Date(),
+      };
+
+      // For new users: generate username if empty or not provided
+      if (!existingUser) {
+        if (!createUserDto.username || createUserDto.username.trim() === '') {
+          createData.username = await this.generateUniqueUsername();
+          console.log(`✅ Generated username for new user ${createUserDto.id}: ${createData.username}`);
+        }
+      }
+
       const user = await this.prisma.user.upsert({
         where: { id: createUserDto.id },
         update: updateData,
-        create: {
-          ...createUserDto,
-          selected_avatar_url: createUserDto.avatar_url, // Set to Google photo initially
-          avatar_source: 'google', // Default to Google photo
-          last_login: new Date(),
-        },
+        create: createData,
       });
 
       // Automatically check and create wallet if it doesn't exist
@@ -203,6 +254,80 @@ export class UsersService {
       }
       // For other errors, return error response format (frontend checks response.success)
       return { success: false, error: error.message || 'Failed to update user' };
+    }
+  }
+
+  // Get user by username (public endpoint)
+  async getByUsername(username: string) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { username },
+      });
+
+      if (!user) {
+        return { success: false, error: 'User not found' };
+      }
+
+      // Get wallet address
+      let walletAddress: string | null = null;
+      try {
+        walletAddress = await this.walletsService.getWalletAddress(user.id);
+      } catch (walletError: any) {
+        console.error(`⚠️ Failed to get wallet for user ${user.id}:`, walletError.message);
+      }
+
+      // Sanitize output - only return safe public fields
+      return {
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email, // Public profile can show email
+          full_name: user.full_name,
+          avatar_url: user.avatar_url,
+          selected_avatar_url: user.selected_avatar_url,
+          avatar_source: user.avatar_source,
+          display_name: user.display_name,
+          username: user.username,
+          bio: user.bio,
+          twitter_username: user.twitter_username,
+          twitter_connected: user.twitter_connected,
+          created_at: user.created_at,
+          updated_at: user.updated_at,
+          wallet_address: walletAddress,
+          // Don't return: google_id, twitter_user_id, last_login (private)
+        },
+      };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Get all usernames (for autocomplete/search) - public endpoint
+  async getAllUsernames() {
+    try {
+      const users = await this.prisma.user.findMany({
+        where: {
+          username: { not: null },
+        },
+        select: {
+          username: true,
+          display_name: true,
+          full_name: true,
+        },
+        orderBy: {
+          created_at: 'desc',
+        },
+      });
+
+      return {
+        success: true,
+        users: users.map((u) => ({
+          username: u.username!,
+          displayName: u.display_name || u.full_name || u.username!,
+        })),
+      };
+    } catch (error: any) {
+      return { success: false, error: error.message };
     }
   }
 }

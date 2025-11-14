@@ -124,6 +124,10 @@ button.signin-glow:active:not(:disabled) {
   }
 }
 
+.animate-fadeIn {
+  animation: fadeIn 0.35s ease-out;
+}
+
 @keyframes fadeUp {
   from {
     opacity: 0;

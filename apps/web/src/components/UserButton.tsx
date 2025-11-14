@@ -4,9 +4,10 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { upsertUser } from "@/lib/usersApi";
 import { formatWalletAddress } from "@/lib/walletsApi";
-import { Settings, LogOut, Wallet, Copy, Check, ChevronDown } from "lucide-react";
+import { Settings, LogOut, Wallet, Copy, Check, ChevronDown, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { getCurrentUser, UserData } from "@/lib/usersApi";
 
 interface User {
   id: string;
@@ -26,6 +27,7 @@ export default function UserButton() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [userData, setUserData] = useState<UserData | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -59,8 +61,21 @@ export default function UserButton() {
             if (result?.wallet_address) {
               setWalletAddress(result.wallet_address);
             }
+            // Store full user data for username
+            setUserData(result);
           } catch (error) {
             console.error("❌ Failed to save user to database:", error);
+          }
+          
+          // Also fetch current user data to get username
+          try {
+            const currentUser = await getCurrentUser();
+            setUserData(currentUser);
+            if (currentUser?.wallet_address) {
+              setWalletAddress(currentUser.wallet_address);
+            }
+          } catch (error) {
+            console.error("❌ Failed to fetch user data:", error);
           }
         } else {
           setUser(null);
@@ -102,8 +117,21 @@ export default function UserButton() {
           if (result?.wallet_address) {
             setWalletAddress(result.wallet_address);
           }
+          // Store full user data for username
+          setUserData(result);
         } catch (error) {
           console.error("❌ Failed to save user to database:", error);
+        }
+        
+        // Also fetch current user data to get username
+        try {
+          const currentUser = await getCurrentUser();
+          setUserData(currentUser);
+          if (currentUser?.wallet_address) {
+            setWalletAddress(currentUser.wallet_address);
+          }
+        } catch (error) {
+          console.error("❌ Failed to fetch user data:", error);
         }
       } else {
         setUser(null);
@@ -249,6 +277,16 @@ export default function UserButton() {
 
               {/* Menu Items */}
               <div className="py-1">
+                {userData?.username && (
+                  <Link
+                    href={`/profile/${userData.username}`}
+                    onClick={() => setShowDropdown(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-800 transition-colors duration-200 font-normal"
+                  >
+                    <User size={16} className="text-blue-400" />
+                    <span>Profile</span>
+                  </Link>
+                )}
                 <Link
                   href="/settings"
                   onClick={() => setShowDropdown(false)}
