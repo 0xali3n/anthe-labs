@@ -19,6 +19,10 @@
   }
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -220,6 +224,25 @@ html {
   transform-origin: center;
 }
 
+/* PNL Glow Pulse Animation */
+@keyframes pnlGlow {
+  0%, 100% {
+    text-shadow: 0 0 20px rgba(74, 222, 128, 0.3);
+  }
+  50% {
+    text-shadow: 0 0 30px rgba(74, 222, 128, 0.5);
+  }
+}
+
+@keyframes pnlGlowRed {
+  0%, 100% {
+    text-shadow: 0 0 20px rgba(248, 113, 113, 0.3);
+  }
+  50% {
+    text-shadow: 0 0 30px rgba(248, 113, 113, 0.5);
+  }
+}
+
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -228,5 +251,11 @@ html {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    transform: none !important;
+  }
+  
+  /* Disable hover transforms for reduced motion */
+  [style*="transform"] {
+    transform: none !important;
   }
 }
