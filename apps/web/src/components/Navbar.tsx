@@ -55,143 +55,145 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="sticky top-0 z-50 px-4 sm:px-6 lg:px-8 py-0">
+    <nav className="sticky top-0 z-50 px-4 sm:px-6 lg:px-8 py-3">
       <div className="max-w-7xl mx-auto">
+        {/* Outer rounded pill container with glassmorphism */}
         <div
-          className="border border-slate-800/80 rounded-2xl px-4 sm:px-6 py-1 backdrop-blur-xl"
+          className="rounded-2xl header-pill flex items-center justify-between px-5 py-3"
           style={{
-            background: "rgba(6, 9, 19, 0.85)",
-            boxShadow:
-              "0 8px 32px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(59, 130, 246, 0.1), 0 2px 8px rgba(0, 0, 0, 0.3)",
+            background: "rgba(6, 9, 19, 0.75)",
+            borderBottom: "1px solid rgba(255,255,255,0.05)",
+            border: "1px solid rgba(255,255,255,0.05)",
+            backdropFilter: "blur(20px) saturate(180%)",
+            WebkitBackdropFilter: "blur(20px) saturate(180%)",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
           }}
         >
-          <div className="flex items-center justify-between gap-4">
-            {/* LEFT: Logo + Navigation Links */}
-            <div className="flex items-center gap-12 sm:gap-14">
-              {/* Logo */}
-              <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-                <img
-                  src="/logo.png"
-                  alt="Anthé Labs"
-                  className="h-6 w-6 sm:h-7 sm:w-7"
-                  onError={(e) => {
-                    // Fallback if logo doesn't exist yet
-                    (e.target as HTMLImageElement).style.display = "none";
-                  }}
-                />
-                <span className="text-lg sm:text-xl font-semibold text-white leading-tight">
+          {/* Left: logo block + nav links */}
+          <div className="flex items-center gap-6">
+            {/* Logo capsule */}
+            <Link href="/" className="flex items-center gap-3 no-underline">
+              <div className="logo-pill flex items-center gap-3 px-3 py-1 rounded-full">
+                {/* circular icon area */}
+                <div className="logo-circle flex items-center justify-center shrink-0">
+                  <img
+                    src="/logo.png"
+                    alt="Anthé Labs"
+                    className="h-6 w-6"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                </div>
+
+                {/* company name with gradient */}
+                <span className="text-base font-semibold bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent tracking-tight">
                   Anthé Labs
                 </span>
-              </Link>
-
-              {/* Navigation Links */}
-              <div className="hidden md:flex items-center gap-1">
-                {navLinks.map((link) => {
-                  const isActive = pathname === link.path;
-                  return (
-                    <Link
-                      key={link.path}
-                      href={link.path}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 relative ${
-                        isActive
-                          ? "text-white bg-slate-800/15"
-                          : "text-slate-400 hover:text-white hover:bg-slate-800/10"
-                      }`}
-                    >
-                      {link.name}
-                      {isActive && (
-                        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2/3 h-0.5 bg-gradient-to-r from-transparent via-blue-400 to-transparent rounded-full" />
-                      )}
-                    </Link>
-                  );
-                })}
               </div>
+            </Link>
+
+            {/* Nav links block: rounded, spaced */}
+            <div className="hidden md:flex items-center gap-2 bg-transparent rounded-full px-1 py-1">
+              {navLinks.map((link) => {
+                const isActive = pathname === link.path;
+                return (
+                  <Link
+                    key={link.path}
+                    href={link.path}
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                      isActive
+                        ? "text-white bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border border-blue-500/20 shadow-active-link"
+                        : "text-slate-300 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    {link.name}
+                  </Link>
+                );
+              })}
             </div>
+          </div>
 
-            {/* RIGHT: Deposit, Balance, User Profile */}
-            <div className="flex items-center gap-3 flex-shrink-0">
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <div className="h-9 w-20 bg-slate-800/50 rounded-lg animate-pulse"></div>
-                  <div className="h-9 w-24 bg-slate-800/50 rounded-lg animate-pulse"></div>
-                </div>
-              ) : (
-                <>
-                  {isSignedIn && (
-                    <>
-                      {/* Deposit Button */}
-                      <button className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap hover:shadow-[0_0_10px_rgba(59,130,246,0.4)]">
-                        <Wallet size={13} />
-                        <span className="hidden sm:inline">Deposit</span>
-                      </button>
-
-                      {/* Balance Display */}
-                      <div
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-700/30"
-                        style={{
-                          background:
-                            "linear-gradient(135deg, rgba(30, 41, 59, 0.4), rgba(15, 23, 42, 0.4))",
-                        }}
-                      >
-                        <img
-                          src="/aptos.png"
-                          alt="Aptos"
-                          className="h-4 w-4"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display =
-                              "none";
-                          }}
-                        />
-                        <span className="text-sm font-semibold text-blue-400">
-                          {balance} USDT
-                        </span>
-                      </div>
-                    </>
-                  )}
-
-                  {/* User Profile or Sign In */}
-                  {isSignedIn ? (
-                    <UserButton />
-                  ) : (
-                    <button
-                      onClick={signInGoogle}
-                      disabled={signingIn}
-                      className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed whitespace-nowrap shadow-sm"
-                    >
-                      {signingIn ? (
-                        <>
-                          <svg
-                            className="animate-spin h-4 w-4 text-white inline-block mr-2"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                          >
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                            ></circle>
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            ></path>
-                          </svg>
-                          <span className="hidden sm:inline">
-                            Signing in...
-                          </span>
-                        </>
-                      ) : (
-                        "Sign In"
-                      )}
+          {/* Right: deposit / balance / profile */}
+          <div className="flex items-center gap-3">
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <div className="h-9 w-20 bg-slate-800/50 rounded-lg animate-pulse"></div>
+                <div className="h-9 w-24 bg-slate-800/50 rounded-lg animate-pulse"></div>
+              </div>
+            ) : (
+              <>
+                {isSignedIn && (
+                  <>
+                    {/* Deposit button: rounded capsule with gradient */}
+                    <button className="flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20">
+                      <Wallet size={14} />
+                      <span className="hidden sm:inline">Deposit</span>
                     </button>
-                  )}
-                </>
-              )}
-            </div>
+
+                    {/* Balance display: pill with semi-transparent gradient */}
+                    <div
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-700/30"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, rgba(30,41,59,0.45), rgba(15,23,42,0.35))",
+                      }}
+                    >
+                      <img
+                        src="/aptos.png"
+                        alt="Aptos"
+                        className="h-4 w-4 rounded-full"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                      <span className="text-sm font-semibold text-white">
+                        {balance} USDT
+                      </span>
+                    </div>
+                  </>
+                )}
+
+                {/* User Profile or Sign In button */}
+                {isSignedIn ? (
+                  <UserButton />
+                ) : (
+                  <button
+                    onClick={signInGoogle}
+                    disabled={signingIn}
+                    className="px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed bg-slate-800 hover:bg-slate-700 text-white shadow-sm"
+                  >
+                    {signingIn ? (
+                      <>
+                        <svg
+                          className="animate-spin h-4 w-4 text-white inline-block mr-2"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        <span className="hidden sm:inline">Signing in...</span>
+                      </>
+                    ) : (
+                      "Sign In"
+                    )}
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>
