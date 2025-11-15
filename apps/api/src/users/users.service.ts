@@ -313,6 +313,9 @@ export class UsersService {
           username: true,
           display_name: true,
           full_name: true,
+          selected_avatar_url: true,
+          avatar_url: true,
+          twitter_connected: true,
         },
         orderBy: {
           created_at: 'desc',
@@ -324,6 +327,8 @@ export class UsersService {
         users: users.map((u) => ({
           username: u.username!,
           displayName: u.display_name || u.full_name || u.username!,
+          avatarUrl: u.selected_avatar_url || u.avatar_url || null,
+          twitterConnected: u.twitter_connected || false,
         })),
       };
     } catch (error: any) {

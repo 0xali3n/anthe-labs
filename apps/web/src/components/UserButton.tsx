@@ -222,29 +222,30 @@ export default function UserButton() {
       <div className="relative">
         <button
           onClick={() => setShowDropdown(!showDropdown)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:bg-slate-800 hover:border-slate-700 transition-all duration-200 cursor-pointer group/user"
+          className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:bg-slate-800 hover:border-slate-700 transition-all duration-200 cursor-pointer group/user"
         >
           <img
             src={avatarUrl}
             alt={displayName}
-            className="h-7 w-7 rounded-full border-2 border-slate-700 object-cover transition-transform duration-200 group-hover/user:scale-110 flex-shrink-0"
+            className="h-6 w-6 sm:h-7 sm:w-7 rounded-full border-2 border-slate-700 object-cover transition-transform duration-200 group-hover/user:scale-110 flex-shrink-0"
             referrerPolicy={isGoogleAvatar(avatarUrl) ? "no-referrer" : undefined}
             crossOrigin="anonymous"
           />
-          <span className="text-sm text-white hidden lg:inline font-medium truncate max-w-[90px]">
+          <span className="text-xs sm:text-sm text-white hidden md:inline font-medium truncate max-w-[90px]">
             {displayName}
           </span>
           <ChevronDown 
-            size={13} 
+            size={12}
+            className="w-3 h-3 sm:w-[13px] sm:h-[13px] text-slate-400 transition-transform duration-200 flex-shrink-0"
             strokeWidth={2.5}
-            className={`text-slate-400 transition-transform duration-200 flex-shrink-0 ${showDropdown ? 'rotate-180' : ''}`}
+            style={{ transform: showDropdown ? 'rotate(180deg)' : 'rotate(0deg)' }}
           />
         </button>
 
         {/* Dropdown Menu */}
         {showDropdown && (
           <div 
-            className="absolute right-0 top-full mt-2 w-64 bg-slate-900 border border-slate-800 rounded-xl z-50 overflow-hidden"
+            className="absolute right-0 top-full mt-2 w-56 sm:w-64 bg-slate-900 border border-slate-800 rounded-xl z-50 overflow-hidden"
             style={{
               boxShadow: '0 6px 20px rgba(0, 0, 0, 0.4)',
             }}

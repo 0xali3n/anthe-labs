@@ -170,11 +170,21 @@ export async function getUserByUsername(username: string): Promise<UserData> {
 }
 
 // Get all usernames (for autocomplete) - public endpoint
-export async function getAllUsernames(): Promise<{ username: string; displayName: string }[]> {
+export async function getAllUsernames(): Promise<{ 
+  username: string; 
+  displayName: string;
+  avatarUrl: string | null;
+  twitterConnected: boolean;
+}[]> {
   try {
     const response = await apiRequest<{
       success: boolean;
-      users?: { username: string; displayName: string }[];
+      users?: { 
+        username: string; 
+        displayName: string;
+        avatarUrl: string | null;
+        twitterConnected: boolean;
+      }[];
       error?: string;
     }>("/users/usernames", {
       method: "GET",

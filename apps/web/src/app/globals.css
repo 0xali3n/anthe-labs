@@ -247,6 +247,18 @@ html {
   }
 }
 
+/* Tooltip animation */
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateX(0);
+  }
+}
+
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   *,

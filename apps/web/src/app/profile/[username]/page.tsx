@@ -15,30 +15,334 @@ import {
   Search,
   Calendar,
   Shield,
-  Copy as CopyIcon,
-  ChevronDown,
-  ChevronUp,
-  HelpCircle,
-  Target,
 } from "lucide-react";
-import { TierChip, TierProgressBar } from "@/components/TierBadge";
-import { TierModal } from "@/components/TierModal";
-import {
-  getTier,
-  getTierTooltip,
-  isPremiumTier,
-  TIER_THRESHOLDS,
-  TierConfig,
-  getProgressToNextTier,
-} from "@/lib/tiers";
+import { getTier, TierConfig, TIER_THRESHOLDS } from "@/lib/tiers";
 
 interface UserStats {
-  Rank: number | null;
   Address: string;
   NumberOfTxns: number;
   TotalVolume: string;
   PNL: string;
   ROI: string;
+}
+
+// Verified Badge Component with Hover Tooltip
+function VerifiedBadge({ isVerified }: { isVerified: boolean }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const badgeRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
+
+  const updateTooltipPosition = () => {
+    if (badgeRef.current) {
+      const rect = badgeRef.current.getBoundingClientRect();
+      const scrollY = window.scrollY;
+      const scrollX = window.scrollX;
+
+      setTooltipPosition({
+        top: rect.top + scrollY + rect.height / 2,
+        left: rect.right + scrollX + 12,
+      });
+    }
+  };
+
+  const handleMouseEnter = () => {
+    updateTooltipPosition();
+    setShowTooltip(true);
+  };
+
+  useEffect(() => {
+    if (showTooltip) {
+      const updatePosition = () => updateTooltipPosition();
+      window.addEventListener("scroll", updatePosition, true);
+      window.addEventListener("resize", updatePosition);
+      return () => {
+        window.removeEventListener("scroll", updatePosition, true);
+        window.removeEventListener("resize", updatePosition);
+      };
+    }
+  }, [showTooltip]);
+
+  if (isVerified) {
+    return (
+      <>
+        <div
+          ref={badgeRef}
+          className="relative inline-block"
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={() => setShowTooltip(false)}
+        >
+          <div className="flex items-center gap-1 px-2 py-1 bg-[#3B82F6]/10 border border-[#3B82F6]/30 rounded-lg">
+            <Shield
+              size={12}
+              className="sm:w-[14px] sm:h-[14px] text-[#3B82F6]"
+            />
+            <span className="text-xs text-[#3B82F6] font-medium">Verified</span>
+          </div>
+        </div>
+
+        {showTooltip && (
+          <div
+            className="fixed pointer-events-none"
+            style={{
+              top: `${tooltipPosition.top}px`,
+              left: `${tooltipPosition.left}px`,
+              transform: "translateY(-50%)",
+              zIndex: 99999,
+            }}
+            onMouseEnter={() => setShowTooltip(true)}
+            onMouseLeave={() => setShowTooltip(false)}
+          >
+            <div
+              ref={tooltipRef}
+              className="pointer-events-auto w-64 bg-gradient-to-br from-[#0F1419] via-[#0A0D12] to-[#0F1419] border border-white/20 rounded-xl p-4 shadow-2xl backdrop-blur-xl transition-all duration-200"
+              style={{
+                animation: "tooltipFadeIn 0.2s ease-out",
+                boxShadow: `0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(59, 130, 246, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)`,
+              }}
+            >
+              <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-3 h-3 rotate-45 bg-gradient-to-br from-[#0F1419] to-[#0A0D12] border-l border-b border-[#3B82F6]/40 shadow-[-2px_2px_4px_rgba(0,0,0,0.3)]" />
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-2">
+                  <Shield size={16} className="text-[#3B82F6]" />
+                  <h4 className="text-sm font-bold text-white">
+                    Verified Account
+                  </h4>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Twitter connected with real account, active followers, and
+                  verified activity.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // Unverified badge
+  return (
+    <>
+      <div
+        ref={badgeRef}
+        className="relative inline-block"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={() => setShowTooltip(false)}
+      >
+        <div className="flex items-center gap-1 px-2 py-1 bg-slate-700/20 border border-slate-600/30 rounded-lg">
+          <Shield
+            size={12}
+            className="sm:w-[14px] sm:h-[14px] text-slate-400"
+          />
+          <span className="text-xs text-slate-400 font-medium">Unverified</span>
+        </div>
+      </div>
+
+      {showTooltip && (
+        <div
+          className="fixed pointer-events-none"
+          style={{
+            top: `${tooltipPosition.top}px`,
+            left: `${tooltipPosition.left}px`,
+            transform: "translateY(-50%)",
+            zIndex: 99999,
+          }}
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+        >
+          <div
+            ref={tooltipRef}
+            className="pointer-events-auto w-64 bg-gradient-to-br from-[#0F1419] via-[#0A0D12] to-[#0F1419] border border-white/20 rounded-xl p-4 shadow-2xl backdrop-blur-xl transition-all duration-200"
+            style={{
+              animation: "tooltipFadeIn 0.2s ease-out",
+              boxShadow: `0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(148, 163, 184, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)`,
+            }}
+          >
+            <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-3 h-3 rotate-45 bg-gradient-to-br from-[#0F1419] to-[#0A0D12] border-l border-b border-slate-500/40 shadow-[-2px_2px_4px_rgba(0,0,0,0.3)]" />
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-2">
+                <Shield size={16} className="text-slate-400" />
+                <h4 className="text-sm font-bold text-white">Unverified</h4>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed mb-2">
+                Connect your Twitter account for verification.
+              </p>
+              <p className="text-xs text-slate-400">
+                Go to Settings to connect Twitter.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// Volume Tier Badge Component with Hover Tooltip showing all tiers
+function VolumeTierBadge({ tier }: { tier: TierConfig }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const badgeRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
+
+  const allTiers = TIER_THRESHOLDS.volume;
+
+  // Calculate tooltip position based on badge position
+  const updateTooltipPosition = () => {
+    if (badgeRef.current) {
+      const rect = badgeRef.current.getBoundingClientRect();
+      const scrollY = window.scrollY;
+      const scrollX = window.scrollX;
+
+      setTooltipPosition({
+        top: rect.top + scrollY + rect.height / 2,
+        left: rect.right + scrollX + 12, // 12px spacing
+      });
+    }
+  };
+
+  const handleMouseEnter = () => {
+    updateTooltipPosition();
+    setShowTooltip(true);
+  };
+
+  // Update position on scroll/resize
+  useEffect(() => {
+    if (showTooltip) {
+      const updatePosition = () => updateTooltipPosition();
+      window.addEventListener("scroll", updatePosition, true);
+      window.addEventListener("resize", updatePosition);
+      return () => {
+        window.removeEventListener("scroll", updatePosition, true);
+        window.removeEventListener("resize", updatePosition);
+      };
+    }
+  }, [showTooltip]);
+
+  return (
+    <>
+      <div
+        ref={badgeRef}
+        className="relative inline-block"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={() => setShowTooltip(false)}
+      >
+        {/* Tier Badge */}
+        <div
+          className="px-3 py-1.5 rounded-lg border font-semibold text-xs cursor-pointer transition-all duration-200 hover:scale-105"
+          style={{
+            backgroundColor: tier.bgColor,
+            borderColor: tier.borderColor,
+            color: tier.color,
+            boxShadow: `0 2px 8px ${tier.borderColor}40`,
+          }}
+        >
+          {tier.name}
+        </div>
+      </div>
+
+      {/* Premium Tooltip Popup - Fixed positioning outside container */}
+      {showTooltip && (
+        <div
+          className="fixed pointer-events-none"
+          style={{
+            top: `${tooltipPosition.top}px`,
+            left: `${tooltipPosition.left}px`,
+            transform: "translateY(-50%)",
+            zIndex: 99999,
+          }}
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+        >
+          <div
+            ref={tooltipRef}
+            className="pointer-events-auto w-[calc(100vw-2rem)] sm:w-80 max-w-sm bg-gradient-to-br from-[#0F1419] via-[#0A0D12] to-[#0F1419] border border-white/20 rounded-2xl p-4 sm:p-5 shadow-2xl backdrop-blur-xl transition-all duration-200"
+            style={{
+              animation: "tooltipFadeIn 0.2s ease-out",
+              boxShadow: `0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px ${tier.borderColor}30, inset 0 1px 0 rgba(255, 255, 255, 0.1)`,
+            }}
+          >
+            {/* Tooltip Arrow - pointing left */}
+            <div
+              className="absolute -left-2 top-1/2 -translate-y-1/2 w-3 h-3 rotate-45"
+              style={{
+                background: "linear-gradient(135deg, #0F1419 0%, #0A0D12 100%)",
+                borderLeft: `1px solid ${tier.borderColor}40`,
+                borderBottom: `1px solid ${tier.borderColor}40`,
+                boxShadow: `-2px 2px 4px rgba(0, 0, 0, 0.3)`,
+              }}
+            />
+
+            {/* Tooltip Content - All Tiers */}
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/10">
+                <div
+                  className="w-2 h-2 rounded-full"
+                  style={{ backgroundColor: tier.color }}
+                />
+                <h4 className="text-sm font-bold text-white">Volume Tiers</h4>
+              </div>
+              <div className="space-y-2">
+                {allTiers.map((t) => {
+                  const isCurrentTier = t.name === tier.name;
+                  const rangeText =
+                    t.max === null
+                      ? `$${t.min.toLocaleString()}+`
+                      : `$${t.min.toLocaleString()} - $${t.max.toLocaleString()}`;
+
+                  return (
+                    <div
+                      key={t.name}
+                      className={`p-3 rounded-xl border transition-all duration-200 ${
+                        isCurrentTier
+                          ? "ring-2 scale-[1.02]"
+                          : "hover:bg-white/5"
+                      }`}
+                      style={{
+                        backgroundColor: isCurrentTier
+                          ? `${t.bgColor}80`
+                          : "transparent",
+                        borderColor: isCurrentTier
+                          ? t.borderColor
+                          : "rgba(255, 255, 255, 0.08)",
+                        boxShadow: isCurrentTier
+                          ? `0 4px 12px ${t.borderColor}30`
+                          : "none",
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                          <div
+                            className="w-2.5 h-2.5 rounded-full flex-shrink-0 ring-2 ring-white/10"
+                            style={{ backgroundColor: t.color }}
+                          />
+                          <span
+                            className="text-xs font-bold truncate"
+                            style={{ color: t.color }}
+                          >
+                            {t.name}
+                          </span>
+                          {isCurrentTier && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-slate-300 font-medium whitespace-nowrap">
+                              Current
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-slate-400 font-medium whitespace-nowrap">
+                          {rangeText}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 export default function ProfilePage() {
@@ -51,29 +355,23 @@ export default function ProfilePage() {
   const [copied, setCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [allUsernames, setAllUsernames] = useState<
-    { username: string; displayName: string }[]
+    {
+      username: string;
+      displayName: string;
+      avatarUrl: string | null;
+      twitterConnected: boolean;
+    }[]
   >([]);
   const [filteredUsernames, setFilteredUsernames] = useState<
-    { username: string; displayName: string }[]
+    {
+      username: string;
+      displayName: string;
+      avatarUrl: string | null;
+      twitterConnected: boolean;
+    }[]
   >([]);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
-  const [showTierModal, setShowTierModal] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<{
-    volume: boolean;
-    pnl: boolean;
-    roi: boolean;
-    trades: boolean;
-  }>({
-    volume: false,
-    pnl: false,
-    roi: false,
-    trades: false,
-  });
   const searchRef = useRef<HTMLDivElement>(null);
-  const volumeRef = useRef<HTMLDivElement>(null);
-  const pnlRef = useRef<HTMLDivElement>(null);
-  const roiRef = useRef<HTMLDivElement>(null);
-  const tradesRef = useRef<HTMLDivElement>(null);
 
   // Load all usernames on mount
   useEffect(() => {
@@ -121,30 +419,6 @@ export default function ProfilePage() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showAutocomplete]);
-
-  // Scroll to section function
-  const scrollToSection = (section: "volume" | "pnl" | "roi" | "trades") => {
-    const refs = {
-      volume: volumeRef,
-      pnl: pnlRef,
-      roi: roiRef,
-      trades: tradesRef,
-    };
-    const ref = refs[section];
-    if (ref.current) {
-      ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
-      // Expand the section when scrolling to it
-      setExpandedSections((prev) => ({ ...prev, [section]: true }));
-    }
-  };
-
-  // Toggle section expansion
-  const toggleSection = (section: "volume" | "pnl" | "roi" | "trades") => {
-    setExpandedSections((prev) => ({
-      ...prev,
-      [section]: !prev[section],
-    }));
-  };
 
   useEffect(() => {
     async function fetchData() {
@@ -217,53 +491,16 @@ export default function ProfilePage() {
     router.push(`/profile/${selectedUsername}`);
   };
 
-  // Calculate values - must be before early returns to maintain hook order
+  // Calculate values
   const pnlValue = parseFloat(stats?.PNL || "0");
   const roiValue = parseFloat(stats?.ROI || "0");
   const volumeValue = parseFloat(stats?.TotalVolume || "0");
-  const tradesValue = stats?.NumberOfTxns || 0;
 
-  // Calculate tiers - memoized to prevent recalculation
-  // MUST be called before early returns to maintain hook order
+  // Calculate volume tier
   const volumeTier = useMemo(
     () => getTier("volume", volumeValue),
     [volumeValue]
   );
-  const tradesTier = useMemo(
-    () => getTier("trades", tradesValue),
-    [tradesValue]
-  );
-  const pnlTier = useMemo(() => getTier("pnl", pnlValue), [pnlValue]);
-  const roiTier = useMemo(() => getTier("roi", roiValue), [roiValue]);
-
-  // Primary tier (default: Volume)
-  const primaryTier = useMemo(() => volumeTier, [volumeTier]);
-  const isPremiumUser = useMemo(
-    () => primaryTier && isPremiumTier(primaryTier.name),
-    [primaryTier]
-  );
-
-  // Generate sparkline data - memoized to prevent regeneration
-  const sparklineData = useMemo(() => {
-    const points = 20;
-    const data = [];
-    let value = 50;
-    for (let i = 0; i < points; i++) {
-      value += (Math.random() - 0.5) * 10;
-      value = Math.max(10, Math.min(90, value));
-      data.push({ x: i, y: value });
-    }
-    return data;
-  }, []);
-
-  const sparklinePath = useMemo(() => {
-    return sparklineData
-      .map(
-        (point, i) =>
-          `${i === 0 ? "M" : "L"} ${(i / (sparklineData.length - 1)) * 100} ${100 - point.y}`
-      )
-      .join(" ");
-  }, [sparklineData]);
 
   // Format date for "Active Since"
   const formatActiveSince = (dateString?: string) => {
@@ -320,14 +557,14 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-[#060913]">
       {/* Search Bar with Autocomplete */}
-      <section className="pt-20 pb-4 px-4 sm:px-6 lg:px-8">
+      <section className="pt-16 sm:pt-20 pb-3 sm:pb-4 px-3 sm:px-4 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between gap-4 mb-6">
+          <div className="flex items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-4 lg:mb-6">
             <div className="flex-1 max-w-md relative" ref={searchRef}>
               <div className="relative">
                 <Search
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={18}
+                  className="absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={16}
                 />
                 <input
                   type="text"
@@ -339,31 +576,59 @@ export default function ProfilePage() {
                       setShowAutocomplete(true);
                     }
                   }}
-                  className="w-full pl-10 pr-4 py-2.5 bg-[#0b1220] border border-[#1F242D] rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 transition-colors"
+                  className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 text-sm sm:text-base bg-[#0b1220] border border-[#1F242D] rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 transition-colors"
                 />
               </div>
 
               {/* Autocomplete Dropdown */}
               {showAutocomplete && filteredUsernames.length > 0 && (
-                <div className="absolute top-full mt-2 w-full bg-[#0b1220] border border-[#1F242D] rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto">
-                  {filteredUsernames.map((u) => (
-                    <button
-                      key={u.username}
-                      onClick={() => handleUsernameSelect(u.username)}
-                      className="w-full px-4 py-3 text-left hover:bg-[#151A22] transition-colors border-b border-[#1F242D] last:border-b-0"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1">
-                          <p className="text-white font-medium">
-                            @{u.username}
-                          </p>
-                          <p className="text-sm text-slate-400">
-                            {u.displayName}
-                          </p>
+                <div className="absolute top-full mt-2 w-full bg-[#0b1220] border border-[#1F242D] rounded-xl shadow-xl z-50 max-h-80 overflow-y-auto custom-scrollbar">
+                  {filteredUsernames.map((u) => {
+                    return (
+                      <button
+                        key={u.username}
+                        onClick={() => handleUsernameSelect(u.username)}
+                        className="w-full px-4 py-3 text-left hover:bg-[#151A22] transition-all duration-200 border-b border-[#1F242D] last:border-b-0 group"
+                      >
+                        <div className="flex items-center gap-3">
+                          {/* Avatar - Only show if exists in DB */}
+                          {u.avatarUrl && (
+                            <div className="relative flex-shrink-0">
+                              <img
+                                src={u.avatarUrl}
+                                alt={u.displayName}
+                                className="w-10 h-10 rounded-full border border-slate-700/50 object-cover group-hover:border-[#3B82F6]/50 transition-colors"
+                                referrerPolicy="no-referrer"
+                              />
+                              {u.twitterConnected && (
+                                <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-[#3B82F6] rounded-full border-2 border-[#0b1220] flex items-center justify-center">
+                                  <Shield size={8} className="text-white" />
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Name and Username */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <p className="text-white font-semibold text-sm truncate">
+                                {u.displayName}
+                              </p>
+                              {u.twitterConnected && (
+                                <Shield
+                                  size={12}
+                                  className="text-[#3B82F6] flex-shrink-0"
+                                />
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-400 truncate">
+                              @{u.username}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -372,9 +637,9 @@ export default function ProfilePage() {
       </section>
 
       {/* Profile Header Section */}
-      <section className="px-4 sm:px-6 lg:px-8 pb-8">
+      <section className="px-3 sm:px-4 lg:px-8 pb-6 sm:pb-8">
         <div className="max-w-7xl mx-auto">
-          <div className="bg-gradient-to-br from-[#11151C] via-[#0F1318] to-[#0D1117] border border-[#1F242D] rounded-2xl p-8 sm:p-10 relative overflow-hidden animate-fadeIn">
+          <div className="bg-gradient-to-br from-[#11151C] via-[#0F1318] to-[#0D1117] border border-[#1F242D] rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-6 relative overflow-hidden animate-fadeIn">
             {/* Vignette effect */}
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20 pointer-events-none" />
             {/* Background Pattern */}
@@ -389,45 +654,46 @@ export default function ProfilePage() {
             </div>
 
             <div className="relative z-10">
-              <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6 lg:gap-8">
+              <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 sm:gap-5 lg:gap-6">
                 {/* Avatar */}
-                <div className="relative flex-shrink-0">
+                <div className="relative flex-shrink-0 mx-auto sm:mx-0">
                   <img
                     src={avatarUrl}
                     alt={displayName}
-                    className="w-32 h-32 sm:w-40 sm:h-40 rounded-full border-2 border-slate-700/50 object-cover"
+                    className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-full border-2 border-slate-700/50 object-cover"
                     referrerPolicy="no-referrer"
                   />
                   <div
                     className="absolute inset-0 rounded-full -z-10"
-                    style={{ boxShadow: "0 6px 30px rgba(14, 22, 35, 0.6)" }}
+                    style={{ boxShadow: "0 4px 20px rgba(14, 22, 35, 0.5)" }}
                   />
                 </div>
 
                 {/* Name and Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2 flex-wrap">
-                        <h1 className="text-3xl sm:text-4xl font-bold text-white">
+                <div className="flex-1 min-w-0 w-full">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 sm:gap-2.5 mb-1.5 flex-wrap justify-center sm:justify-start">
+                        <h1 className="text-xl sm:text-2xl lg:text-2xl font-bold text-white text-center sm:text-left break-words">
                           {displayName}
                         </h1>
-                        {user.twitter_connected && (
-                          <div className="flex items-center gap-1 px-2 py-1 bg-[#3B82F6]/10 border border-[#3B82F6]/30 rounded-lg">
-                            <Shield size={14} className="text-[#3B82F6]" />
-                            <span className="text-xs text-[#3B82F6] font-medium">
-                              Verified
-                            </span>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-center sm:justify-start">
+                          <VerifiedBadge
+                            isVerified={user.twitter_connected || false}
+                          />
+                          {volumeTier && <VolumeTierBadge tier={volumeTier} />}
+                        </div>
                       </div>
-                      <p className="text-lg text-[#3B82F6] mb-2">
+                      <p className="text-sm sm:text-base text-[#3B82F6] mb-1.5 text-center sm:text-left truncate">
                         @{user.username}
                       </p>
                       {/* Active Since */}
-                      <div className="flex items-center gap-2 text-slate-400 text-sm">
-                        <Calendar size={14} />
-                        <span>
+                      <div className="flex items-center gap-1.5 text-slate-400 text-xs sm:text-sm justify-center sm:justify-start">
+                        <Calendar
+                          size={12}
+                          className="sm:w-[13px] sm:h-[13px]"
+                        />
+                        <span className="whitespace-nowrap">
                           Active since {formatActiveSince(user.created_at)}
                         </span>
                       </div>
@@ -438,19 +704,19 @@ export default function ProfilePage() {
                       onClick={() => {
                         // Do nothing for now
                       }}
-                      className={`flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#3B82F6] to-[#2563EB] hover:from-[#2563EB] hover:to-[#1D4ED8] text-white rounded-xl font-semibold transition-all duration-200 shadow-lg shadow-[#3B82F6]/20 hover:shadow-xl hover:shadow-[#3B82F6]/30 whitespace-nowrap ${
-                        isPremiumUser
-                          ? "ring-2 ring-[#D4AF37] ring-opacity-40 border border-[#D4AF37]/30"
-                          : ""
-                      }`}
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2 bg-gradient-to-r from-[#3B82F6] to-[#2563EB] hover:from-[#2563EB] hover:to-[#1D4ED8] text-white rounded-lg font-semibold transition-all duration-200 shadow-lg shadow-[#3B82F6]/20 hover:shadow-xl hover:shadow-[#3B82F6]/30 whitespace-nowrap text-xs sm:text-sm"
                     >
-                      <CopyIcon size={18} />
-                      Copy This Trader
+                      <span className="hidden min-[475px]:inline">
+                        Copy This Trader
+                      </span>
+                      <span className="min-[475px]:hidden">Copy Trader</span>
                     </button>
                   </div>
 
                   {user.bio && (
-                    <p className="text-slate-300 mb-4 max-w-2xl">{user.bio}</p>
+                    <p className="text-slate-300 mb-3 max-w-2xl text-xs sm:text-sm text-center sm:text-left leading-relaxed">
+                      {user.bio}
+                    </p>
                   )}
 
                   {/* Twitter Button - Improved */}
@@ -459,13 +725,13 @@ export default function ProfilePage() {
                       href={`https://twitter.com/${user.twitter_username}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg hover:bg-slate-800 hover:border-[#3B82F6]/50 transition-all duration-200 group"
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded-lg hover:bg-slate-800 hover:border-[#3B82F6]/50 transition-all duration-200 group text-xs sm:text-sm mx-auto sm:mx-0"
                     >
                       <Twitter
-                        size={18}
-                        className="text-[#3B82F6] group-hover:scale-110 transition-transform"
+                        size={14}
+                        className="sm:w-[16px] sm:h-[16px] text-[#3B82F6] group-hover:scale-110 transition-transform"
                       />
-                      <span className="text-sm text-[#3B82F6] font-medium">
+                      <span className="text-xs sm:text-sm text-[#3B82F6] font-medium">
                         @{user.twitter_username}
                       </span>
                     </a>
@@ -478,29 +744,21 @@ export default function ProfilePage() {
       </section>
 
       {/* Section Divider */}
-      <div className="h-[1px] w-full bg-white/5 my-8" />
+      <div className="h-[1px] w-full bg-white/5 my-6 sm:my-8" />
 
-      {/* Achievements Section - Reordered */}
-      <section className="px-4 sm:px-6 lg:px-8 pb-12">
+      {/* Stats Section */}
+      <section className="px-3 sm:px-4 lg:px-8 pb-8 sm:pb-12">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl font-bold text-white mb-6">Achievements</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
+          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-3 sm:mb-4 lg:mb-6 px-1">
+            Statistics
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
             {/* Total Volume */}
             <div
-              className="bg-[#0b1220] border border-white/5 rounded-xl p-6 hover:bg-[#151A22] hover:border-white/10 transition-all duration-200 relative group hover:-translate-y-1 flex flex-col justify-between min-h-[180px]"
+              className="bg-[#0b1220] border border-white/5 rounded-xl p-4 sm:p-6 hover:bg-[#151A22] hover:border-white/10 transition-all duration-200 group hover:-translate-y-1"
               style={{ boxShadow: "0px 3px 12px rgba(0,0,0,0.25)" }}
             >
-              <div className="absolute top-3 right-3">
-                <TierChip
-                  tier={volumeTier}
-                  tooltip={
-                    volumeTier
-                      ? getTierTooltip("volume", volumeTier.name)
-                      : undefined
-                  }
-                />
-              </div>
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center">
                   <DollarSign size={20} className="text-blue-400" />
                 </div>
@@ -515,29 +773,18 @@ export default function ProfilePage() {
                   </p>
                 </div>
               </div>
-              <div className="mt-4">
-                <TierProgressBar metricType="volume" value={volumeValue} />
-              </div>
             </div>
 
-            {/* PNL with Sparkline */}
+            {/* PNL */}
             <div
-              className="bg-[#0b1220] border border-white/5 rounded-xl p-6 hover:bg-[#151A22] hover:border-white/10 transition-all duration-200 relative overflow-hidden group hover:-translate-y-1 flex flex-col justify-between min-h-[180px]"
+              className="bg-[#0b1220] border border-white/5 rounded-xl p-4 sm:p-6 hover:bg-[#151A22] hover:border-white/10 transition-all duration-200 group hover:-translate-y-1"
               style={{ boxShadow: "0px 3px 12px rgba(0,0,0,0.25)" }}
             >
-              <div className="absolute top-3 right-3 z-10">
-                <TierChip
-                  tier={pnlTier}
-                  tooltip={
-                    pnlTier ? getTierTooltip("pnl", pnlTier.name) : undefined
-                  }
-                />
-              </div>
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center">
                   <TrendingUp size={20} className="text-[#3B82F6]" />
                 </div>
-                <div className="flex-1">
+                <div>
                   <p className="text-xs text-slate-400 uppercase tracking-wider">
                     PNL
                   </p>
@@ -550,41 +797,14 @@ export default function ProfilePage() {
                   </p>
                 </div>
               </div>
-              {/* Mini Sparkline */}
-              <div className="absolute bottom-2 right-2 w-20 h-8 opacity-50">
-                <svg
-                  viewBox="0 0 100 100"
-                  className="w-full h-full"
-                  preserveAspectRatio="none"
-                >
-                  <path
-                    d={sparklinePath}
-                    stroke={pnlValue >= 0 ? "#4ade80" : "#f87171"}
-                    strokeWidth="2"
-                    fill="none"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                </svg>
-              </div>
-              <div className="mt-4">
-                <TierProgressBar metricType="pnl" value={pnlValue} />
-              </div>
             </div>
 
             {/* ROI */}
             <div
-              className="bg-[#0b1220] border border-white/5 rounded-xl p-6 hover:bg-[#151A22] hover:border-white/10 transition-all duration-200 group hover:-translate-y-1 flex flex-col justify-between min-h-[180px]"
+              className="bg-[#0b1220] border border-white/5 rounded-xl p-4 sm:p-6 hover:bg-[#151A22] hover:border-white/10 transition-all duration-200 group hover:-translate-y-1"
               style={{ boxShadow: "0px 3px 12px rgba(0,0,0,0.25)" }}
             >
-              <div className="absolute top-3 right-3">
-                <TierChip
-                  tier={roiTier}
-                  tooltip={
-                    roiTier ? getTierTooltip("roi", roiTier.name) : undefined
-                  }
-                />
-              </div>
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center">
                   <Percent size={20} className="text-[#3B82F6]" />
                 </div>
@@ -601,27 +821,14 @@ export default function ProfilePage() {
                   </p>
                 </div>
               </div>
-              <div className="mt-4">
-                <TierProgressBar metricType="roi" value={roiValue} />
-              </div>
             </div>
 
             {/* Number of Trades */}
             <div
-              className="bg-[#0b1220] border border-white/5 rounded-xl p-6 hover:bg-[#151A22] hover:border-white/10 transition-all duration-200 group hover:-translate-y-1 flex flex-col justify-between min-h-[180px]"
+              className="bg-[#0b1220] border border-white/5 rounded-xl p-4 sm:p-6 hover:bg-[#151A22] hover:border-white/10 transition-all duration-200 group hover:-translate-y-1"
               style={{ boxShadow: "0px 3px 12px rgba(0,0,0,0.25)" }}
             >
-              <div className="absolute top-3 right-3">
-                <TierChip
-                  tier={tradesTier}
-                  tooltip={
-                    tradesTier
-                      ? getTierTooltip("trades", tradesTier.name)
-                      : undefined
-                  }
-                />
-              </div>
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center">
                   <BarChart3 size={20} className="text-[#3B82F6]" />
                 </div>
@@ -634,56 +841,55 @@ export default function ProfilePage() {
                   </p>
                 </div>
               </div>
-              <div className="mt-4">
-                <TierProgressBar metricType="trades" value={tradesValue} />
-              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Share Profile Section - Improved */}
-      <section className="px-4 sm:px-6 lg:px-8 pb-12">
+      <section className="px-3 sm:px-4 lg:px-8 pb-8 sm:pb-12">
         <div className="max-w-7xl mx-auto">
           <div
-            className="bg-[#0b1220] border border-white/5 rounded-xl p-6"
+            className="bg-[#0b1220] border border-white/5 rounded-xl p-4 sm:p-5 lg:p-6"
             style={{ boxShadow: "0px 3px 12px rgba(0,0,0,0.25)" }}
           >
-            <h3 className="text-lg font-semibold text-white mb-4">
+            <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">
               Share Profile
             </h3>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <button
                 onClick={shareOnTwitter}
-                className="flex items-center gap-2 px-5 py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800 hover:border-[#3B82F6]/50 transition-all duration-200"
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800 hover:border-[#3B82F6]/50 transition-all duration-200"
               >
                 <Twitter size={16} className="text-[#3B82F6]" />
-                <span className="text-sm text-white font-medium">
+                <span className="text-xs sm:text-sm text-white font-medium">
                   Share on X
                 </span>
               </button>
               <button
                 onClick={shareOnTelegram}
-                className="flex items-center gap-2 px-5 py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800 hover:border-[#3B82F6]/50 transition-all duration-200"
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800 hover:border-[#3B82F6]/50 transition-all duration-200"
               >
                 <Send size={16} className="text-[#3B82F6]" />
-                <span className="text-sm text-white font-medium">Telegram</span>
+                <span className="text-xs sm:text-sm text-white font-medium">
+                  Telegram
+                </span>
               </button>
               <button
                 onClick={copyProfileLink}
-                className="flex items-center gap-2 px-5 py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800 hover:border-[#3B82F6]/50 transition-all duration-200"
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800 hover:border-[#3B82F6]/50 transition-all duration-200"
               >
                 {copied ? (
                   <>
                     <Check size={16} className="text-green-400" />
-                    <span className="text-sm text-green-400 font-medium">
+                    <span className="text-xs sm:text-sm text-green-400 font-medium">
                       Copied!
                     </span>
                   </>
                 ) : (
                   <>
                     <Copy size={16} className="text-[#3B82F6]" />
-                    <span className="text-sm text-white font-medium">
+                    <span className="text-xs sm:text-sm text-white font-medium">
                       Copy Link
                     </span>
                   </>
@@ -693,569 +899,6 @@ export default function ProfilePage() {
           </div>
         </div>
       </section>
-
-      {/* Section Divider */}
-      <div className="h-[1px] w-full bg-white/5 my-8" />
-
-      {/* Tier Overview Section */}
-      <section className="px-4 sm:px-6 lg:px-8 pb-12 relative">
-        {/* Floating Navigation */}
-        <div className="hidden lg:block fixed left-8 top-1/2 -translate-y-1/2 z-40">
-          <div
-            className="bg-[#0b1220] border border-white/5 rounded-xl p-3 space-y-2"
-            style={{ boxShadow: "0px 3px 12px rgba(0,0,0,0.25)" }}
-          >
-            <button
-              onClick={() => scrollToSection("volume")}
-              className="w-full text-left px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all duration-200 flex items-center gap-2"
-            >
-              <DollarSign size={14} />
-              <span>Volume</span>
-            </button>
-            <button
-              onClick={() => scrollToSection("pnl")}
-              className="w-full text-left px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all duration-200 flex items-center gap-2"
-            >
-              <TrendingUp size={14} />
-              <span>PnL</span>
-            </button>
-            <button
-              onClick={() => scrollToSection("roi")}
-              className="w-full text-left px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all duration-200 flex items-center gap-2"
-            >
-              <Percent size={14} />
-              <span>ROI</span>
-            </button>
-            <button
-              onClick={() => scrollToSection("trades")}
-              className="w-full text-left px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all duration-200 flex items-center gap-2"
-            >
-              <BarChart3 size={14} />
-              <span>Trades</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Sticky Explain Tiers Button */}
-        <div className="hidden lg:block fixed right-8 top-1/2 -translate-y-1/2 z-40">
-          <button
-            onClick={() => setShowTierModal(true)}
-            className="flex flex-col items-center gap-2 px-4 py-3 bg-[#3B82F6] hover:bg-[#2563EB] text-white rounded-xl font-medium transition-all duration-200 shadow-lg shadow-[#3B82F6]/30 hover:shadow-xl hover:shadow-[#3B82F6]/40 group"
-            title="Learn about tiers"
-          >
-            <HelpCircle
-              size={20}
-              className="group-hover:scale-110 transition-transform"
-            />
-            <span className="text-xs">Learn Tiers</span>
-          </button>
-        </div>
-
-        <div className="max-w-7xl mx-auto">
-          <div
-            className="bg-[#0b1220] border border-white/5 rounded-xl p-6 sm:p-8 relative"
-            style={{ boxShadow: "0px 3px 12px rgba(0,0,0,0.25)" }}
-          >
-            <div className="mb-8">
-              <h3 className="text-2xl font-bold text-white mb-2 animate-fadeIn">
-                Tier System Overview
-              </h3>
-              <p className="text-sm text-slate-400">
-                Understand how tiers work and see your current status across all
-                metrics
-              </p>
-            </div>
-
-            {/* Tier Summary Widget */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-              <div className="bg-[#0B0E13] border border-white/5 rounded-lg p-4 text-center">
-                <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">
-                  Volume
-                </p>
-                {volumeTier ? (
-                  <p
-                    className="text-base font-bold"
-                    style={{ color: volumeTier.color }}
-                  >
-                    {volumeTier.name}
-                  </p>
-                ) : (
-                  <p className="text-base font-bold text-slate-500">No Tier</p>
-                )}
-              </div>
-              <div className="bg-[#0B0E13] border border-white/5 rounded-lg p-4 text-center">
-                <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">
-                  PnL
-                </p>
-                {pnlTier ? (
-                  <p
-                    className="text-base font-bold"
-                    style={{ color: pnlTier.color }}
-                  >
-                    {pnlTier.name}
-                  </p>
-                ) : (
-                  <p className="text-base font-bold text-slate-500">No Tier</p>
-                )}
-              </div>
-              <div className="bg-[#0B0E13] border border-white/5 rounded-lg p-4 text-center">
-                <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">
-                  ROI
-                </p>
-                {roiTier ? (
-                  <p
-                    className="text-base font-bold"
-                    style={{ color: roiTier.color }}
-                  >
-                    {roiTier.name}
-                  </p>
-                ) : (
-                  <p className="text-base font-bold text-slate-500">No Tier</p>
-                )}
-              </div>
-              <div className="bg-[#0B0E13] border border-white/5 rounded-lg p-4 text-center">
-                <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">
-                  Trades
-                </p>
-                {tradesTier ? (
-                  <p
-                    className="text-base font-bold"
-                    style={{ color: tradesTier.color }}
-                  >
-                    {tradesTier.name}
-                  </p>
-                ) : (
-                  <p className="text-base font-bold text-slate-500">No Tier</p>
-                )}
-              </div>
-            </div>
-
-            {/* Volume Tiers - Collapsible */}
-            <div className="mb-6" ref={volumeRef}>
-              <button
-                onClick={() => toggleSection("volume")}
-                className="w-full flex items-center justify-between p-4 bg-[#0B0E13] border border-white/5 rounded-lg hover:border-white/10 transition-all duration-200 mb-2"
-              >
-                <div className="flex items-center gap-3">
-                  <DollarSign size={18} className="text-[#3B82F6]" />
-                  <h4 className="text-lg font-semibold text-white">
-                    Total Volume Tiers
-                  </h4>
-                  {volumeTier && (
-                    <span
-                      className="text-xs px-3 py-1 rounded-full font-medium border-l-4"
-                      style={{
-                        backgroundColor: volumeTier.bgColor,
-                        color: volumeTier.color,
-                        borderLeftColor: volumeTier.color,
-                        borderRight: `1px solid ${volumeTier.borderColor}`,
-                        borderTop: `1px solid ${volumeTier.borderColor}`,
-                        borderBottom: `1px solid ${volumeTier.borderColor}`,
-                      }}
-                    >
-                      <Target size={12} className="inline mr-1" />
-                      Your Tier: {volumeTier.name}
-                    </span>
-                  )}
-                </div>
-                {expandedSections.volume ? (
-                  <ChevronUp size={20} className="text-slate-400" />
-                ) : (
-                  <ChevronDown size={20} className="text-slate-400" />
-                )}
-              </button>
-              {expandedSections.volume && (
-                <div className="space-y-2 animate-fadeIn">
-                  {TIER_THRESHOLDS.volume.map((tier: TierConfig) => {
-                    const isCurrentTier = volumeTier?.name === tier.name;
-                    const progress = getProgressToNextTier(
-                      "volume",
-                      volumeValue
-                    );
-                    return (
-                      <div
-                        key={tier.name}
-                        className={`p-4 rounded-lg border transition-all duration-200 ${
-                          isCurrentTier
-                            ? "bg-gradient-to-r from-[#0B0E13] to-[#0A0C10] border-2"
-                            : "bg-[#0B0E13] border border-white/5"
-                        }`}
-                        style={
-                          isCurrentTier
-                            ? {
-                                borderColor: tier.borderColor,
-                                boxShadow: `0 0 0 1px ${tier.borderColor}40, 0px 3px 12px rgba(0,0,0,0.25)`,
-                              }
-                            : { boxShadow: "0px 3px 12px rgba(0,0,0,0.25)" }
-                        }
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <div
-                                className="w-2 h-2 rounded-full flex-shrink-0"
-                                style={{ backgroundColor: tier.color }}
-                              />
-                              <h5
-                                className="text-base font-semibold"
-                                style={{ color: tier.color }}
-                              >
-                                {tier.title} ({tier.name})
-                              </h5>
-                              {isCurrentTier && (
-                                <span className="text-xs px-2.5 py-1 rounded font-medium border-l-4 bg-[#3B82F6]/10 text-[#3B82F6] border-[#3B82F6]">
-                                  <Target size={12} className="inline mr-1" />
-                                  You are here
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-sm text-slate-400 mb-1.5">
-                              {tier.min === 0
-                                ? `$${tier.min.toLocaleString()} - $${tier.max?.toLocaleString()}`
-                                : tier.max === null
-                                  ? `$${tier.min.toLocaleString()}+`
-                                  : `$${tier.min.toLocaleString()} - $${tier.max.toLocaleString()}`}
-                            </p>
-                            <p className="text-sm text-slate-300 leading-relaxed mb-3">
-                              {getTierTooltip("volume", tier.name).description}
-                            </p>
-                            {isCurrentTier && progress.nextTier && (
-                              <div className="mt-3">
-                                <TierProgressBar
-                                  metricType="volume"
-                                  value={volumeValue}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* PnL Tiers - Collapsible */}
-            <div className="mb-6" ref={pnlRef}>
-              <button
-                onClick={() => toggleSection("pnl")}
-                className="w-full flex items-center justify-between p-4 bg-[#0B0E13] border border-white/5 rounded-lg hover:border-white/10 transition-all duration-200 mb-2"
-              >
-                <div className="flex items-center gap-3">
-                  <TrendingUp size={18} className="text-[#3B82F6]" />
-                  <h4 className="text-lg font-semibold text-white">
-                    PnL Tiers
-                  </h4>
-                  {pnlTier && (
-                    <span
-                      className="text-xs px-3 py-1 rounded-full font-medium border-l-4"
-                      style={{
-                        backgroundColor: pnlTier.bgColor,
-                        color: pnlTier.color,
-                        borderLeftColor: pnlTier.color,
-                        borderRight: `1px solid ${pnlTier.borderColor}`,
-                        borderTop: `1px solid ${pnlTier.borderColor}`,
-                        borderBottom: `1px solid ${pnlTier.borderColor}`,
-                      }}
-                    >
-                      <Target size={12} className="inline mr-1" />
-                      Your Tier: {pnlTier.name}
-                    </span>
-                  )}
-                </div>
-                {expandedSections.pnl ? (
-                  <ChevronUp size={20} className="text-slate-400" />
-                ) : (
-                  <ChevronDown size={20} className="text-slate-400" />
-                )}
-              </button>
-              {expandedSections.pnl && (
-                <div className="space-y-2 animate-fadeIn">
-                  {TIER_THRESHOLDS.pnl.map((tier: TierConfig) => {
-                    const isCurrentTier = pnlTier?.name === tier.name;
-                    const progress = getProgressToNextTier("pnl", pnlValue);
-                    return (
-                      <div
-                        key={tier.name}
-                        className={`p-4 rounded-lg border transition-all duration-200 ${
-                          isCurrentTier
-                            ? "bg-gradient-to-r from-[#0B0E13] to-[#0A0C10] border-2"
-                            : "bg-[#0B0E13] border border-white/5"
-                        }`}
-                        style={
-                          isCurrentTier
-                            ? {
-                                borderColor: tier.borderColor,
-                                boxShadow: `0 0 0 1px ${tier.borderColor}40, 0px 3px 12px rgba(0,0,0,0.25)`,
-                              }
-                            : { boxShadow: "0px 3px 12px rgba(0,0,0,0.25)" }
-                        }
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <div
-                                className="w-2 h-2 rounded-full flex-shrink-0"
-                                style={{ backgroundColor: tier.color }}
-                              />
-                              <h5
-                                className="text-base font-semibold"
-                                style={{ color: tier.color }}
-                              >
-                                {tier.title} ({tier.name})
-                              </h5>
-                              {isCurrentTier && (
-                                <span className="text-xs px-2.5 py-1 rounded font-medium border-l-4 bg-[#3B82F6]/10 text-[#3B82F6] border-[#3B82F6]">
-                                  <Target size={12} className="inline mr-1" />
-                                  You are here
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-sm text-slate-400 mb-1.5">
-                              {tier.min === -Infinity
-                                ? `< $0`
-                                : tier.max === null
-                                  ? `$${tier.min.toLocaleString()}+`
-                                  : `$${tier.min.toLocaleString()} - $${tier.max.toLocaleString()}`}
-                            </p>
-                            <p className="text-sm text-slate-300 leading-relaxed mb-3">
-                              {getTierTooltip("pnl", tier.name).description}
-                            </p>
-                            {isCurrentTier && progress.nextTier && (
-                              <div className="mt-3">
-                                <TierProgressBar
-                                  metricType="pnl"
-                                  value={pnlValue}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* ROI Tiers - Collapsible */}
-            <div className="mb-6" ref={roiRef}>
-              <button
-                onClick={() => toggleSection("roi")}
-                className="w-full flex items-center justify-between p-4 bg-[#0B0E13] border border-white/5 rounded-lg hover:border-white/10 transition-all duration-200 mb-2"
-              >
-                <div className="flex items-center gap-3">
-                  <Percent size={18} className="text-[#3B82F6]" />
-                  <h4 className="text-lg font-semibold text-white">
-                    ROI Tiers
-                  </h4>
-                  {roiTier && (
-                    <span
-                      className="text-xs px-3 py-1 rounded-full font-medium border-l-4"
-                      style={{
-                        backgroundColor: roiTier.bgColor,
-                        color: roiTier.color,
-                        borderLeftColor: roiTier.color,
-                        borderRight: `1px solid ${roiTier.borderColor}`,
-                        borderTop: `1px solid ${roiTier.borderColor}`,
-                        borderBottom: `1px solid ${roiTier.borderColor}`,
-                      }}
-                    >
-                      <Target size={12} className="inline mr-1" />
-                      Your Tier: {roiTier.name}
-                    </span>
-                  )}
-                </div>
-                {expandedSections.roi ? (
-                  <ChevronUp size={20} className="text-slate-400" />
-                ) : (
-                  <ChevronDown size={20} className="text-slate-400" />
-                )}
-              </button>
-              {expandedSections.roi && (
-                <div className="space-y-2 animate-fadeIn">
-                  {TIER_THRESHOLDS.roi.map((tier: TierConfig) => {
-                    const isCurrentTier = roiTier?.name === tier.name;
-                    const progress = getProgressToNextTier("roi", roiValue);
-                    return (
-                      <div
-                        key={tier.name}
-                        className={`p-4 rounded-lg border transition-all duration-200 ${
-                          isCurrentTier
-                            ? "bg-gradient-to-r from-[#0B0E13] to-[#0A0C10] border-2"
-                            : "bg-[#0B0E13] border border-white/5"
-                        }`}
-                        style={
-                          isCurrentTier
-                            ? {
-                                borderColor: tier.borderColor,
-                                boxShadow: `0 0 0 1px ${tier.borderColor}40, 0px 3px 12px rgba(0,0,0,0.25)`,
-                              }
-                            : { boxShadow: "0px 3px 12px rgba(0,0,0,0.25)" }
-                        }
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <div
-                                className="w-2 h-2 rounded-full flex-shrink-0"
-                                style={{ backgroundColor: tier.color }}
-                              />
-                              <h5
-                                className="text-base font-semibold"
-                                style={{ color: tier.color }}
-                              >
-                                {tier.title} ({tier.name})
-                              </h5>
-                              {isCurrentTier && (
-                                <span className="text-xs px-2.5 py-1 rounded font-medium border-l-4 bg-[#3B82F6]/10 text-[#3B82F6] border-[#3B82F6]">
-                                  <Target size={12} className="inline mr-1" />
-                                  You are here
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-sm text-slate-400 mb-1.5">
-                              {tier.min === -Infinity
-                                ? `< 0%`
-                                : tier.max === null
-                                  ? `${tier.min}%+`
-                                  : `${tier.min}% - ${tier.max}%`}
-                            </p>
-                            <p className="text-sm text-slate-300 leading-relaxed mb-3">
-                              {getTierTooltip("roi", tier.name).description}
-                            </p>
-                            {isCurrentTier && progress.nextTier && (
-                              <div className="mt-3">
-                                <TierProgressBar
-                                  metricType="roi"
-                                  value={roiValue}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Trades Tiers - Collapsible */}
-            <div className="mb-6" ref={tradesRef}>
-              <button
-                onClick={() => toggleSection("trades")}
-                className="w-full flex items-center justify-between p-4 bg-[#0B0E13] border border-white/5 rounded-lg hover:border-white/10 transition-all duration-200 mb-2"
-              >
-                <div className="flex items-center gap-3">
-                  <BarChart3 size={18} className="text-[#3B82F6]" />
-                  <h4 className="text-lg font-semibold text-white">
-                    Number of Trades Tiers
-                  </h4>
-                  {tradesTier && (
-                    <span
-                      className="text-xs px-3 py-1 rounded-full font-medium border-l-4"
-                      style={{
-                        backgroundColor: tradesTier.bgColor,
-                        color: tradesTier.color,
-                        borderLeftColor: tradesTier.color,
-                        borderRight: `1px solid ${tradesTier.borderColor}`,
-                        borderTop: `1px solid ${tradesTier.borderColor}`,
-                        borderBottom: `1px solid ${tradesTier.borderColor}`,
-                      }}
-                    >
-                      <Target size={12} className="inline mr-1" />
-                      Your Tier: {tradesTier.name}
-                    </span>
-                  )}
-                </div>
-                {expandedSections.trades ? (
-                  <ChevronUp size={20} className="text-slate-400" />
-                ) : (
-                  <ChevronDown size={20} className="text-slate-400" />
-                )}
-              </button>
-              {expandedSections.trades && (
-                <div className="space-y-2 animate-fadeIn">
-                  {TIER_THRESHOLDS.trades.map((tier: TierConfig) => {
-                    const isCurrentTier = tradesTier?.name === tier.name;
-                    const progress = getProgressToNextTier(
-                      "trades",
-                      tradesValue
-                    );
-                    return (
-                      <div
-                        key={tier.name}
-                        className={`p-4 rounded-lg border transition-all duration-200 ${
-                          isCurrentTier
-                            ? "bg-gradient-to-r from-[#0B0E13] to-[#0A0C10] border-2"
-                            : "bg-[#0B0E13] border border-white/5"
-                        }`}
-                        style={
-                          isCurrentTier
-                            ? {
-                                borderColor: tier.borderColor,
-                                boxShadow: `0 0 0 1px ${tier.borderColor}40, 0px 3px 12px rgba(0,0,0,0.25)`,
-                              }
-                            : { boxShadow: "0px 3px 12px rgba(0,0,0,0.25)" }
-                        }
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <div
-                                className="w-2 h-2 rounded-full flex-shrink-0"
-                                style={{ backgroundColor: tier.color }}
-                              />
-                              <h5
-                                className="text-base font-semibold"
-                                style={{ color: tier.color }}
-                              >
-                                {tier.title} ({tier.name})
-                              </h5>
-                              {isCurrentTier && (
-                                <span className="text-xs px-2.5 py-1 rounded font-medium border-l-4 bg-[#3B82F6]/10 text-[#3B82F6] border-[#3B82F6]">
-                                  <Target size={12} className="inline mr-1" />
-                                  You are here
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-sm text-slate-400 mb-1.5">
-                              {tier.min === 0
-                                ? `${tier.min} - ${tier.max} trades`
-                                : tier.max === null
-                                  ? `${tier.min}+ trades`
-                                  : `${tier.min} - ${tier.max} trades`}
-                            </p>
-                            <p className="text-sm text-slate-300 leading-relaxed mb-3">
-                              {getTierTooltip("trades", tier.name).description}
-                            </p>
-                            {isCurrentTier && progress.nextTier && (
-                              <div className="mt-3">
-                                <TierProgressBar
-                                  metricType="trades"
-                                  value={tradesValue}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Tier Modal */}
-      <TierModal
-        isOpen={showTierModal}
-        onClose={() => setShowTierModal(false)}
-      />
     </div>
   );
 }
