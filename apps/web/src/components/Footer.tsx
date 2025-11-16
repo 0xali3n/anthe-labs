@@ -6,8 +6,8 @@ import { Twitter, Linkedin, Send, Mail } from "lucide-react";
 export default function Footer() {
   return (
     <footer className="border-t border-slate-800/50 bg-slate-900/40 backdrop-blur-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           {/* Brand */}
           <div className="col-span-1 md:col-span-2 lg:col-span-2">
             <Link href="/" className="flex items-center gap-2 mb-4 group">
@@ -27,16 +27,16 @@ export default function Footer() {
               The complete social trading ecosystem on Aptos. Start with Copy
               Trading, unlock Grid Bots, AI Bots, and Social Feed as we build.
             </p>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <a
                 href="https://twitter.com/intent/follow?screen_name=AntheLabs"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-10 h-10 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center hover:bg-slate-800 hover:border-blue-500/40 hover:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-200"
+                className="w-9 h-9 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center hover:bg-slate-800 hover:border-blue-500/40 hover:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-200"
                 aria-label="Follow Anthé Labs on Twitter"
               >
                 <Twitter
-                  size={18}
+                  size={16}
                   className="text-slate-400 hover:text-blue-400 transition-colors"
                 />
               </a>
@@ -44,11 +44,11 @@ export default function Footer() {
                 href="https://www.linkedin.com/company/anthe-labs/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-10 h-10 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center hover:bg-slate-800 hover:border-blue-500/40 hover:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-200"
+                className="w-9 h-9 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center hover:bg-slate-800 hover:border-blue-500/40 hover:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-200"
                 aria-label="Follow Anthé Labs on LinkedIn"
               >
                 <Linkedin
-                  size={18}
+                  size={16}
                   className="text-slate-400 hover:text-blue-400 transition-colors"
                 />
               </a>
@@ -56,21 +56,21 @@ export default function Footer() {
                 href="https://t.me/AntheLabs"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-10 h-10 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center hover:bg-slate-800 hover:border-blue-500/40 hover:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-200"
+                className="w-9 h-9 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center hover:bg-slate-800 hover:border-blue-500/40 hover:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-200"
                 aria-label="Join Anthé Labs on Telegram"
               >
                 <Send
-                  size={18}
+                  size={16}
                   className="text-slate-400 hover:text-blue-400 transition-colors"
                 />
               </a>
               <a
                 href="mailto:anthefinance@gmail.com"
-                className="w-10 h-10 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center hover:bg-slate-800 hover:border-blue-500/40 hover:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-200"
+                className="w-9 h-9 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center hover:bg-slate-800 hover:border-blue-500/40 hover:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-200"
                 aria-label="Email Anthé Labs"
               >
                 <Mail
-                  size={18}
+                  size={16}
                   className="text-slate-400 hover:text-blue-400 transition-colors"
                 />
               </a>

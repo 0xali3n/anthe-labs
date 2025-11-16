@@ -107,7 +107,7 @@ export async function getCurrentUser(signal?: AbortSignal): Promise<UserData> {
   }
 }
 
-// Update current user (requires auth)
+  // Update current user (requires auth)
 export async function updateCurrentUser(
   updateData: UpdateUserData
 ): Promise<UserData> {
@@ -137,4 +137,66 @@ export async function updateCurrentUser(
   }
 
   return response.user;
+}
+
+// Get user by username (public endpoint - no auth required)
+export async function getUserByUsername(username: string): Promise<UserData> {
+  try {
+    const response = await apiRequest<{
+      success: boolean;
+      user?: UserData;
+      error?: string;
+    }>(`/users/username/${username}`, {
+      method: "GET",
+    });
+
+    if (!response) {
+      throw new Error("No response from server");
+    }
+
+    if (!response.success) {
+      throw new Error(response.error || "Failed to get user data");
+    }
+
+    if (!response.user) {
+      throw new Error("Invalid response from server: user data missing");
+    }
+
+    return response.user;
+  } catch (error: any) {
+    console.error("❌ getUserByUsername error:", error);
+    throw error;
+  }
+}
+
+// Get all usernames (for autocomplete) - public endpoint
+export async function getAllUsernames(): Promise<{ 
+  username: string; 
+  displayName: string;
+  avatarUrl: string | null;
+  twitterConnected: boolean;
+}[]> {
+  try {
+    const response = await apiRequest<{
+      success: boolean;
+      users?: { 
+        username: string; 
+        displayName: string;
+        avatarUrl: string | null;
+        twitterConnected: boolean;
+      }[];
+      error?: string;
+    }>("/users/usernames", {
+      method: "GET",
+    });
+
+    if (!response || !response.success || !response.users) {
+      return [];
+    }
+
+    return response.users;
+  } catch (error: any) {
+    console.error("❌ getAllUsernames error:", error);
+    return [];
+  }
 }

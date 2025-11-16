@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import UserButton from "./UserButton";
-import { Wallet } from "lucide-react";
+import { Wallet, Menu, X } from "lucide-react";
 
 const navLinks = [
   { name: "Home", path: "/" },
@@ -19,6 +19,8 @@ export default function Navbar() {
   const [loading, setLoading] = useState(true);
   const [signingIn, setSigningIn] = useState(false);
   const [balance, setBalance] = useState<string>("0.00");
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Check initial auth state
@@ -39,6 +41,26 @@ export default function Navbar() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Close mobile menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        mobileMenuRef.current &&
+        !mobileMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowMobileMenu(false);
+      }
+    }
+
+    if (showMobileMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showMobileMenu]);
+
   async function signInGoogle() {
     setSigningIn(true);
     try {
@@ -55,11 +77,11 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="sticky top-0 z-50 px-4 sm:px-6 lg:px-8 py-3">
+    <nav className="sticky top-0 z-50 px-3 sm:px-4 lg:px-8 py-2 sm:py-3">
       <div className="max-w-7xl mx-auto">
         {/* Outer rounded pill container with glassmorphism */}
         <div
-          className="rounded-2xl header-pill flex items-center justify-between px-5 py-3"
+          className="rounded-xl sm:rounded-2xl header-pill flex items-center justify-between px-3 sm:px-4 lg:px-5 py-2 sm:py-3"
           style={{
             background: "rgba(6, 9, 19, 0.75)",
             borderBottom: "1px solid rgba(255,255,255,0.05)",
@@ -70,16 +92,16 @@ export default function Navbar() {
           }}
         >
           {/* Left: logo block + nav links */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 min-w-0 flex-1">
             {/* Logo capsule */}
-            <Link href="/" className="flex items-center gap-3 no-underline">
-              <div className="logo-pill flex items-center gap-3 px-3 py-1 rounded-full">
+            <Link href="/" className="flex items-center gap-2 sm:gap-3 no-underline min-w-0">
+              <div className="logo-pill flex items-center gap-1.5 sm:gap-2 lg:gap-3 px-2 sm:px-3 py-1 rounded-full">
                 {/* circular icon area */}
                 <div className="logo-circle flex items-center justify-center shrink-0">
                   <img
                     src="/logo.png"
                     alt="Anthé Labs"
-                    className="h-6 w-6"
+                    className="h-5 w-5 sm:h-6 sm:w-6"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = "none";
                     }}
@@ -87,14 +109,14 @@ export default function Navbar() {
                 </div>
 
                 {/* company name with gradient */}
-                <span className="text-base font-semibold bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent tracking-tight">
+                <span className="text-sm sm:text-base font-semibold bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent tracking-tight">
                   Anthé Labs
                 </span>
               </div>
             </Link>
 
-            {/* Nav links block: rounded, spaced */}
-            <div className="hidden md:flex items-center gap-2 bg-transparent rounded-full px-1 py-1">
+            {/* Nav links block: rounded, spaced - hidden on mobile */}
+            <div className="hidden lg:flex items-center gap-2 bg-transparent rounded-full px-1 py-1">
               {navLinks.map((link) => {
                 const isActive = pathname === link.path;
                 return (
@@ -112,28 +134,41 @@ export default function Navbar() {
                 );
               })}
             </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="lg:hidden flex items-center justify-center p-1.5 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:bg-slate-800 transition-colors"
+              aria-label="Toggle menu"
+            >
+              {showMobileMenu ? (
+                <X size={18} className="text-slate-300" />
+              ) : (
+                <Menu size={18} className="text-slate-300" />
+              )}
+            </button>
           </div>
 
           {/* Right: deposit / balance / profile */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 shrink-0">
             {loading ? (
               <div className="flex items-center gap-2">
-                <div className="h-9 w-20 bg-slate-800/50 rounded-lg animate-pulse"></div>
-                <div className="h-9 w-24 bg-slate-800/50 rounded-lg animate-pulse"></div>
+                <div className="h-8 sm:h-9 w-16 sm:w-20 bg-slate-800/50 rounded-lg animate-pulse"></div>
+                <div className="hidden sm:block h-8 sm:h-9 w-20 sm:w-24 bg-slate-800/50 rounded-lg animate-pulse"></div>
               </div>
             ) : (
               <>
                 {isSignedIn && (
                   <>
-                    {/* Deposit button: rounded capsule with gradient */}
-                    <button className="flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20">
-                      <Wallet size={14} />
+                    {/* Deposit button: rounded capsule with gradient - icon only on mobile */}
+                    <button className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 lg:px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20">
+                      <Wallet size={14} className="sm:w-4 sm:h-4" />
                       <span className="hidden sm:inline">Deposit</span>
                     </button>
 
-                    {/* Balance display: pill with semi-transparent gradient */}
+                    {/* Balance display: pill with semi-transparent gradient - compact on mobile */}
                     <div
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-700/30"
+                      className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-full border border-slate-700/30"
                       style={{
                         background:
                           "linear-gradient(135deg, rgba(30,41,59,0.45), rgba(15,23,42,0.35))",
@@ -142,12 +177,12 @@ export default function Navbar() {
                       <img
                         src="/aptos.png"
                         alt="Aptos"
-                        className="h-4 w-4 rounded-full"
+                        className="h-3.5 w-3.5 sm:h-4 sm:w-4 rounded-full flex-shrink-0"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = "none";
                         }}
                       />
-                      <span className="text-sm font-semibold text-white">
+                      <span className="text-[10px] sm:text-xs lg:text-sm font-semibold text-white whitespace-nowrap">
                         {balance} USDT
                       </span>
                     </div>
@@ -161,12 +196,12 @@ export default function Navbar() {
                   <button
                     onClick={signInGoogle}
                     disabled={signingIn}
-                    className="px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed bg-slate-800 hover:bg-slate-700 text-white shadow-sm"
+                    className="px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed bg-slate-800 hover:bg-slate-700 text-white shadow-sm"
                   >
                     {signingIn ? (
                       <>
                         <svg
-                          className="animate-spin h-4 w-4 text-white inline-block mr-2"
+                          className="animate-spin h-3.5 w-3.5 sm:h-4 sm:w-4 text-white inline-block sm:mr-2"
                           xmlns="http://www.w3.org/2000/svg"
                           fill="none"
                           viewBox="0 0 24 24"
@@ -188,7 +223,7 @@ export default function Navbar() {
                         <span className="hidden sm:inline">Signing in...</span>
                       </>
                     ) : (
-                      "Sign In"
+                      <span className="hidden xs:inline">Sign In</span>
                     )}
                   </button>
                 )}
@@ -196,6 +231,38 @@ export default function Navbar() {
             )}
           </div>
         </div>
+
+        {/* Mobile Menu Dropdown */}
+        {showMobileMenu && (
+          <div
+            ref={mobileMenuRef}
+            className="lg:hidden mt-2 bg-[#0b1220] border border-[#1F242D] rounded-xl shadow-xl overflow-hidden"
+            style={{
+              background: "rgba(6, 9, 19, 0.95)",
+              backdropFilter: "blur(20px)",
+            }}
+          >
+            <div className="py-2">
+              {navLinks.map((link) => {
+                const isActive = pathname === link.path;
+                return (
+                  <Link
+                    key={link.path}
+                    href={link.path}
+                    onClick={() => setShowMobileMenu(false)}
+                    className={`block px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
+                      isActive
+                        ? "text-white bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border-l-2 border-blue-500"
+                        : "text-slate-300 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    {link.name}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );

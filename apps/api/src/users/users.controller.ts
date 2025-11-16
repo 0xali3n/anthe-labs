@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Put, Body, HttpCode, HttpStatus, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Put, Body, HttpCode, HttpStatus, UseGuards, Request, Param } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -32,5 +32,17 @@ export class UsersController {
   async updateMe(@Request() req: any, @Body() updateUserDto: UpdateUserDto) {
     const userId = req.user?.id;
     return this.usersService.update(userId, updateUserDto);
+  }
+
+  // Get user by username (public endpoint - no auth required)
+  @Get('username/:username')
+  async getByUsername(@Param('username') username: string) {
+    return this.usersService.getByUsername(username);
+  }
+
+  // Get all usernames (for autocomplete) - public endpoint
+  @Get('usernames')
+  async getAllUsernames() {
+    return this.usersService.getAllUsernames();
   }
 }

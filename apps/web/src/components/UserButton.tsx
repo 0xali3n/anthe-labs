@@ -4,9 +4,10 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { upsertUser } from "@/lib/usersApi";
 import { formatWalletAddress } from "@/lib/walletsApi";
-import { Settings, LogOut, Wallet, Copy, Check, ChevronDown } from "lucide-react";
+import { Settings, LogOut, Wallet, Copy, Check, ChevronDown, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { getCurrentUser, UserData } from "@/lib/usersApi";
 
 interface User {
   id: string;
@@ -26,6 +27,7 @@ export default function UserButton() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [userData, setUserData] = useState<UserData | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -59,8 +61,21 @@ export default function UserButton() {
             if (result?.wallet_address) {
               setWalletAddress(result.wallet_address);
             }
+            // Store full user data for username
+            setUserData(result);
           } catch (error) {
             console.error("❌ Failed to save user to database:", error);
+          }
+          
+          // Also fetch current user data to get username
+          try {
+            const currentUser = await getCurrentUser();
+            setUserData(currentUser);
+            if (currentUser?.wallet_address) {
+              setWalletAddress(currentUser.wallet_address);
+            }
+          } catch (error) {
+            console.error("❌ Failed to fetch user data:", error);
           }
         } else {
           setUser(null);
@@ -102,8 +117,21 @@ export default function UserButton() {
           if (result?.wallet_address) {
             setWalletAddress(result.wallet_address);
           }
+          // Store full user data for username
+          setUserData(result);
         } catch (error) {
           console.error("❌ Failed to save user to database:", error);
+        }
+        
+        // Also fetch current user data to get username
+        try {
+          const currentUser = await getCurrentUser();
+          setUserData(currentUser);
+          if (currentUser?.wallet_address) {
+            setWalletAddress(currentUser.wallet_address);
+          }
+        } catch (error) {
+          console.error("❌ Failed to fetch user data:", error);
         }
       } else {
         setUser(null);
@@ -194,29 +222,30 @@ export default function UserButton() {
       <div className="relative">
         <button
           onClick={() => setShowDropdown(!showDropdown)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:bg-slate-800 hover:border-slate-700 transition-all duration-200 cursor-pointer group/user"
+          className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-lg bg-slate-800/50 border border-slate-700/50 hover:bg-slate-800 hover:border-slate-700 transition-all duration-200 cursor-pointer group/user"
         >
           <img
             src={avatarUrl}
             alt={displayName}
-            className="h-7 w-7 rounded-full border-2 border-slate-700 object-cover transition-transform duration-200 group-hover/user:scale-110 flex-shrink-0"
+            className="h-6 w-6 sm:h-7 sm:w-7 rounded-full border-2 border-slate-700 object-cover transition-transform duration-200 group-hover/user:scale-110 flex-shrink-0"
             referrerPolicy={isGoogleAvatar(avatarUrl) ? "no-referrer" : undefined}
             crossOrigin="anonymous"
           />
-          <span className="text-sm text-white hidden lg:inline font-medium truncate max-w-[90px]">
+          <span className="text-xs sm:text-sm text-white hidden md:inline font-medium truncate max-w-[90px]">
             {displayName}
           </span>
           <ChevronDown 
-            size={13} 
+            size={12}
+            className="w-3 h-3 sm:w-[13px] sm:h-[13px] text-slate-400 transition-transform duration-200 flex-shrink-0"
             strokeWidth={2.5}
-            className={`text-slate-400 transition-transform duration-200 flex-shrink-0 ${showDropdown ? 'rotate-180' : ''}`}
+            style={{ transform: showDropdown ? 'rotate(180deg)' : 'rotate(0deg)' }}
           />
         </button>
 
         {/* Dropdown Menu */}
         {showDropdown && (
           <div 
-            className="absolute right-0 top-full mt-2 w-64 bg-slate-900 border border-slate-800 rounded-xl z-50 overflow-hidden"
+            className="absolute right-0 top-full mt-2 w-56 sm:w-64 bg-slate-900 border border-slate-800 rounded-xl z-50 overflow-hidden"
             style={{
               boxShadow: '0 6px 20px rgba(0, 0, 0, 0.4)',
             }}
@@ -249,6 +278,16 @@ export default function UserButton() {
 
               {/* Menu Items */}
               <div className="py-1">
+                {userData?.username && (
+                  <Link
+                    href={`/profile/${userData.username}`}
+                    onClick={() => setShowDropdown(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-800 transition-colors duration-200 font-normal"
+                  >
+                    <User size={16} className="text-blue-400" />
+                    <span>Profile</span>
+                  </Link>
+                )}
                 <Link
                   href="/settings"
                   onClick={() => setShowDropdown(false)}
