@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { useEffect, useState, useRef } from "react";
 import UserButton from "./UserButton";
+import DepositWithdrawModal from "./DepositWithdrawModal";
+import { getCurrentUser } from "@/lib/usersApi";
 import { Wallet, Menu, X } from "lucide-react";
 
 const navLinks = [
@@ -20,20 +22,46 @@ export default function Navbar() {
   const [signingIn, setSigningIn] = useState(false);
   const [balance, setBalance] = useState<string>("0.00");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showDepositModal, setShowDepositModal] = useState(false);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Check initial auth state
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setIsSignedIn(!!session);
+      if (session?.user) {
+        // Fetch wallet address
+        try {
+          const userData = await getCurrentUser();
+          if (userData?.wallet_address) {
+            setWalletAddress(userData.wallet_address);
+          }
+        } catch (error) {
+          console.error("Failed to fetch wallet address:", error);
+        }
+      }
       setLoading(false);
     });
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setIsSignedIn(!!session);
+      if (session?.user) {
+        // Fetch wallet address
+        try {
+          const userData = await getCurrentUser();
+          if (userData?.wallet_address) {
+            setWalletAddress(userData.wallet_address);
+          }
+        } catch (error) {
+          console.error("Failed to fetch wallet address:", error);
+        }
+      } else {
+        setWalletAddress(null);
+      }
       setLoading(false);
       setSigningIn(false);
     });
@@ -161,7 +189,10 @@ export default function Navbar() {
                 {isSignedIn && (
                   <>
                     {/* Deposit button: rounded capsule with gradient - icon only on mobile */}
-                    <button className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 lg:px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20">
+                    <button
+                      onClick={() => setShowDepositModal(true)}
+                      className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 lg:px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
+                    >
                       <Wallet size={14} className="sm:w-4 sm:h-4" />
                       <span className="hidden sm:inline">Deposit</span>
                     </button>
@@ -264,6 +295,14 @@ export default function Navbar() {
           </div>
         )}
       </div>
+
+      {/* Deposit/Withdraw Modal */}
+      <DepositWithdrawModal
+        isOpen={showDepositModal}
+        onClose={() => setShowDepositModal(false)}
+        walletAddress={walletAddress}
+        balance={balance}
+      />
     </nav>
   );
 }

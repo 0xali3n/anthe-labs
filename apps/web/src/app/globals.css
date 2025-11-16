@@ -112,6 +112,10 @@ button.signin-glow:active:not(:disabled) {
   }
 }
 
+.animate-modalSlideIn {
+  animation: modalSlideIn 0.3s ease-out;
+}
+
 /* Landing page animations */
 @keyframes fadeIn {
   from {
