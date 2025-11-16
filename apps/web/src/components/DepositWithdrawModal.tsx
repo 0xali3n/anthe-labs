@@ -23,6 +23,8 @@ interface DepositWithdrawModalProps {
   onClose: () => void;
   walletAddress?: string | null;
   balance?: string;
+  onRefreshBalance?: () => void | Promise<void>;
+  isRefreshingBalance?: boolean;
 }
 
 export default function DepositWithdrawModal({
@@ -30,6 +32,8 @@ export default function DepositWithdrawModal({
   onClose,
   walletAddress,
   balance = "0.00",
+  onRefreshBalance,
+  isRefreshingBalance = false,
 }: DepositWithdrawModalProps) {
   const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">("deposit");
   const [depositAmount, setDepositAmount] = useState("");
@@ -170,14 +174,30 @@ export default function DepositWithdrawModal({
                   {parseFloat(balance).toFixed(2)} USDT
                 </p>
                 <button
-                  onClick={() => {
-                    // TODO: Implement balance refresh logic
-                    console.log("Refreshing balance...");
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    if (!onRefreshBalance || isRefreshingBalance) {
+                      return;
+                    }
+
+                    try {
+                      // Call the refresh function and wait for it to complete
+                      await onRefreshBalance();
+                    } catch (error) {
+                      console.error("Error refreshing balance:", error);
+                    }
                   }}
-                  className="p-1.5 rounded-lg hover:bg-slate-800/50 transition-colors text-slate-400 hover:text-blue-400"
+                  disabled={isRefreshingBalance}
+                  className="p-1.5 rounded-lg hover:bg-slate-800/50 transition-colors text-slate-400 hover:text-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Refresh balance"
+                  type="button"
                 >
-                  <RefreshCw size={16} />
+                  <RefreshCw
+                    size={16}
+                    className={isRefreshingBalance ? "animate-spin" : ""}
+                  />
                 </button>
               </div>
             </div>

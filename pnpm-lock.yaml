@@ -175,6 +175,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@aptos-labs/ts-sdk':
+        specifier: ^5.1.1
+        version: 5.1.1(got@11.8.6)
       '@supabase/auth-helpers-nextjs':
         specifier: ^0.10.0
         version: 0.10.0(@supabase/supabase-js@2.78.0)
