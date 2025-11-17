@@ -69,24 +69,53 @@ export default function Settings() {
   const [avatarFailed, setAvatarFailed] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const isLoadingRef = useRef(false);
+  const previousPathnameRef = useRef<string | null>(null);
 
   // Load user data when navigating to /settings
   useEffect(() => {
-    if (pathname !== "/settings") {
+    const isOnSettingsPage = pathname === "/settings";
+    const wasOnSettingsPage = previousPathnameRef.current === "/settings";
+    const justNavigatedToSettings = isOnSettingsPage && !wasOnSettingsPage;
+
+    // Update previous pathname
+    previousPathnameRef.current = pathname;
+
+    // Reset state when leaving settings page
+    if (!isOnSettingsPage) {
       setUser(null);
       setLoading(true);
+      setError(null);
       isLoadingRef.current = false;
       return;
     }
 
-    // Prevent re-loading if already loading
-    if (isLoadingRef.current) return;
+    // Always load when navigating to settings page
+    // If we just navigated here, reset the loading flag to force a fresh load
+    if (justNavigatedToSettings) {
+      isLoadingRef.current = false;
+      setUser(null); // Clear user data to force reload
+      setLoading(true);
+      setError(null);
+    }
+
+    // Prevent duplicate concurrent loads
+    if (isLoadingRef.current) {
+      console.log("[Settings] Already loading, skipping duplicate load");
+      return;
+    }
+
+    // If we already have user data and didn't just navigate here, don't reload
+    if (user && !justNavigatedToSettings) {
+      console.log("[Settings] User data already loaded, skipping reload");
+      return;
+    }
 
     let mounted = true;
     const abortController = new AbortController();
     isLoadingRef.current = true;
 
     async function loadUser() {
+      console.log("[Settings] Starting to load user data...");
       setLoading(true);
       setError(null);
 
@@ -98,12 +127,13 @@ export default function Settings() {
         } = await supabase.auth.getSession();
 
         if (!mounted || abortController.signal.aborted) {
+          console.log("[Settings] Load aborted (unmounted or cancelled)");
           isLoadingRef.current = false;
           return;
         }
 
         if (sessionError) {
-          console.error("Session error:", sessionError);
+          console.error("[Settings] Session error:", sessionError);
           isLoadingRef.current = false;
           if (mounted) {
             setError("Failed to get session. Please try again.");
@@ -113,6 +143,7 @@ export default function Settings() {
         }
 
         if (!session?.access_token) {
+          console.log("[Settings] No session, redirecting to home");
           isLoadingRef.current = false;
           if (mounted) {
             router.push("/");
@@ -120,13 +151,16 @@ export default function Settings() {
           return;
         }
 
+        console.log("[Settings] Session found, fetching user data...");
         const userData = await getCurrentUser(abortController.signal);
 
         if (!mounted || abortController.signal.aborted) {
+          console.log("[Settings] Load aborted after fetch");
           isLoadingRef.current = false;
           return;
         }
 
+        console.log("[Settings] User data loaded successfully");
         setUser(userData);
         const initialDisplayName =
           userData.display_name || userData.full_name || "";
@@ -152,24 +186,35 @@ export default function Settings() {
         // Silently handle abort errors (intentional cancellation)
         if (
           error instanceof AbortError ||
-          error.message === "Request aborted"
+          error.message === "Request aborted" ||
+          error.name === "AbortError"
         ) {
+          console.log("[Settings] Request aborted (intentional)");
           return;
         }
 
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
 
         if (
           error.message?.includes("No session") ||
           error.message?.includes("Unauthorized") ||
           error.message?.includes("401")
         ) {
+          console.log("[Settings] Unauthorized, redirecting to home");
           router.push("/");
           return;
         }
 
+        console.error("[Settings] Failed to load user data:", error);
         setError(error.message || "Failed to load user data");
         setLoading(false);
+      } finally {
+        // Ensure loading state is always cleared, even if something unexpected happens
+        if (mounted && !abortController.signal.aborted) {
+          isLoadingRef.current = false;
+        }
       }
     }
 
