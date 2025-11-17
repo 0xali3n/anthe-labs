@@ -79,8 +79,8 @@ export default function Settings() {
       return;
     }
 
-    // Prevent re-loading if already loading
-    if (isLoadingRef.current) return;
+    // Reset loading ref when entering settings page to ensure fresh load
+    isLoadingRef.current = false;
 
     let mounted = true;
     const abortController = new AbortController();
@@ -152,12 +152,15 @@ export default function Settings() {
         // Silently handle abort errors (intentional cancellation)
         if (
           error instanceof AbortError ||
-          error.message === "Request aborted"
+          error.message === "Request aborted" ||
+          error.name === "AbortError"
         ) {
           return;
         }
 
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
 
         if (
           error.message?.includes("No session") ||
@@ -168,8 +171,14 @@ export default function Settings() {
           return;
         }
 
+        console.error("Failed to load user data:", error);
         setError(error.message || "Failed to load user data");
         setLoading(false);
+      } finally {
+        // Ensure loading state is always cleared, even if something unexpected happens
+        if (mounted && !abortController.signal.aborted) {
+          isLoadingRef.current = false;
+        }
       }
     }
 
