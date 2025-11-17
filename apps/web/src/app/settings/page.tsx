@@ -8,7 +8,15 @@ import { AbortError } from "@/lib/apiClient";
 import { getAvatars, type Avatar } from "@/lib/avatarsApi";
 import { formatWalletAddress } from "@/lib/walletsApi";
 import { connectTwitter, disconnectTwitter } from "@/lib/twitterApi";
-import { X, CheckCircle, AlertCircle, Image, Copy, Check } from "lucide-react";
+import {
+  X,
+  CheckCircle,
+  AlertCircle,
+  Image,
+  Copy,
+  Check,
+  UserPlus,
+} from "lucide-react";
 
 interface UserData {
   id: string;
@@ -1024,6 +1032,28 @@ export default function Settings() {
             </div>
           </div>
         )}
+
+        {/* Register as Trader Section */}
+        <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-white mb-1">
+                Become a Trader
+              </h3>
+              <p className="text-sm text-slate-400">
+                Register as a trader and start earning from your trading
+                strategies
+              </p>
+            </div>
+            <button
+              onClick={() => router.push("/trader")}
+              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
+            >
+              <UserPlus size={18} />
+              <span>Register as Trader</span>
+            </button>
+          </div>
+        </div>
 
         {/* Account Details */}
         <div

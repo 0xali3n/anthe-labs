@@ -1,10 +1,627 @@
-export default function Trader() {
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import { getCurrentUser } from "@/lib/usersApi";
+import { createOrGetWallet } from "@/lib/walletsApi";
+import { AbortError } from "@/lib/apiClient";
+import {
+  Loader,
+  Wallet,
+  User,
+  CheckCircle2,
+  FileText,
+  Award,
+  TrendingUp,
+  Sparkles,
+} from "lucide-react";
+
+export default function TraderPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [botName, setBotName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [connectingWallet, setConnectingWallet] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const isLoadingRef = useRef(false);
+  const previousPathnameRef = useRef<string | null>(null);
+
+  // Load user data when navigating to /trader
+  useEffect(() => {
+    const isOnTraderPage = pathname === "/trader";
+    const wasOnTraderPage = previousPathnameRef.current === "/trader";
+    const justNavigatedToTrader = isOnTraderPage && !wasOnTraderPage;
+
+    // Update previous pathname
+    previousPathnameRef.current = pathname;
+
+    // Reset state when leaving trader page
+    if (!isOnTraderPage) {
+      setIsSignedIn(false);
+      setWalletAddress(null);
+      setLoading(true);
+      setError(null);
+      isLoadingRef.current = false;
+      return;
+    }
+
+    // Always load when navigating to trader page
+    // If we just navigated here, reset the loading flag to force a fresh load
+    if (justNavigatedToTrader) {
+      isLoadingRef.current = false;
+      setIsSignedIn(false);
+      setWalletAddress(null);
+      setLoading(true);
+      setError(null);
+    }
+
+    // Prevent duplicate concurrent loads
+    if (isLoadingRef.current) {
+      console.log("[Trader] Already loading, skipping duplicate load");
+      return;
+    }
+
+    let mounted = true;
+    const abortController = new AbortController();
+    isLoadingRef.current = true;
+
+    async function loadUser() {
+      console.log("[Trader] Starting to load user data...");
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Wait for Supabase session to be ready
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (!mounted || abortController.signal.aborted) {
+          console.log("[Trader] Load aborted (unmounted or cancelled)");
+          isLoadingRef.current = false;
+          return;
+        }
+
+        if (sessionError) {
+          console.error("[Trader] Session error:", sessionError);
+          isLoadingRef.current = false;
+          if (mounted) {
+            setError("Failed to get session. Please try again.");
+            setLoading(false);
+          }
+          return;
+        }
+
+        if (!session?.access_token) {
+          console.log("[Trader] No session, user not signed in");
+          isLoadingRef.current = false;
+          if (mounted) {
+            setIsSignedIn(false);
+            setWalletAddress(null);
+            setLoading(false);
+          }
+          return;
+        }
+
+        console.log("[Trader] Session found, fetching user data...");
+        setIsSignedIn(true);
+
+        try {
+          const userData = await getCurrentUser(abortController.signal);
+
+          if (!mounted || abortController.signal.aborted) {
+            console.log("[Trader] Load aborted after fetch");
+            isLoadingRef.current = false;
+            return;
+          }
+
+          console.log("[Trader] User data loaded successfully");
+          if (userData?.wallet_address) {
+            setWalletAddress(userData.wallet_address);
+          }
+          setLoading(false);
+        } catch (error: any) {
+          // Silently handle abort errors (intentional cancellation)
+          if (
+            error instanceof AbortError ||
+            error.message === "Request aborted" ||
+            error.name === "AbortError"
+          ) {
+            console.log("[Trader] Request aborted (intentional)");
+            return;
+          }
+
+          if (!mounted) return;
+
+          console.error("[Trader] Failed to load user data:", error);
+          setError(error.message || "Failed to load user data");
+          setLoading(false);
+        }
+      } catch (error: any) {
+        if (!mounted) return;
+        console.error("[Trader] Error in loadUser:", error);
+        setError(error.message || "Failed to load data");
+        setLoading(false);
+      } finally {
+        // Ensure loading state is always cleared
+        if (mounted && !abortController.signal.aborted) {
+          isLoadingRef.current = false;
+        }
+      }
+    }
+
+    loadUser();
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return;
+
+      setIsSignedIn(!!session);
+      if (session?.user) {
+        try {
+          const userData = await getCurrentUser();
+          if (userData?.wallet_address) {
+            setWalletAddress(userData.wallet_address);
+          }
+        } catch (error) {
+          console.error("Failed to fetch wallet:", error);
+        }
+      } else {
+        setWalletAddress(null);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      abortController.abort();
+      subscription.unsubscribe();
+    };
+  }, [pathname]);
+
+  const handleConnectWallet = async () => {
+    if (!isSignedIn) {
+      router.push("/");
+      return;
+    }
+
+    setConnectingWallet(true);
+    setError(null);
+
+    try {
+      const userData = await getCurrentUser();
+      if (!userData?.id) {
+        throw new Error("User not found");
+      }
+
+      const result = await createOrGetWallet(userData.id);
+      if (result.success && result.address) {
+        setWalletAddress(result.address);
+        setSuccess(true);
+        setTimeout(() => setSuccess(false), 3000);
+      } else {
+        throw new Error(result.error || "Failed to connect wallet");
+      }
+    } catch (error: any) {
+      console.error("Wallet connection error:", error);
+      setError(error.message || "Failed to connect wallet");
+    } finally {
+      setConnectingWallet(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!walletAddress) {
+      setError("Please connect your wallet first");
+      return;
+    }
+
+    if (!botName.trim()) {
+      setError("Please enter a bot name");
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      // TODO: Implement trader registration API call
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      setSuccess(true);
+      setTimeout(() => {
+        router.push("/leaderboard");
+      }, 2000);
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      setError(error.message || "Failed to register as trader");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center relative">
+        <div
+          className="fixed inset-0 opacity-[0.02] pointer-events-none"
+          style={{
+            backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+            backgroundSize: "50px 50px",
+          }}
+        />
+        <div className="text-center relative z-10">
+          <Loader className="animate-spin h-12 w-12 text-blue-400 mx-auto mb-4" />
+          <p className="text-slate-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isSignedIn) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4 relative">
+        <div
+          className="fixed inset-0 opacity-[0.02] pointer-events-none"
+          style={{
+            backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+            backgroundSize: "50px 50px",
+          }}
+        />
+        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-8 max-w-md text-center relative z-10">
+          <h2 className="text-xl font-semibold text-white mb-2 tracking-tight">
+            Sign In Required
+          </h2>
+          <p className="text-slate-400 text-sm mb-6">
+            Please sign in to register as a trader
+          </p>
+          <button
+            onClick={() => router.push("/")}
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-all"
+          >
+            Go to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <section>
-      <h1 className="text-2xl font-bold mb-2">Trader Registration</h1>
-      <p className="text-zinc-400">
-        Connect wallet and choose your trader name (coming soon).
-      </p>
-    </section>
+    <div className="min-h-screen bg-slate-950 relative">
+      {/* Background Pattern */}
+      <div
+        className="fixed inset-0 opacity-[0.02] pointer-events-none"
+        style={{
+          backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+          backgroundSize: "50px 50px",
+        }}
+      />
+      {/* Subtle gradient overlay */}
+      <div className="fixed inset-0 bg-gradient-to-b from-blue-950/5 via-transparent to-slate-950/5 pointer-events-none" />
+
+      <div className="max-w-5xl mx-auto py-8 sm:py-10 px-4 sm:px-6 lg:px-8 relative z-10">
+        {/* Header */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full mb-4">
+            <Sparkles size={14} className="text-blue-400" />
+            <span className="text-xs font-medium text-blue-400 uppercase tracking-wider">
+              Trader Registration
+            </span>
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent mb-4 tracking-tight">
+            Register as Trader
+          </h1>
+          <p className="text-slate-400 text-base max-w-2xl mx-auto leading-relaxed">
+            Join our elite community of traders and start earning from your
+            strategies
+          </p>
+        </div>
+
+        {/* Success/Error Messages */}
+        {success && (
+          <div className="mb-6 bg-green-900/20 border border-green-500/50 rounded-lg p-4">
+            <p className="text-green-400 text-sm">
+              {walletAddress
+                ? "Wallet connected successfully!"
+                : "Registration successful! Redirecting..."}
+            </p>
+          </div>
+        )}
+
+        {error && (
+          <div className="mb-6 bg-red-900/20 border border-red-500/50 rounded-lg p-4">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+
+        {/* Steps Section */}
+        <div className="mb-8">
+          <div className="flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-semibold shrink-0">
+                1
+              </div>
+              <span className="text-sm text-slate-400 hidden sm:inline whitespace-nowrap">
+                Connect Wallet
+              </span>
+            </div>
+            <div className="w-8 h-px bg-slate-700 shrink-0"></div>
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${
+                  walletAddress
+                    ? "bg-blue-600 text-white"
+                    : "bg-slate-800 text-slate-500 border border-slate-700"
+                }`}
+              >
+                2
+              </div>
+              <span className="text-sm text-slate-400 hidden sm:inline whitespace-nowrap">
+                Bot Name
+              </span>
+            </div>
+            <div className="w-8 h-px bg-slate-700 shrink-0"></div>
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${
+                  walletAddress && botName.trim()
+                    ? "bg-blue-600 text-white"
+                    : "bg-slate-800 text-slate-500 border border-slate-700"
+                }`}
+              >
+                3
+              </div>
+              <span className="text-sm text-slate-400 hidden sm:inline whitespace-nowrap">
+                Submit
+              </span>
+            </div>
+            <div className="w-8 h-px bg-slate-700 shrink-0"></div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-slate-800 text-slate-500 border border-slate-700 flex items-center justify-center text-sm font-semibold shrink-0">
+                4
+              </div>
+              <span className="text-sm text-slate-400 hidden sm:inline whitespace-nowrap">
+                Approval
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Registration Form Section */}
+        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-8 sm:p-10 mb-8 relative overflow-hidden">
+          {/* Subtle gradient border effect */}
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500/5 via-indigo-500/5 to-cyan-500/5 pointer-events-none" />
+          <div className="relative">
+            {/* Card Header */}
+            <div className="flex items-center gap-3 mb-8 pb-6 border-b border-slate-800">
+              <div className="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                <FileText size={20} className="text-blue-400" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-white tracking-tight">
+                  Registration Details
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Complete the form below to register as a trader
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                {/* Connect Wallet Button */}
+                <div className="md:col-span-4">
+                  <label className="block text-xs font-medium text-slate-400 mb-2 uppercase tracking-wider">
+                    Wallet Connection
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleConnectWallet}
+                    disabled={connectingWallet || !!walletAddress}
+                    className="w-full px-4 py-3.5 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-800/50 flex items-center justify-center gap-2 h-[52px]"
+                  >
+                    {connectingWallet ? (
+                      <>
+                        <Loader className="animate-spin" size={16} />
+                        <span>Connecting...</span>
+                      </>
+                    ) : walletAddress ? (
+                      <>
+                        <CheckCircle2 size={16} className="text-green-400" />
+                        <span>Connected</span>
+                      </>
+                    ) : (
+                      <>
+                        <Wallet size={16} />
+                        <span>Connect</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Bot Name Input */}
+                <div className="md:col-span-5">
+                  <label
+                    htmlFor="bot-name"
+                    className="block text-xs font-medium text-slate-400 mb-2 uppercase tracking-wider"
+                  >
+                    Bot Name
+                  </label>
+                  <div className="relative">
+                    <User
+                      size={16}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
+                    />
+                    <input
+                      id="bot-name"
+                      type="text"
+                      value={botName}
+                      onChange={(e) => setBotName(e.target.value)}
+                      placeholder="Enter your bot name"
+                      className="w-full pl-11 pr-4 py-3.5 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all h-[52px]"
+                      maxLength={50}
+                    />
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <div className="md:col-span-3">
+                  <button
+                    type="submit"
+                    disabled={!walletAddress || !botName.trim() || submitting}
+                    className="relative w-full px-6 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden group h-[52px]"
+                  >
+                    <span className="relative z-10 flex items-center justify-center gap-2">
+                      {submitting ? (
+                        <>
+                          <Loader className="animate-spin" size={16} />
+                          <span>Submitting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <TrendingUp size={16} />
+                          <span>Submit</span>
+                        </>
+                      )}
+                    </span>
+                    {/* Glow effect on hover */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-indigo-400/20 opacity-0 group-hover:opacity-100 transition-opacity blur-xl" />
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        {/* Creator Description Section */}
+        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-8 sm:p-10 relative overflow-hidden">
+          {/* Subtle gradient border effect */}
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-indigo-500/5 via-purple-500/5 to-pink-500/5 pointer-events-none" />
+          <div className="relative">
+            {/* Section Header */}
+            <div className="flex items-center gap-3 mb-8 pb-6 border-b border-slate-800">
+              <div className="w-10 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
+                <Award size={20} className="text-indigo-400" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-white tracking-tight">
+                  Creator Benefits
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Exclusive rewards and recognition for top traders
+                </p>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-6 mb-8">
+              {/* Qualification */}
+              <div className="bg-slate-800/30 rounded-xl p-6 border border-slate-800/50 hover:border-slate-700 transition-all">
+                <div className="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-4">
+                  <CheckCircle2 size={20} className="text-blue-400" />
+                </div>
+                <h3 className="text-base font-semibold text-slate-200 mb-3 tracking-tight">
+                  Qualification Process
+                </h3>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  We evaluate your trading volume and activity. Upon passing all
+                  checks, you'll be approved as a creator with exclusive
+                  benefits.
+                </p>
+              </div>
+
+              {/* Rewards */}
+              <div className="bg-slate-800/30 rounded-xl p-6 border border-slate-800/50 hover:border-slate-700 transition-all">
+                <div className="w-10 h-10 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center mb-4">
+                  <TrendingUp size={20} className="text-green-400" />
+                </div>
+                <h3 className="text-base font-semibold text-slate-200 mb-3 tracking-tight">
+                  Rewards for Creators
+                </h3>
+                <ul className="space-y-2.5 text-slate-400 text-sm">
+                  <li className="flex items-start gap-2">
+                    <span className="text-slate-500 mt-0.5">•</span>
+                    <span>
+                      <span className="text-slate-300 font-medium">
+                        Fees Sharing:
+                      </span>{" "}
+                      Earn from trading fees
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-slate-500 mt-0.5">•</span>
+                    <span>
+                      <span className="text-slate-300 font-medium">
+                        Fees Rebate:
+                      </span>{" "}
+                      Get rebates based on tier
+                    </span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Ranking System */}
+              <div className="bg-slate-800/30 rounded-xl p-6 border border-slate-800/50 hover:border-slate-700 transition-all">
+                <div className="w-10 h-10 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mb-4">
+                  <Award size={20} className="text-yellow-400" />
+                </div>
+                <h3 className="text-base font-semibold text-slate-200 mb-3 tracking-tight">
+                  Ranking System & Tiers
+                </h3>
+                <ul className="space-y-2.5 text-slate-400 text-sm">
+                  <li className="flex items-start gap-2">
+                    <span className="text-slate-500 mt-0.5">•</span>
+                    <span>
+                      <span className="text-slate-300 font-medium">
+                        NFT Badges:
+                      </span>{" "}
+                      Exclusive collectibles
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-slate-500 mt-0.5">•</span>
+                    <span>
+                      <span className="text-slate-300 font-medium">
+                        Tier Benefits:
+                      </span>{" "}
+                      Higher tiers = more rewards
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-slate-500 mt-0.5">•</span>
+                    <span>
+                      <span className="text-slate-300 font-medium">
+                        Recognition:
+                      </span>{" "}
+                      Stand out on leaderboard
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Additional Info Card */}
+            <div className="pt-6 border-t border-slate-800">
+              <div className="bg-slate-800/30 rounded-xl p-6 border border-slate-800/50">
+                <h3 className="text-base font-semibold text-slate-200 mb-2 tracking-tight">
+                  Ready to Start?
+                </h3>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  Connect your wallet, choose your bot name, and submit your
+                  registration. Our team will review your application and notify
+                  you once approved.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
