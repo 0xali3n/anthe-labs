@@ -373,11 +373,14 @@ export default function Navbar() {
       {/* Deposit/Withdraw Modal */}
       <DepositWithdrawModal
         isOpen={showDepositModal}
-        onClose={() => {
+        onClose={async () => {
           setShowDepositModal(false);
-          // Refresh balance when modal closes
+          // Refresh balance when modal closes (user might have deposited)
           if (isSignedIn && walletAddress) {
-            fetchBalance();
+            // Small delay to ensure any pending transactions are processed
+            setTimeout(() => {
+              fetchBalance();
+            }, 300);
           }
         }}
         walletAddress={walletAddress}

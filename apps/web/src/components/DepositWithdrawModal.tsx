@@ -38,9 +38,14 @@ export default function DepositWithdrawModal({
   const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">("deposit");
   const [depositAmount, setDepositAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [withdrawAddress, setWithdrawAddress] = useState("");
   const [copied, setCopied] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
+  const isRefreshingRef = useRef(false); // Prevent infinite loops
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null); // Cleanup timeouts
+  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Cleanup copy timeout
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Cleanup refresh timeout
 
   // Close modal on Escape key
   useEffect(() => {
@@ -76,11 +81,79 @@ export default function DepositWithdrawModal({
     };
   }, [isOpen, onClose]);
 
+  // Sync local ref with parent's loading state to prevent infinite loops
+  useEffect(() => {
+    // When parent finishes refreshing, reset our local ref
+    if (!isRefreshingBalance && isRefreshingRef.current) {
+      // Clear any pending timeout
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
+      // Reset ref after a small delay to ensure state is stable
+      const syncTimeout = setTimeout(() => {
+        isRefreshingRef.current = false;
+      }, 100);
+      return () => clearTimeout(syncTimeout);
+    }
+  }, [isRefreshingBalance]);
+
+  // Reset form state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      // Reset all form states when modal closes
+      setActiveTab("deposit");
+      setDepositAmount("");
+      setWithdrawAmount("");
+      setWithdrawAddress("");
+      setCopied(false);
+      setIsProcessing(false);
+      isRefreshingRef.current = false;
+
+      // Clear any pending timeouts
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+        copyTimeoutRef.current = null;
+      }
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
+    }
+  }, [isOpen]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Clear all timeouts when component unmounts
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      // Clear previous timeout if exists
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+      copyTimeoutRef.current = setTimeout(() => {
+        setCopied(false);
+        copyTimeoutRef.current = null;
+      }, 2000);
     } catch (err) {
       console.error("Failed to copy:", err);
     }
@@ -90,25 +163,60 @@ export default function DepositWithdrawModal({
     if (!depositAmount || parseFloat(depositAmount) <= 0) return;
     setIsProcessing(true);
     // TODO: Implement deposit logic
-    setTimeout(() => {
+    // Clear previous timeout if exists
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(async () => {
       setIsProcessing(false);
       setDepositAmount("");
-      // onClose();
+      // Refresh balance after deposit
+      if (onRefreshBalance && !isRefreshingRef.current) {
+        isRefreshingRef.current = true;
+        try {
+          await onRefreshBalance();
+        } catch (error) {
+          console.error("Error refreshing balance after deposit:", error);
+        } finally {
+          isRefreshingRef.current = false;
+        }
+      }
+      timeoutRef.current = null;
     }, 2000);
   };
 
   const handleWithdraw = async () => {
     if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) return;
+    if (!withdrawAddress || withdrawAddress.trim() === "") {
+      alert("Please enter a withdrawal address");
+      return;
+    }
     if (parseFloat(withdrawAmount) > parseFloat(balance)) {
       alert("Insufficient balance");
       return;
     }
     setIsProcessing(true);
     // TODO: Implement withdraw logic
-    setTimeout(() => {
+    // Clear previous timeout if exists
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(async () => {
       setIsProcessing(false);
       setWithdrawAmount("");
-      // onClose();
+      setWithdrawAddress("");
+      // Refresh balance after withdrawal
+      if (onRefreshBalance && !isRefreshingRef.current) {
+        isRefreshingRef.current = true;
+        try {
+          await onRefreshBalance();
+        } catch (error) {
+          console.error("Error refreshing balance after withdrawal:", error);
+        } finally {
+          isRefreshingRef.current = false;
+        }
+      }
+      timeoutRef.current = null;
     }, 2000);
   };
 
@@ -157,9 +265,9 @@ export default function DepositWithdrawModal({
         </div>
 
         {/* Balance Display */}
-        <div className="px-6 py-2.5 bg-slate-900/30 border-b border-slate-800/50">
-          <div className="flex items-center justify-between">
-            <div>
+        <div className="px-6 py-3 bg-slate-900/30 border-b border-slate-800/50">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
               <p className="text-xs text-slate-400 mb-1">Available Balance</p>
               <div className="flex items-center gap-2">
                 <img
@@ -171,36 +279,66 @@ export default function DepositWithdrawModal({
                   }}
                 />
                 <p className="text-2xl font-bold text-white">
-                  {parseFloat(balance).toFixed(2)} USDT
+                  {parseFloat(balance || "0").toFixed(2)} USDT
                 </p>
-                <button
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    if (!onRefreshBalance || isRefreshingBalance) {
-                      return;
-                    }
-
-                    try {
-                      // Call the refresh function and wait for it to complete
-                      await onRefreshBalance();
-                    } catch (error) {
-                      console.error("Error refreshing balance:", error);
-                    }
-                  }}
-                  disabled={isRefreshingBalance}
-                  className="p-1.5 rounded-lg hover:bg-slate-800/50 transition-colors text-slate-400 hover:text-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Refresh balance"
-                  type="button"
-                >
-                  <RefreshCw
-                    size={16}
-                    className={isRefreshingBalance ? "animate-spin" : ""}
-                  />
-                </button>
               </div>
             </div>
+            {/* Refresh Button - Only calls API when clicked, no auto-refresh */}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Prevent multiple simultaneous calls - strict guard
+                if (
+                  !onRefreshBalance ||
+                  isRefreshingBalance ||
+                  isRefreshingRef.current
+                ) {
+                  return;
+                }
+
+                // Set flag immediately to prevent re-entry
+                isRefreshingRef.current = true;
+
+                // Clear any existing refresh timeout
+                if (refreshTimeoutRef.current) {
+                  clearTimeout(refreshTimeoutRef.current);
+                  refreshTimeoutRef.current = null;
+                }
+
+                // Call the refresh function ONCE - parent handles async and state
+                // The sync effect will reset isRefreshingRef when parent finishes
+                try {
+                  const refreshPromise = onRefreshBalance();
+                  if (
+                    refreshPromise &&
+                    typeof refreshPromise.then === "function"
+                  ) {
+                    refreshPromise.catch((error: any) => {
+                      console.error("Error refreshing balance:", error);
+                    });
+                    // Don't reset here - let the sync effect handle it
+                  }
+                } catch (error: any) {
+                  console.error("Error calling refresh balance:", error);
+                  // If it throws synchronously, reset immediately
+                  isRefreshingRef.current = false;
+                }
+              }}
+              disabled={isRefreshingBalance || isRefreshingRef.current}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 hover:border-blue-500/50 text-blue-400 hover:text-blue-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-500/10 whitespace-nowrap"
+              type="button"
+            >
+              {isRefreshingBalance || isRefreshingRef.current ? (
+                <span className="flex items-center gap-1.5">
+                  <RefreshCw size={14} className="animate-spin" />
+                  Checking...
+                </span>
+              ) : (
+                "Check Deposit"
+              )}
+            </button>
           </div>
         </div>
 
@@ -401,6 +539,8 @@ export default function DepositWithdrawModal({
                 </label>
                 <input
                   type="text"
+                  value={withdrawAddress}
+                  onChange={(e) => setWithdrawAddress(e.target.value)}
                   placeholder="Enter Aptos wallet address"
                   className="w-full px-4 py-3 rounded-xl border border-slate-800/50 bg-slate-900/50 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all font-mono text-sm"
                   style={{
@@ -420,6 +560,8 @@ export default function DepositWithdrawModal({
                   !withdrawAmount ||
                   parseFloat(withdrawAmount) <= 0 ||
                   parseFloat(withdrawAmount) > parseFloat(balance) ||
+                  !withdrawAddress ||
+                  withdrawAddress.trim() === "" ||
                   isProcessing
                 }
                 className="w-full px-4 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 flex items-center justify-center gap-2"
