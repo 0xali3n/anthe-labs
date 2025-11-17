@@ -1,11 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EncryptionService } from '../encryption/encryption.service';
-import { Account } from '@aptos-labs/ts-sdk';
+import { Account, Aptos, AptosConfig, Network } from '@aptos-labs/ts-sdk';
 
 /**
  * Wallets Service
- * 
+ *
  * Security Features:
  * - Wallet generation happens ONLY on backend
  * - Private keys are encrypted before storage
@@ -25,7 +25,7 @@ export class WalletsService {
    * Create or get Aptos wallet for a user
    * - If wallet exists, return it (without private key)
    * - If not, generate new wallet and store encrypted private key
-   * 
+   *
    * @param userId - User ID from Supabase auth
    * @returns Wallet address (private key is NEVER returned)
    */
@@ -50,7 +50,9 @@ export class WalletsService {
 
       if (existingWallet) {
         // Wallet exists, return address only (no private key)
-        console.log(`✅ Wallet found for user ${userId}: ${existingWallet.address}`);
+        console.log(
+          `✅ Wallet found for user ${userId}: ${existingWallet.address}`,
+        );
         return {
           address: existingWallet.address,
           isNew: false,
@@ -64,13 +66,15 @@ export class WalletsService {
 
       // Encrypt private key before storing
       const encryptedPrivateKey = this.encryptionService.encrypt(privateKey);
-      
+
       // Verify encryption worked (should be in format: iv:tag:encryptedData)
       if (!encryptedPrivateKey || !encryptedPrivateKey.includes(':')) {
         throw new Error('Encryption failed - invalid format');
       }
-      
-      console.log(`🔐 Encrypted private key for user ${userId} (length: ${encryptedPrivateKey.length})`);
+
+      console.log(
+        `🔐 Encrypted private key for user ${userId} (length: ${encryptedPrivateKey.length})`,
+      );
 
       // Store wallet in database
       const wallet = await this.prisma.wallet.create({
@@ -78,7 +82,6 @@ export class WalletsService {
           user_id: userId,
           address: address,
           key: encryptedPrivateKey,
-          network: process.env.APTOS_NETWORK || 'testnet',
         },
       });
 
@@ -86,7 +89,7 @@ export class WalletsService {
       if (!wallet.key || wallet.key.length === 0) {
         throw new Error('Failed to store encrypted private key');
       }
-      
+
       console.log(`✅ Created Aptos wallet for user ${userId}: ${address}`);
       console.log(`✅ Encrypted private key stored in database (verified)`);
 
@@ -97,24 +100,28 @@ export class WalletsService {
       };
     } catch (error: any) {
       console.error(`❌ Error creating wallet for user ${userId}:`, error);
-      
+
       if (error.code === 'P2002') {
         // Unique constraint violation (race condition)
         // Wallet was created by another request, fetch it
-        console.log(`⚠️ Race condition detected for user ${userId}, fetching existing wallet...`);
+        console.log(
+          `⚠️ Race condition detected for user ${userId}, fetching existing wallet...`,
+        );
         const wallet = await this.prisma.wallet.findUnique({
           where: { user_id: userId },
           select: { address: true },
         });
         if (wallet) {
-          console.log(`✅ Found wallet after race condition: ${wallet.address}`);
+          console.log(
+            `✅ Found wallet after race condition: ${wallet.address}`,
+          );
           return {
             address: wallet.address,
             isNew: false,
           };
         }
       }
-      
+
       // Re-throw with more context
       const errorMessage = error.message || 'Unknown error';
       throw new Error(`Failed to create wallet: ${errorMessage}`);
@@ -152,5 +159,60 @@ export class WalletsService {
     const privateKey = this.encryptionService.decrypt(wallet.key);
     return privateKey;
   }
-}
 
+  /**
+   * Get USDT balance for a wallet address
+   * Fetches real-time balance from Aptos blockchain using view function
+   *
+   * @param walletAddress - Aptos wallet address
+   * @returns USDT balance as string (formatted with 2 decimals)
+   */
+  async getUSDTBalance(walletAddress: string): Promise<string> {
+    try {
+      // Hardcoded to mainnet
+      const network = 'mainnet' as Network;
+      const config = new AptosConfig({ network });
+      const aptos = new Aptos(config);
+
+      // USDT Fungible Asset Metadata Address on Aptos Mainnet
+      // Source: https://aptoscan.com/fungible-asset/0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b
+      const usdtMetadataAddress =
+        '0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b';
+
+      // Use view function to get fungible asset balance
+      // This is the recommended approach for fungible assets
+      const [balanceStr] = await aptos.view<[string]>({
+        payload: {
+          function: '0x1::primary_fungible_store::balance',
+          typeArguments: ['0x1::object::ObjectCore'],
+          functionArguments: [walletAddress, usdtMetadataAddress],
+        },
+      });
+
+      const balance = balanceStr || '0';
+
+      // Convert from smallest unit to USDT
+      // USDT has 6 decimals on Aptos
+      const balanceInUSDT = (Number(balance) / 1000000).toFixed(2);
+
+      return balanceInUSDT;
+    } catch (error: any) {
+      console.error(
+        `Error fetching USDT balance for ${walletAddress}:`,
+        error.message,
+      );
+
+      // If balance is 0 or resource doesn't exist, return "0.00"
+      if (
+        error.message?.includes('RESOURCE_NOT_FOUND') ||
+        error.message?.includes('not found') ||
+        error.statusCode === 404
+      ) {
+        return '0.00';
+      }
+
+      // For other errors, return 0.00 as fallback
+      return '0.00';
+    }
+  }
+}

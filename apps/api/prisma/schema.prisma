@@ -44,7 +44,6 @@ model Wallet {
   user_id            String   @unique // One wallet per user
   address            String   @unique // Aptos wallet address (public)
   key String @db.Text // Encrypted private key
-  network            String   @default("testnet") // testnet, mainnet, devnet
   
   // Timestamps
   created_at         DateTime @default(now())

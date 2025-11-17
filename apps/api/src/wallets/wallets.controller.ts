@@ -98,4 +98,55 @@ export class WalletsController {
       );
     }
   }
+
+  /**
+   * Get USDT balance for authenticated user's wallet
+   * GET /api/wallets/balance
+   *
+   * Security: Requires JWT authentication
+   * Returns: USDT balance as string
+   */
+  @Get('balance')
+  @UseGuards(AuthGuard)
+  async getBalance(@Request() req: any) {
+    try {
+      // Get userId from authenticated JWT token
+      const userId = req.user?.id;
+
+      if (!userId) {
+        throw new HttpException(
+          { success: false, error: 'User ID is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Get wallet address
+      const walletAddress = await this.walletsService.getWalletAddress(userId);
+
+      if (!walletAddress) {
+        throw new HttpException(
+          { success: false, error: 'Wallet not found' },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      // Fetch USDT balance from Aptos blockchain
+      const balance = await this.walletsService.getUSDTBalance(walletAddress);
+
+      return {
+        success: true,
+        balance: balance,
+        address: walletAddress,
+      };
+    } catch (error: any) {
+      console.error('Error in getBalance:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        { success: false, error: error.message || 'Internal server error' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }

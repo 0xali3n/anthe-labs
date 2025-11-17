@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import UserButton from "./UserButton";
+import DepositWithdrawModal from "./DepositWithdrawModal";
+import { getCurrentUser } from "@/lib/usersApi";
+import { getUSDTBalance } from "@/lib/walletsApi";
 import { Wallet, Menu, X } from "lucide-react";
 
 const navLinks = [
@@ -20,26 +23,125 @@ export default function Navbar() {
   const [signingIn, setSigningIn] = useState(false);
   const [balance, setBalance] = useState<string>("0.00");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showDepositModal, setShowDepositModal] = useState(false);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [isRefreshingBalance, setIsRefreshingBalance] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const balanceFetchedRef = useRef(false);
+
+  // Fetch balance function - memoized to avoid unnecessary re-renders
+  const fetchBalance = useCallback(async () => {
+    if (!isSignedIn || !walletAddress) {
+      setBalance("0.00");
+      return;
+    }
+
+    try {
+      setIsRefreshingBalance(true);
+      const result = await getUSDTBalance();
+      
+      if (result.success && result.balance) {
+        setBalance(result.balance);
+      } else {
+        setBalance("0.00");
+      }
+    } catch (error) {
+      console.error("Failed to fetch balance:", error);
+      setBalance("0.00");
+    } finally {
+      setIsRefreshingBalance(false);
+    }
+  }, [isSignedIn, walletAddress]);
 
   useEffect(() => {
     // Check initial auth state
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setIsSignedIn(!!session);
+      if (session?.user) {
+        // Fetch wallet address
+        try {
+          const userData = await getCurrentUser();
+          if (userData?.wallet_address) {
+            setWalletAddress(userData.wallet_address);
+          }
+        } catch (error) {
+          console.error("Failed to fetch wallet address:", error);
+        }
+      }
       setLoading(false);
     });
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setIsSignedIn(!!session);
+      if (session?.user) {
+        // Fetch wallet address
+        try {
+          const userData = await getCurrentUser();
+          if (userData?.wallet_address) {
+            setWalletAddress(userData.wallet_address);
+          }
+        } catch (error) {
+          console.error("Failed to fetch wallet address:", error);
+        }
+      } else {
+        setWalletAddress(null);
+        setBalance("0.00");
+        balanceFetchedRef.current = false;
+      }
       setLoading(false);
       setSigningIn(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Fetch balance when wallet address is available (only once on mount)
+  useEffect(() => {
+    if (isSignedIn && walletAddress && !balanceFetchedRef.current) {
+      balanceFetchedRef.current = true;
+      fetchBalance();
+    }
+  }, [isSignedIn, walletAddress, fetchBalance]);
+
+  // Fetch balance on pathname change (page navigation)
+  const prevPathnameRef = useRef(pathname);
+  useEffect(() => {
+    if (isSignedIn && walletAddress && prevPathnameRef.current !== pathname) {
+      prevPathnameRef.current = pathname;
+      fetchBalance();
+    }
+  }, [pathname, fetchBalance, isSignedIn, walletAddress]);
+
+  // Handle tab visibility changes - refresh balance when user returns to tab
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // When tab becomes visible again, refresh balance if user is signed in
+      // Reset the ref so balance can be fetched again
+      if (!document.hidden && isSignedIn && walletAddress) {
+        balanceFetchedRef.current = false; // Reset to allow refresh
+        fetchBalance();
+      }
+    };
+
+    // Also handle window focus for better compatibility
+    const handleFocus = () => {
+      if (isSignedIn && walletAddress) {
+        balanceFetchedRef.current = false; // Reset to allow refresh
+        fetchBalance();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [isSignedIn, walletAddress, fetchBalance]);
 
   // Close mobile menu when clicking outside
   useEffect(() => {
@@ -161,7 +263,10 @@ export default function Navbar() {
                 {isSignedIn && (
                   <>
                     {/* Deposit button: rounded capsule with gradient - icon only on mobile */}
-                    <button className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 lg:px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20">
+                    <button
+                      onClick={() => setShowDepositModal(true)}
+                      className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 lg:px-4 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
+                    >
                       <Wallet size={14} className="sm:w-4 sm:h-4" />
                       <span className="hidden sm:inline">Deposit</span>
                     </button>
@@ -264,6 +369,25 @@ export default function Navbar() {
           </div>
         )}
       </div>
+
+      {/* Deposit/Withdraw Modal */}
+      <DepositWithdrawModal
+        isOpen={showDepositModal}
+        onClose={async () => {
+          setShowDepositModal(false);
+          // Refresh balance when modal closes (user might have deposited)
+          if (isSignedIn && walletAddress) {
+            // Small delay to ensure any pending transactions are processed
+            setTimeout(() => {
+              fetchBalance();
+            }, 300);
+          }
+        }}
+        walletAddress={walletAddress}
+        balance={balance}
+        onRefreshBalance={fetchBalance}
+        isRefreshingBalance={isRefreshingBalance}
+      />
     </nav>
   );
 }
