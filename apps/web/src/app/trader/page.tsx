@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { getCurrentUser } from "@/lib/usersApi";
-import { createOrGetWallet } from "@/lib/walletsApi";
+import { registerTrader, getMyTraderRegistration } from "@/lib/tradersApi";
 import { AbortError } from "@/lib/apiClient";
 import {
   Loader,
@@ -16,6 +16,7 @@ import {
   TrendingUp,
   Sparkles,
 } from "lucide-react";
+import WalletConnectModal from "@/components/WalletConnectModal";
 
 export default function TraderPage() {
   const router = useRouter();
@@ -23,11 +24,15 @@ export default function TraderPage() {
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [loading, setLoading] = useState(true);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [connectedWalletName, setConnectedWalletName] = useState<string | null>(
+    null
+  );
   const [botName, setBotName] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [connectingWallet, setConnectingWallet] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const [existingRegistration, setExistingRegistration] = useState<any>(null);
   const isLoadingRef = useRef(false);
   const previousPathnameRef = useRef<string | null>(null);
 
@@ -122,9 +127,26 @@ export default function TraderPage() {
           }
 
           console.log("[Trader] User data loaded successfully");
-          if (userData?.wallet_address) {
-            setWalletAddress(userData.wallet_address);
+          // Don't pre-fill wallet address - trader must connect their own trading wallet
+
+          // Check if user has existing trader registration
+          try {
+            const registrationResult = await getMyTraderRegistration();
+            if (registrationResult.success && registrationResult.data) {
+              console.log(
+                "[Trader] Existing registration found:",
+                registrationResult.data
+              );
+              setExistingRegistration(registrationResult.data);
+              // Pre-fill form with existing registration data
+              setWalletAddress(registrationResult.data.address);
+              setBotName(registrationResult.data.botName || "");
+            }
+          } catch (regError) {
+            // No existing registration - that's fine
+            console.log("[Trader] No existing registration found");
           }
+
           setLoading(false);
         } catch (error: any) {
           // Silently handle abort errors (intentional cancellation)
@@ -165,16 +187,8 @@ export default function TraderPage() {
       if (!mounted) return;
 
       setIsSignedIn(!!session);
-      if (session?.user) {
-        try {
-          const userData = await getCurrentUser();
-          if (userData?.wallet_address) {
-            setWalletAddress(userData.wallet_address);
-          }
-        } catch (error) {
-          console.error("Failed to fetch wallet:", error);
-        }
-      } else {
+      // Don't pre-fill wallet address - trader must connect their own trading wallet
+      if (!session) {
         setWalletAddress(null);
       }
     });
@@ -186,39 +200,27 @@ export default function TraderPage() {
     };
   }, [pathname]);
 
-  const handleConnectWallet = async () => {
-    if (!isSignedIn) {
-      router.push("/");
-      return;
-    }
+  const handleConnectWallet = () => {
+    setIsWalletModalOpen(true);
+  };
 
-    setConnectingWallet(true);
+  const handleWalletConnected = (address: string, walletName: string) => {
+    setWalletAddress(address);
+    setConnectedWalletName(walletName);
+    setSuccess(true);
     setError(null);
-
-    try {
-      const userData = await getCurrentUser();
-      if (!userData?.id) {
-        throw new Error("User not found");
-      }
-
-      const result = await createOrGetWallet(userData.id);
-      if (result.success && result.address) {
-        setWalletAddress(result.address);
-        setSuccess(true);
-        setTimeout(() => setSuccess(false), 3000);
-      } else {
-        throw new Error(result.error || "Failed to connect wallet");
-      }
-    } catch (error: any) {
-      console.error("Wallet connection error:", error);
-      setError(error.message || "Failed to connect wallet");
-    } finally {
-      setConnectingWallet(false);
-    }
+    setTimeout(() => setSuccess(false), 3000);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Don't allow resubmission if already registered
+    if (existingRegistration) {
+      setError("You have already registered. Please wait for approval.");
+      return;
+    }
+
     if (!walletAddress) {
       setError("Please connect your wallet first");
       return;
@@ -233,12 +235,21 @@ export default function TraderPage() {
     setError(null);
 
     try {
-      // TODO: Implement trader registration API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Register trader with wallet address and bot name
+      const result = await registerTrader(walletAddress, botName.trim());
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to register as trader");
+      }
+
+      // Update existing registration state
+      setExistingRegistration(result.data);
       setSuccess(true);
-      setTimeout(() => {
-        router.push("/leaderboard");
-      }, 2000);
+
+      // Don't redirect - show step 4 instead
+      // setTimeout(() => {
+      //   router.push("/leaderboard");
+      // }, 2000);
     } catch (error: any) {
       console.error("Registration error:", error);
       setError(error.message || "Failed to register as trader");
@@ -325,12 +336,40 @@ export default function TraderPage() {
         </div>
 
         {/* Success/Error Messages */}
-        {success && (
+        {existingRegistration && (
+          <div
+            className={`mb-6 border rounded-lg p-4 ${
+              existingRegistration.status === "approved"
+                ? "bg-green-900/20 border-green-500/50"
+                : existingRegistration.status === "rejected"
+                  ? "bg-red-900/20 border-red-500/50"
+                  : "bg-blue-900/20 border-blue-500/50"
+            }`}
+          >
+            <p
+              className={`text-sm ${
+                existingRegistration.status === "approved"
+                  ? "text-green-400"
+                  : existingRegistration.status === "rejected"
+                    ? "text-red-400"
+                    : "text-blue-400"
+              }`}
+            >
+              {existingRegistration.status === "approved"
+                ? "✅ Your trader registration has been approved!"
+                : existingRegistration.status === "rejected"
+                  ? "❌ Your trader registration was rejected. Please contact support."
+                  : "⏳ Your registration is pending approval. Please wait while we review your application."}
+            </p>
+          </div>
+        )}
+
+        {success && !existingRegistration && (
           <div className="mb-6 bg-green-900/20 border border-green-500/50 rounded-lg p-4">
             <p className="text-green-400 text-sm">
               {walletAddress
-                ? "Wallet connected successfully!"
-                : "Registration successful! Redirecting..."}
+                ? `Wallet connected successfully! ${connectedWalletName ? `(${connectedWalletName})` : ""}`
+                : "Registration successful! Your application is pending approval."}
             </p>
           </div>
         )}
@@ -344,8 +383,15 @@ export default function TraderPage() {
         {/* Steps Section */}
         <div className="mb-8">
           <div className="flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
+            {/* Step 1: Connect Wallet - Current when wallet is NOT connected */}
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-semibold shrink-0">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${
+                  !walletAddress
+                    ? "bg-blue-600 text-white"
+                    : "bg-green-600 text-white"
+                }`}
+              >
                 1
               </div>
               <span className="text-sm text-slate-400 hidden sm:inline whitespace-nowrap">
@@ -353,12 +399,15 @@ export default function TraderPage() {
               </span>
             </div>
             <div className="w-8 h-px bg-slate-700 shrink-0"></div>
+            {/* Step 2: Bot Name - Current when wallet IS connected but bot name is NOT filled */}
             <div className="flex items-center gap-2">
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${
-                  walletAddress
+                  walletAddress && !botName.trim()
                     ? "bg-blue-600 text-white"
-                    : "bg-slate-800 text-slate-500 border border-slate-700"
+                    : walletAddress && botName.trim()
+                      ? "bg-green-600 text-white"
+                      : "bg-slate-800 text-slate-500 border border-slate-700"
                 }`}
               >
                 2
@@ -368,12 +417,15 @@ export default function TraderPage() {
               </span>
             </div>
             <div className="w-8 h-px bg-slate-700 shrink-0"></div>
+            {/* Step 3: Submit - Current when both wallet and bot name are filled but not submitted */}
             <div className="flex items-center gap-2">
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${
-                  walletAddress && botName.trim()
+                  walletAddress && botName.trim() && !success
                     ? "bg-blue-600 text-white"
-                    : "bg-slate-800 text-slate-500 border border-slate-700"
+                    : success
+                      ? "bg-green-600 text-white"
+                      : "bg-slate-800 text-slate-500 border border-slate-700"
                 }`}
               >
                 3
@@ -383,8 +435,17 @@ export default function TraderPage() {
               </span>
             </div>
             <div className="w-8 h-px bg-slate-700 shrink-0"></div>
+            {/* Step 4: Approval - Current after successful submission or if existing registration */}
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-slate-800 text-slate-500 border border-slate-700 flex items-center justify-center text-sm font-semibold shrink-0">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${
+                  existingRegistration || success
+                    ? existingRegistration?.status === "approved"
+                      ? "bg-green-600 text-white"
+                      : "bg-blue-600 text-white"
+                    : "bg-slate-800 text-slate-500 border border-slate-700"
+                }`}
+              >
                 4
               </div>
               <span className="text-sm text-slate-400 hidden sm:inline whitespace-nowrap">
@@ -424,18 +485,20 @@ export default function TraderPage() {
                   <button
                     type="button"
                     onClick={handleConnectWallet}
-                    disabled={connectingWallet || !!walletAddress}
-                    className="w-full px-4 py-3.5 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 rounded-xl text-slate-200 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-800/50 flex items-center justify-center gap-2 h-[52px]"
+                    disabled={!!walletAddress || !!existingRegistration}
+                    className={`w-full px-4 py-3.5 border rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 h-[52px] ${
+                      walletAddress || existingRegistration
+                        ? "bg-green-500/10 border-green-500/50 text-green-400 cursor-not-allowed"
+                        : "bg-slate-800/50 hover:bg-slate-800 border-slate-700 text-slate-200"
+                    }`}
                   >
-                    {connectingWallet ? (
-                      <>
-                        <Loader className="animate-spin" size={16} />
-                        <span>Connecting...</span>
-                      </>
-                    ) : walletAddress ? (
+                    {walletAddress ? (
                       <>
                         <CheckCircle2 size={16} className="text-green-400" />
-                        <span>Connected</span>
+                        <span className="truncate">
+                          {walletAddress.slice(0, 6)}...
+                          {walletAddress.slice(-4)}
+                        </span>
                       </>
                     ) : (
                       <>
@@ -465,7 +528,8 @@ export default function TraderPage() {
                       value={botName}
                       onChange={(e) => setBotName(e.target.value)}
                       placeholder="Enter your bot name"
-                      className="w-full pl-11 pr-4 py-3.5 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all h-[52px]"
+                      disabled={!!existingRegistration}
+                      className="w-full pl-11 pr-4 py-3.5 bg-slate-800/50 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all h-[52px] disabled:opacity-50 disabled:cursor-not-allowed"
                       maxLength={50}
                     />
                   </div>
@@ -475,7 +539,12 @@ export default function TraderPage() {
                 <div className="md:col-span-3">
                   <button
                     type="submit"
-                    disabled={!walletAddress || !botName.trim() || submitting}
+                    disabled={
+                      !walletAddress ||
+                      !botName.trim() ||
+                      submitting ||
+                      !!existingRegistration
+                    }
                     className="relative w-full px-6 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden group h-[52px]"
                   >
                     <span className="relative z-10 flex items-center justify-center gap-2">
@@ -558,9 +627,9 @@ export default function TraderPage() {
                     <span className="text-slate-500 mt-0.5">•</span>
                     <span>
                       <span className="text-slate-300 font-medium">
-                        Fees Rebate:
+                        Profit Sharing:
                       </span>{" "}
-                      Get rebates based on tier
+                      Earn from traders profit
                     </span>
                   </li>
                 </ul>
@@ -622,6 +691,13 @@ export default function TraderPage() {
           </div>
         </div>
       </div>
+
+      {/* Wallet Connect Modal */}
+      <WalletConnectModal
+        isOpen={isWalletModalOpen}
+        onClose={() => setIsWalletModalOpen(false)}
+        onConnect={handleWalletConnected}
+      />
     </div>
   );
 }
