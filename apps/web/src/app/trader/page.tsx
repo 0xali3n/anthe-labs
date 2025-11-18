@@ -33,52 +33,49 @@ export default function TraderPage() {
   const [success, setSuccess] = useState(false);
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const [existingRegistration, setExistingRegistration] = useState<any>(null);
-  const isLoadingRef = useRef(false);
-  const previousPathnameRef = useRef<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Load user data when navigating to /trader
   useEffect(() => {
-    const isOnTraderPage = pathname === "/trader";
-    const wasOnTraderPage = previousPathnameRef.current === "/trader";
-    const justNavigatedToTrader = isOnTraderPage && !wasOnTraderPage;
-
-    // Update previous pathname
-    previousPathnameRef.current = pathname;
-
-    // Reset state when leaving trader page
-    if (!isOnTraderPage) {
+    // Only run if we're on the trader page
+    if (pathname !== "/trader") {
+      // Reset state when not on trader page
       setIsSignedIn(false);
       setWalletAddress(null);
-      setLoading(true);
+      setBotName("");
+      setExistingRegistration(null);
       setError(null);
-      isLoadingRef.current = false;
+      setSuccess(false);
+      setLoading(false);
+      // Abort any pending requests
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
       return;
     }
 
-    // Always load when navigating to trader page
-    // If we just navigated here, reset the loading flag to force a fresh load
-    if (justNavigatedToTrader) {
-      isLoadingRef.current = false;
-      setIsSignedIn(false);
-      setWalletAddress(null);
-      setLoading(true);
-      setError(null);
+    // Abort any previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
 
-    // Prevent duplicate concurrent loads
-    if (isLoadingRef.current) {
-      console.log("[Trader] Already loading, skipping duplicate load");
-      return;
-    }
+    // Create new abort controller for this load
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
 
     let mounted = true;
-    const abortController = new AbortController();
-    isLoadingRef.current = true;
+
+    // Reset state when starting a new load
+    setLoading(true);
+    setError(null);
+    setIsSignedIn(false);
+    setWalletAddress(null);
+    setBotName("");
+    setExistingRegistration(null);
 
     async function loadUser() {
       console.log("[Trader] Starting to load user data...");
-      setLoading(true);
-      setError(null);
 
       try {
         // Wait for Supabase session to be ready
@@ -89,13 +86,11 @@ export default function TraderPage() {
 
         if (!mounted || abortController.signal.aborted) {
           console.log("[Trader] Load aborted (unmounted or cancelled)");
-          isLoadingRef.current = false;
           return;
         }
 
         if (sessionError) {
           console.error("[Trader] Session error:", sessionError);
-          isLoadingRef.current = false;
           if (mounted) {
             setError("Failed to get session. Please try again.");
             setLoading(false);
@@ -105,7 +100,6 @@ export default function TraderPage() {
 
         if (!session?.access_token) {
           console.log("[Trader] No session, user not signed in");
-          isLoadingRef.current = false;
           if (mounted) {
             setIsSignedIn(false);
             setWalletAddress(null);
@@ -115,23 +109,28 @@ export default function TraderPage() {
         }
 
         console.log("[Trader] Session found, fetching user data...");
-        setIsSignedIn(true);
+        if (mounted) {
+          setIsSignedIn(true);
+        }
 
         try {
           const userData = await getCurrentUser(abortController.signal);
 
           if (!mounted || abortController.signal.aborted) {
             console.log("[Trader] Load aborted after fetch");
-            isLoadingRef.current = false;
             return;
           }
 
           console.log("[Trader] User data loaded successfully");
-          // Don't pre-fill wallet address - trader must connect their own trading wallet
 
           // Check if user has existing trader registration
           try {
             const registrationResult = await getMyTraderRegistration();
+
+            if (!mounted || abortController.signal.aborted) {
+              return;
+            }
+
             if (registrationResult.success && registrationResult.data) {
               console.log(
                 "[Trader] Existing registration found:",
@@ -144,16 +143,23 @@ export default function TraderPage() {
             }
           } catch (regError) {
             // No existing registration - that's fine
+            if (!mounted || abortController.signal.aborted) {
+              return;
+            }
             console.log("[Trader] No existing registration found");
           }
 
-          setLoading(false);
+          // Always clear loading state after all operations complete
+          if (mounted && !abortController.signal.aborted) {
+            setLoading(false);
+          }
         } catch (error: any) {
           // Silently handle abort errors (intentional cancellation)
           if (
             error instanceof AbortError ||
             error.message === "Request aborted" ||
-            error.name === "AbortError"
+            error.name === "AbortError" ||
+            abortController.signal.aborted
           ) {
             console.log("[Trader] Request aborted (intentional)");
             return;
@@ -166,14 +172,14 @@ export default function TraderPage() {
           setLoading(false);
         }
       } catch (error: any) {
-        if (!mounted) return;
+        if (!mounted || abortController.signal.aborted) return;
         console.error("[Trader] Error in loadUser:", error);
         setError(error.message || "Failed to load data");
         setLoading(false);
       } finally {
-        // Ensure loading state is always cleared
+        // Ensure loading state is always cleared if component is still mounted
         if (mounted && !abortController.signal.aborted) {
-          isLoadingRef.current = false;
+          setLoading(false);
         }
       }
     }
@@ -190,12 +196,16 @@ export default function TraderPage() {
       // Don't pre-fill wallet address - trader must connect their own trading wallet
       if (!session) {
         setWalletAddress(null);
+        setExistingRegistration(null);
       }
     });
 
     return () => {
       mounted = false;
       abortController.abort();
+      if (abortControllerRef.current === abortController) {
+        abortControllerRef.current = null;
+      }
       subscription.unsubscribe();
     };
   }, [pathname]);

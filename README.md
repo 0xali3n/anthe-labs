@@ -21,6 +21,11 @@ A modern **Next.js + Nest.js (Turborepo)** project powered by **Supabase** and *
 
 - ✅ Landing page with features showcase
 - ✅ Leaderboard page with top traders
+- ✅ Trader registration page (`/trader`) with:
+  - Aptos wallet connection (OKX, Petra, Martian, Pontem, Fewcha)
+  - Professional wallet connection modal
+  - Trader registration form (bot name, wallet address)
+  - Registration status tracking (pending, approved, rejected)
 - ✅ User profile pages (`/profile/[username]`) with:
   - Profile header with avatar, badges, and stats
   - Volume tier system (Bronze, Silver, Gold, etc.)
@@ -36,6 +41,7 @@ A modern **Next.js + Nest.js (Turborepo)** project powered by **Supabase** and *
 - ✅ User CRUD operations
 - ✅ Wallet management with encryption
 - ✅ Trader statistics and leaderboard
+- ✅ Trader registration management (separate from leaderboard)
 - ✅ Twitter integration service
 - ✅ Avatar management
 - ✅ JWT authentication guard
@@ -44,7 +50,8 @@ A modern **Next.js + Nest.js (Turborepo)** project powered by **Supabase** and *
 
 - ✅ Prisma ORM with Supabase PostgreSQL
 - ✅ User schema with wallet encryption
-- ✅ Trader statistics tracking
+- ✅ Trader statistics tracking (leaderboard)
+- ✅ Trader registration table (separate from leaderboard)
 - ✅ Avatar and profile data storage
 
 ---
@@ -133,7 +140,8 @@ anthe-labs/
 │       ├── src/
 │       │   ├── users/    # User Management
 │       │   ├── wallets/  # Wallet Operations
-│       │   ├── traders/  # Trader Statistics
+│       │   ├── traders/  # Trader Statistics (Leaderboard)
+│       │   ├── trader-registrations/  # Trader Registration
 │       │   ├── twitter/  # Twitter Integration
 │       │   └── avatars/  # Avatar Management
 │       ├── prisma/       # Database Schema
@@ -172,6 +180,17 @@ anthe-labs/
 ---
 
 ## 📝 Recent Updates
+
+### Trader Registration & Wallet Integration ✨
+
+- ✅ Trader registration page (`/trader`) implementation
+- ✅ Aptos wallet browser extension integration (OKX, Petra, Martian, Pontem, Fewcha)
+- ✅ Professional wallet connection modal with wallet detection
+- ✅ Trader registration system with bot name and wallet address
+- ✅ Separate `TraderRegistration` database table (distinct from leaderboard)
+- ✅ Registration status tracking (pending, approved, rejected)
+- ✅ State management improvements for navigation and loading
+- ✅ Wallet encryption performance analysis and optimization
 
 ### Profile Page Branch ✨
 
