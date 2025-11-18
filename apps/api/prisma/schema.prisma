@@ -35,6 +35,7 @@ model User {
 
   // Relations
   wallet Wallet?
+  traderRegistrations TraderRegistration[]
 
   @@map("users")
 }
@@ -74,4 +75,25 @@ model Trader {
   @@index([address])
   @@index([bot_name])
   @@map("traders")
+}
+
+model TraderRegistration {
+  id            String   @id @default(uuid())
+  user_id       String   // User who submitted the registration
+  address       String   // Aptos wallet address (trading wallet from extension)
+  bot_name      String   // Bot/trader display name
+  status        String   @default("pending") // 'pending' | 'approved' | 'rejected'
+  
+  // Timestamps
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id]) // One registration per user
+  @@index([user_id])
+  @@index([address])
+  @@index([status])
+  @@map("trader_registrations")
 }

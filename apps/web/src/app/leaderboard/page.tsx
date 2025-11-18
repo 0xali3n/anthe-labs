@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { getTraders, type Trader } from "@/lib/tradersApi";
 import {
   AlertCircle,
@@ -9,11 +10,13 @@ import {
   Plus,
   TrendingUp,
   Info,
+  UserPlus,
 } from "lucide-react";
 
 type SortOption = "pnl" | "roi" | "volume" | "trades";
 
 export default function LeaderboardPage() {
+  const router = useRouter();
   const [traders, setTraders] = useState<Trader[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -253,6 +256,14 @@ export default function LeaderboardPage() {
               </p>
             </div>
             <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              {/* Register as Trader Button */}
+              <button
+                onClick={() => router.push("/trader")}
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
+              >
+                <UserPlus size={16} />
+                <span>Register as Trader</span>
+              </button>
               {/* Sort by */}
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
