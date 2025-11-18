@@ -328,7 +328,7 @@ export default function Navbar() {
                         <span className="hidden sm:inline">Signing in...</span>
                       </>
                     ) : (
-                      <span className="hidden xs:inline">Sign In</span>
+                      <span className="hidden sm:inline">Sign In</span>
                     )}
                   </button>
                 )}

@@ -154,15 +154,6 @@ export default function Home() {
 
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-32 pb-32 px-4 sm:px-6 lg:px-8">
-        {/* Animated Background Gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-950/30 via-indigo-950/20 to-[#060913] pointer-events-none" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(47,107,255,0.15),transparent_60%)] pointer-events-none animate-gradient-shift" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(122,75,255,0.1),transparent_60%)] pointer-events-none animate-gradient-shift-delayed" />
-
-        {/* Animated orbs */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-float pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-float-delayed pointer-events-none" />
-
         {/* Subtle noise texture */}
         <div
           className="absolute inset-0 opacity-[0.02] pointer-events-none"
@@ -613,14 +604,10 @@ export default function Home() {
       <section className="py-32 px-4 sm:px-6 lg:px-8 bg-[#060913] relative">
         <div className="max-w-4xl mx-auto text-center">
           <div
-            className="bg-gradient-to-r from-[#2F6BFF]/20 via-[#7A4BFF]/20 to-[#4BD1FF]/20 border-2 border-blue-500/40 rounded-2xl p-12 backdrop-blur-xl shadow-2xl animate-fade-up relative overflow-hidden"
-            style={{
-              boxShadow:
-                "0 20px 60px rgba(47,107,255,0.2), 0 0 0 1px rgba(47,107,255,0.1), inset 0 1px 0 0 rgba(255,255,255,0.1)",
-            }}
+            className="bg-gradient-to-r from-[#2F6BFF]/10 via-[#7A4BFF]/10 to-[#4BD1FF]/10 border border-blue-500/20 rounded-2xl p-12 backdrop-blur-lg shadow-lg animate-fade-up relative overflow-hidden"
           >
             {/* Gradient glow effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-blue-500/10 opacity-50 blur-2xl" />
+            {/* <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-blue-500/10 opacity-50 blur-2xl" /> */}
             <div className="relative z-10">
               <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6 tracking-tight">
                 Ready to Start Trading?
