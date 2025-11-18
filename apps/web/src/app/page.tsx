@@ -13,6 +13,10 @@ import {
   Bot,
   MessageSquare,
   Lock,
+  ExternalLink,
+  Heart,
+  MessageCircle,
+  Repeat2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -116,22 +120,34 @@ export default function Home() {
 
   const testimonials = [
     {
-      name: "Alex Chen",
-      role: "Professional Trader",
-      content: "Copy trading works flawlessly. Excited for what's next!",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Alex",
+      name: "Karthik Subramanian",
+      role: "@ns_karthik",
+      verified: true,
+      timestamp: "Oct 28",
+      content:
+        "an extremely satisfying addition to the family. always believed that hackathons are the birthplace of great things. to see one more product being composed on top and to be able to support this and many more such builders, is a fantastic feeling",
+      avatar: "/karthik.png",
+      link: "https://x.com/ns_karthik/status/1983220910963233181?s=20",
     },
     {
-      name: "Sarah Martinez",
-      role: "Crypto Investor",
-      content: "Finally, a platform that combines all trading tools.",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
+      name: "Xyra Labs",
+      role: "@xyralabs_",
+      verified: true,
+      timestamp: "Oct 28",
+      content:
+        "Every great product starts with a bold vision and Anthe embodies that. ⚡\n\nWe're proud to announce our first incubation: @AntheLabs\n\n@AntheLabs is building the social + intelligence layer for on-chain trading - where anyone can follow top traders, copy their strategies, and automate trades in real-time.\n\nWelcome to the @xyralabs_ Family 💙",
+      avatar: "/xyralabs.png",
+      link: "https://x.com/xyralabs_/status/1983220290571383009?s=20",
     },
     {
-      name: "Michael Park",
-      role: "Day Trader",
-      content: "The vision of this platform is incredible.",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Michael",
+      name: "M",
+      role: "@M_createz",
+      verified: true,
+      timestamp: "Oct 28",
+      content:
+        "@AntheLabs is officially being incubated by @xyralabs_ 👋\n\nAnthe is building the next-gen social trading infrastructure, combining:\n\n• Real-time Copy Trading\n• Social Trading Feed\n• Smart Grid & DCA Bots\n• Analytics & Creator Monetization\n\nA platform where traders and investors connect, share, and grow together.",
+      avatar: "/m.png",
+      link: "https://x.com/M_createz/status/1983222318609617351?s=20",
     },
   ];
 
@@ -558,54 +574,194 @@ export default function Home() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-900/30 relative">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-20 animate-fade-up">
-            <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tight">
-              What Traders Say
+      <section
+        className="py-24 px-4 sm:px-6 lg:px-8 relative"
+        style={{
+          background: "linear-gradient(to bottom, #0f0f13, #06070a)",
+        }}
+      >
+        {/* Subtle gradient highlight */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-30"
+          style={{
+            background:
+              "radial-gradient(circle at top left, rgba(255,255,255,0.03), transparent)",
+          }}
+        />
+        <div className="max-w-7xl mx-auto relative z-10">
+          <div className="text-center mb-16 animate-fade-up">
+            <h2 className="text-4xl sm:text-5xl font-extrabold text-white mb-4 tracking-wide">
+              <span className="bg-gradient-to-r from-white via-gray-100 to-gray-300 bg-clip-text text-transparent">
+                What Traders Say
+              </span>
             </h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {testimonials.map((testimonial, index) => (
-              <div
+              <a
                 key={index}
-                className="bg-[#0b1220] border border-slate-800 rounded-xl p-5 animate-fade-up hover:border-slate-700 hover:shadow-lg transition-all duration-300 cursor-pointer"
-                style={{ animationDelay: `${index * 100}ms` }}
+                href={testimonial.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block bg-white rounded-2xl p-5 cursor-pointer group relative overflow-hidden"
+                style={{
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+                  opacity: 0,
+                  transform: "translateY(20px)",
+                  animation: `fadeUp 0.4s ease ${index * 0.1}s forwards`,
+                  transition: "all 0.25s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform =
+                    "scale(1.01) translateY(-2px)";
+                  e.currentTarget.style.borderColor = "rgba(29,155,240,0.3)";
+                  e.currentTarget.style.boxShadow =
+                    "0 8px 30px rgba(0,0,0,0.12)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "scale(1) translateY(0)";
+                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+                  e.currentTarget.style.boxShadow =
+                    "0 4px 20px rgba(0,0,0,0.08)";
+                }}
               >
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="relative">
-                    <img
-                      src={testimonial.avatar}
-                      alt={testimonial.name}
-                      className="w-12 h-12 rounded-full border-2 border-blue-500/30"
-                    />
-                    <div className="absolute inset-0 rounded-full bg-blue-500/20 blur-md -z-10" />
-                  </div>
-                  <div>
-                    <div className="font-bold text-white">
-                      {testimonial.name}
+                {/* Subtle gradient highlight behind card */}
+                <div
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                  style={{
+                    background:
+                      "radial-gradient(circle at top left, rgba(255,255,255,0.03), transparent)",
+                  }}
+                />
+
+                <div className="relative z-10">
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="relative flex-shrink-0">
+                        <img
+                          src={testimonial.avatar}
+                          alt={testimonial.name}
+                          className="w-[52px] h-[52px] rounded-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <div className="font-bold text-gray-900 text-[15px] leading-tight truncate group-hover:text-[#1d9bf0] transition-colors">
+                            {testimonial.name}
+                          </div>
+                          {testimonial.verified && (
+                            <svg
+                              viewBox="0 0 22 22"
+                              aria-label="Verified account"
+                              className="w-4.5 h-4.5 text-[#1d9bf0] flex-shrink-0"
+                              fill="currentColor"
+                            >
+                              <g>
+                                <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246.223-.607.27-1.264.14-1.897-.131-.634-.437-1.218-.882-1.687-.47-.445-1.053-.75-1.687-.882-.633-.13-1.29-.083-1.897.14-.273-.587-.704-1.086-1.245-1.44S11.647 1.62 11 1.604c-.646.017-1.273.213-1.813.568s-.969.854-1.24 1.44c-.608-.223-1.267-.272-1.902-.14-.635.13-1.22.436-1.69.882-.445.47-.749 1.055-.878 1.688-.13.633-.08 1.29.144 1.896-.587.274-1.087.705-1.443 1.245-.356.54-.555 1.17-.574 1.817.02.647.218 1.276.574 1.817.356.54.856.972 1.443 1.245-.224.606-.274 1.263-.144 1.896.13.634.433 1.218.877 1.688.47.443 1.054.747 1.687.878.633.132 1.29.084 1.897-.136.274.586.705 1.084 1.246 1.439.54.354 1.17.551 1.816.569.647-.016 1.276-.213 1.817-.567s.972-.854 1.245-1.44c.604.239 1.266.296 1.903.164.636-.132 1.22-.447 1.68-.907.46-.46.776-1.044.908-1.681s.075-1.299-.165-1.903c.586-.274 1.084-.705 1.439-1.246.354-.54.551-1.17.569-1.816zM9.662 14.85l-3.429-3.428 1.293-1.302 2.072 2.072 4.4-4.794 1.347 1.246z"></path>
+                              </g>
+                            </svg>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="text-[15px] text-gray-500 truncate font-medium">
+                            {testimonial.role}
+                          </div>
+                          <span className="text-gray-400">·</span>
+                          <div className="text-[15px] text-gray-500">
+                            {testimonial.timestamp}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-sm text-slate-500">
-                      {testimonial.role}
+                    <ExternalLink
+                      size={13}
+                      className="text-gray-300 opacity-70 group-hover:opacity-100 group-hover:text-[#1d9bf0] transition-all flex-shrink-0 mt-1"
+                    />
+                  </div>
+
+                  {/* Content */}
+                  <p
+                    className="text-[15px] text-gray-900 leading-relaxed whitespace-pre-wrap break-words font-normal mb-3"
+                    style={{ maxWidth: "85%" }}
+                  >
+                    {testimonial.content
+                      .split(
+                        /(@\w+|https?:\/\/[^\s]+|xyra\.trade|➡️|⚡|💙|👋|•)/g
+                      )
+                      .map((part, i) => {
+                        if (part.startsWith("@")) {
+                          return (
+                            <span
+                              key={i}
+                              className="text-[#1d9bf0] hover:underline font-medium"
+                            >
+                              {part}
+                            </span>
+                          );
+                        }
+                        if (part.startsWith("http") || part === "xyra.trade") {
+                          return (
+                            <span
+                              key={i}
+                              className="text-[#1d9bf0] hover:underline"
+                            >
+                              {part}
+                            </span>
+                          );
+                        }
+                        // Preserve emojis and symbols as-is
+                        if (
+                          part === "➡️" ||
+                          part === "⚡" ||
+                          part === "💙" ||
+                          part === "👋" ||
+                          part === "•"
+                        ) {
+                          return <span key={i}>{part}</span>;
+                        }
+                        return <span key={i}>{part}</span>;
+                      })}
+                  </p>
+
+                  {/* Tweet Actions */}
+                  <div className="flex items-center gap-6 mt-3 pt-3 border-t border-gray-100">
+                    <div className="flex items-center gap-1.5 text-gray-400 hover:text-[#1d9bf0] transition-colors cursor-pointer">
+                      <MessageCircle size={16} />
+                    </div>
+                    <div className="flex items-center gap-1.5 text-gray-400 hover:text-green-500 transition-colors cursor-pointer">
+                      <Repeat2 size={16} />
+                    </div>
+                    <div className="flex items-center gap-1.5 text-gray-400 hover:text-red-500 transition-colors cursor-pointer">
+                      <Heart size={16} />
                     </div>
                   </div>
                 </div>
-                <p className="text-[#B0B7D0] leading-relaxed">
-                  "{testimonial.content}"
-                </p>
-              </div>
+              </a>
             ))}
           </div>
         </div>
+
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+            @keyframes fadeUp {
+              to {
+                opacity: 1;
+                transform: translateY(0);
+              }
+            }
+          `,
+          }}
+        />
       </section>
 
       {/* Final CTA */}
       <section className="py-32 px-4 sm:px-6 lg:px-8 bg-[#060913] relative">
         <div className="max-w-4xl mx-auto text-center">
-          <div
-            className="bg-gradient-to-r from-[#2F6BFF]/10 via-[#7A4BFF]/10 to-[#4BD1FF]/10 border border-blue-500/20 rounded-2xl p-12 backdrop-blur-lg shadow-lg animate-fade-up relative overflow-hidden"
-          >
+          <div className="bg-gradient-to-r from-[#2F6BFF]/10 via-[#7A4BFF]/10 to-[#4BD1FF]/10 border border-blue-500/20 rounded-2xl p-12 backdrop-blur-lg shadow-lg animate-fade-up relative overflow-hidden">
             {/* Gradient glow effect */}
             {/* <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-blue-500/10 opacity-50 blur-2xl" /> */}
             <div className="relative z-10">
