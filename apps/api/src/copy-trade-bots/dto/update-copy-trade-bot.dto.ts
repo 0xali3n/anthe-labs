@@ -1,8 +1,9 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsIn } from 'class-validator';
 
 export class UpdateCopyTradeBotDto {
   @IsString()
   @IsOptional()
+  @IsIn(['running', 'stopped'])
   status?: 'running' | 'stopped'; // Update bot status
 
   @IsString()

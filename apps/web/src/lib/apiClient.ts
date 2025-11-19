@@ -19,21 +19,24 @@ async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     let errorData: ApiError;
     try {
-      errorData = await response.json();
+      const text = await response.text();
+      errorData = JSON.parse(text);
     } catch {
       errorData = {
         message: response.statusText || `HTTP ${response.status}`,
         statusCode: response.status,
       };
     }
-    throw new Error(errorData.message || `API Error: ${response.status}`);
+    const errorMessage = errorData.message || `API Error: ${response.status}`;
+    throw new Error(errorMessage);
   }
   
   try {
-    const data = await response.json();
+    const text = await response.text();
+    const data = JSON.parse(text);
     return data;
   } catch (error) {
-    console.error('Failed to parse JSON response:', error);
+    console.error('❌ [API] Failed to parse JSON response:', error);
     throw new Error('Invalid JSON response from server');
   }
 }
@@ -50,7 +53,9 @@ export async function apiRequest<T>(
   const signal = providedSignal || controller?.signal;
   
   const timeoutId = signal && !providedSignal 
-    ? setTimeout(() => controller!.abort(), 15000) // 15 second timeout
+    ? setTimeout(() => {
+        controller!.abort();
+      }, 15000) // 15 second timeout
     : null;
   
   try {
@@ -75,18 +80,14 @@ export async function apiRequest<T>(
   } catch (error: any) {
     if (timeoutId) clearTimeout(timeoutId);
     
-    // Handle abort errors silently (intentional cancellation)
+    // Handle abort errors
     if (error.name === 'AbortError' || error.message === 'The user aborted a request.') {
       if (providedSignal?.aborted) {
-        // Intentional abort from component cleanup - throw silent error
         throw new AbortError('Request aborted');
       }
-      // Timeout abort - this is an actual error
       throw new Error('Request timeout - server took too long to respond');
     }
     
-    // Log other errors but not aborts
-    console.error(`❌ API Request failed for ${url}:`, error);
     throw error;
   }
 }

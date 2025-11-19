@@ -1,23 +1,27 @@
-import { IsString, IsNotEmpty, IsNumber, IsOptional, Min, Max } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsOptional, Min, Max, IsIn } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateCopyTradeBotDto {
   @IsString()
   @IsOptional()
-  traderAddress?: string; // Target trader wallet address (can be null initially)
+  traderAddress?: string;
 
   @IsNumber()
+  @Type(() => Number)
   @IsNotEmpty()
-  @Min(0)
-  allocatedAmount: number; // Amount allocated for copy trading
+  @Min(0.01)
+  allocatedAmount: number;
 
   @IsNumber()
+  @Type(() => Number)
   @IsNotEmpty()
   @Min(0)
   @Max(100)
-  allocationPercent: number; // Percentage of user's balance allocated (0-100)
+  allocationPercent: number;
 
   @IsString()
   @IsOptional()
-  mode?: string; // 'smart_ratio' | 'fixed_amount' | 'advanced'
+  @IsIn(['smart_ratio', 'fixed_amount', 'advanced'])
+  mode?: string;
 }
 

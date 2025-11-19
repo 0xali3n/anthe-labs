@@ -1,47 +1,119 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCopyTradeBotDto } from './dto/create-copy-trade-bot.dto';
 import { UpdateCopyTradeBotDto } from './dto/update-copy-trade-bot.dto';
+
+export interface BotResponse {
+  id: string;
+  userId: string;
+  traderAddress: string | null;
+  allocatedAmount: string;
+  allocationPercent: string;
+  mode: string;
+  status: string;
+  totalTrades: number;
+  pnl: string;
+  createdAt: Date;
+  updatedAt: Date;
+  startedAt: Date;
+  stoppedAt: Date | null;
+}
 
 @Injectable()
 export class CopyTradeBotsService {
   constructor(private prisma: PrismaService) {}
 
-  // Create a new copy trade bot
+  /**
+   * Map Prisma bot model to API response format
+   */
+  private mapBotToResponse(bot: any): BotResponse {
+    return {
+      id: bot.id,
+      userId: bot.user_id,
+      traderAddress: bot.trader_address,
+      allocatedAmount: bot.allocated_amount.toString(),
+      allocationPercent: bot.allocation_percent.toString(),
+      mode: bot.mode,
+      status: bot.status,
+      totalTrades: bot.total_trades,
+      pnl: bot.pnl.toString(),
+      createdAt: bot.created_at,
+      updatedAt: bot.updated_at,
+      startedAt: bot.started_at,
+      stoppedAt: bot.stopped_at,
+    };
+  }
+
+  /**
+   * Create a new copy trade bot
+   */
   async create(userId: string, createDto: CreateCopyTradeBotDto) {
     try {
+      // Sanitize trader address if provided
+      const traderAddress = createDto.traderAddress?.trim() || null;
+
       const bot = await this.prisma.copyTradeBot.create({
         data: {
           user_id: userId,
-          trader_address: createDto.traderAddress || null,
+          trader_address: traderAddress,
           allocated_amount: createDto.allocatedAmount,
           allocation_percent: createDto.allocationPercent,
           mode: createDto.mode || 'smart_ratio',
           status: 'running',
-          // Mock stats for now (will fetch from different table in future)
-          total_trades: Math.floor(Math.random() * 50), // Random 0-50 trades
-          pnl: Math.random() * 200 - 100, // Random PNL between -100 and 100
+          // Mock stats for now (will be fetched from different table in future)
+          total_trades: Math.floor(Math.random() * 50),
+          pnl: parseFloat((Math.random() * 200 - 100).toFixed(2)),
         },
       });
 
       return {
         success: true,
-        data: {
-          id: bot.id,
-          userId: bot.user_id,
-          traderAddress: bot.trader_address,
-          allocatedAmount: bot.allocated_amount.toString(),
-          allocationPercent: bot.allocation_percent.toString(),
-          mode: bot.mode,
-          status: bot.status,
-          totalTrades: bot.total_trades,
-          pnl: bot.pnl.toString(),
-          createdAt: bot.created_at,
-          startedAt: bot.started_at,
-        },
+        data: this.mapBotToResponse(bot),
       };
     } catch (error: any) {
-      console.error('Error creating copy trade bot:', error);
+      console.error('[CopyTradeBotService] Error creating bot:', {
+        code: error.code,
+        message: error.message,
+        meta: error.meta,
+      });
+
+      // Handle Prisma-specific errors
+      if (error.code === 'P2002') {
+        const field = error.meta?.target?.[0] || 'field';
+        return {
+          success: false,
+          error: `A bot with this ${field} already exists.`,
+        };
+      }
+
+      if (error.code === 'P2003') {
+        return {
+          success: false,
+          error: 'Invalid user ID or foreign key constraint violation.',
+        };
+      }
+
+      if (
+        error.message?.includes('does not exist') ||
+        error.message?.includes('relation') ||
+        error.message?.includes('table')
+      ) {
+        return {
+          success: false,
+          error: 'Database table not found. Please run the migration SQL.',
+        };
+      }
+
+      if (
+        error.message?.includes('permission denied') ||
+        error.message?.includes('row-level security')
+      ) {
+        return {
+          success: false,
+          error: 'Database permission denied. Please check RLS policies.',
+        };
+      }
+
       return {
         success: false,
         error: error.message || 'Failed to create copy trade bot',
@@ -49,7 +121,9 @@ export class CopyTradeBotsService {
     }
   }
 
-  // Get all bots for a user
+  /**
+   * Get all bots for a user
+   */
   async findByUserId(userId: string) {
     try {
       const bots = await this.prisma.copyTradeBot.findMany({
@@ -59,24 +133,9 @@ export class CopyTradeBotsService {
 
       return {
         success: true,
-        data: bots.map((bot) => ({
-          id: bot.id,
-          userId: bot.user_id,
-          traderAddress: bot.trader_address,
-          allocatedAmount: bot.allocated_amount.toString(),
-          allocationPercent: bot.allocation_percent.toString(),
-          mode: bot.mode,
-          status: bot.status,
-          totalTrades: bot.total_trades,
-          pnl: bot.pnl.toString(),
-          createdAt: bot.created_at,
-          updatedAt: bot.updated_at,
-          startedAt: bot.started_at,
-          stoppedAt: bot.stopped_at,
-        })),
+        data: bots.map((bot) => this.mapBotToResponse(bot)),
       };
     } catch (error: any) {
-      console.error('Error fetching copy trade bots:', error);
       return {
         success: false,
         error: error.message || 'Failed to fetch copy trade bots',
@@ -84,13 +143,15 @@ export class CopyTradeBotsService {
     }
   }
 
-  // Get a single bot by ID
+  /**
+   * Get a single bot by ID (ensures user owns the bot)
+   */
   async findOne(id: string, userId: string) {
     try {
       const bot = await this.prisma.copyTradeBot.findFirst({
         where: {
           id,
-          user_id: userId, // Ensure user owns this bot
+          user_id: userId,
         },
       });
 
@@ -103,24 +164,9 @@ export class CopyTradeBotsService {
 
       return {
         success: true,
-        data: {
-          id: bot.id,
-          userId: bot.user_id,
-          traderAddress: bot.trader_address,
-          allocatedAmount: bot.allocated_amount.toString(),
-          allocationPercent: bot.allocation_percent.toString(),
-          mode: bot.mode,
-          status: bot.status,
-          totalTrades: bot.total_trades,
-          pnl: bot.pnl.toString(),
-          createdAt: bot.created_at,
-          updatedAt: bot.updated_at,
-          startedAt: bot.started_at,
-          stoppedAt: bot.stopped_at,
-        },
+        data: this.mapBotToResponse(bot),
       };
     } catch (error: any) {
-      console.error('Error fetching copy trade bot:', error);
       return {
         success: false,
         error: error.message || 'Failed to fetch copy trade bot',
@@ -128,7 +174,9 @@ export class CopyTradeBotsService {
     }
   }
 
-  // Update bot status (stop/restart)
+  /**
+   * Update bot status or trader address (ensures user owns the bot)
+   */
   async update(id: string, userId: string, updateDto: UpdateCopyTradeBotDto) {
     try {
       // Verify bot exists and belongs to user
@@ -136,6 +184,9 @@ export class CopyTradeBotsService {
         where: {
           id,
           user_id: userId,
+        },
+        select: {
+          status: true,
         },
       });
 
@@ -147,17 +198,22 @@ export class CopyTradeBotsService {
       }
 
       const updateData: any = {};
+
       if (updateDto.status) {
         updateData.status = updateDto.status;
         if (updateDto.status === 'stopped') {
           updateData.stopped_at = new Date();
-        } else if (updateDto.status === 'running' && existingBot.status === 'stopped') {
+        } else if (
+          updateDto.status === 'running' &&
+          existingBot.status === 'stopped'
+        ) {
           updateData.started_at = new Date();
           updateData.stopped_at = null;
         }
       }
+
       if (updateDto.traderAddress !== undefined) {
-        updateData.trader_address = updateDto.traderAddress;
+        updateData.trader_address = updateDto.traderAddress?.trim() || null;
       }
 
       const bot = await this.prisma.copyTradeBot.update({
@@ -167,24 +223,9 @@ export class CopyTradeBotsService {
 
       return {
         success: true,
-        data: {
-          id: bot.id,
-          userId: bot.user_id,
-          traderAddress: bot.trader_address,
-          allocatedAmount: bot.allocated_amount.toString(),
-          allocationPercent: bot.allocation_percent.toString(),
-          mode: bot.mode,
-          status: bot.status,
-          totalTrades: bot.total_trades,
-          pnl: bot.pnl.toString(),
-          createdAt: bot.created_at,
-          updatedAt: bot.updated_at,
-          startedAt: bot.started_at,
-          stoppedAt: bot.stopped_at,
-        },
+        data: this.mapBotToResponse(bot),
       };
     } catch (error: any) {
-      console.error('Error updating copy trade bot:', error);
       return {
         success: false,
         error: error.message || 'Failed to update copy trade bot',
@@ -192,7 +233,9 @@ export class CopyTradeBotsService {
     }
   }
 
-  // Delete a bot
+  /**
+   * Delete a bot (ensures user owns the bot)
+   */
   async remove(id: string, userId: string) {
     try {
       // Verify bot exists and belongs to user
@@ -219,7 +262,6 @@ export class CopyTradeBotsService {
         message: 'Copy trade bot deleted successfully',
       };
     } catch (error: any) {
-      console.error('Error deleting copy trade bot:', error);
       return {
         success: false,
         error: error.message || 'Failed to delete copy trade bot',
@@ -227,4 +269,3 @@ export class CopyTradeBotsService {
     }
   }
 }
-

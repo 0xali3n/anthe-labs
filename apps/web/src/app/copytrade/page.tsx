@@ -35,14 +35,13 @@ import {
 
 interface CopyTradeBot {
   id: string;
-  traderAddress: string;
-  traderName?: string;
-  mode: "smart_ratio";
+  traderAddress: string | null;
+  mode: string;
   allocation: number;
   allocatedAmount: string;
   status: "running" | "stopped";
-  pnl?: string;
-  trades?: number;
+  pnl: string;
+  trades: number;
   startedAt: string;
 }
 
@@ -135,38 +134,60 @@ export default function Copytrade() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Mock data for bots (replace with actual API calls later)
+  // Fetch bots from API
+  const fetchBots = async () => {
+    if (!isSignedIn) {
+      setRunningBots([]);
+      setStoppedBots([]);
+      return;
+    }
+
+    try {
+      const result = await getMyCopyTradeBots();
+      if (result.success && result.data) {
+        // Map API response to frontend interface
+        const bots: CopyTradeBot[] = result.data.map((bot: ApiCopyTradeBot) => {
+          const pnlNum = parseFloat(bot.pnl);
+          const pnlFormatted =
+            pnlNum >= 0 ? `+${pnlNum.toFixed(2)}` : pnlNum.toFixed(2);
+          return {
+            id: bot.id,
+            traderAddress: bot.traderAddress,
+            mode: bot.mode,
+            allocation: parseFloat(bot.allocationPercent),
+            allocatedAmount: bot.allocatedAmount,
+            status: bot.status,
+            pnl: pnlFormatted,
+            trades: bot.totalTrades,
+            startedAt: bot.startedAt,
+          };
+        });
+
+        // Separate running and stopped bots
+        const running = bots.filter((bot) => bot.status === "running");
+        const stopped = bots.filter((bot) => bot.status === "stopped");
+        setRunningBots(running);
+        setStoppedBots(stopped);
+      } else {
+        setRunningBots([]);
+        setStoppedBots([]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch bots:", error);
+      setRunningBots([]);
+      setStoppedBots([]);
+    }
+  };
+
   useEffect(() => {
-    // TODO: Replace with actual API call
-    setRunningBots([
-      {
-        id: "1",
-        traderAddress: "0x1234567890abcdef1234567890abcdef12345678",
-        traderName: "Elite Trader",
-        mode: "smart_ratio",
-        allocation: 50,
-        allocatedAmount: "50.00",
-        status: "running",
-        pnl: "+125.50",
-        trades: 12,
-        startedAt: "2024-01-15T10:30:00Z",
-      },
-    ]);
-    setStoppedBots([
-      {
-        id: "2",
-        traderAddress: "0xabcdef1234567890abcdef1234567890abcdef12",
-        traderName: "Pro Trader",
-        mode: "smart_ratio",
-        allocation: 30,
-        allocatedAmount: "30.00",
-        status: "stopped",
-        pnl: "-15.20",
-        trades: 5,
-        startedAt: "2024-01-10T08:00:00Z",
-      },
-    ]);
-  }, []);
+    if (isSignedIn) {
+      fetchBots();
+    } else {
+      setRunningBots([]);
+      setStoppedBots([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignedIn]);
 
   const formatAddress = (address: string) => {
     if (!address) return "";
@@ -212,11 +233,6 @@ export default function Copytrade() {
     setError(null);
     setSuccess(false);
 
-    if (!traderAddress.trim()) {
-      setError("Please enter a trader address");
-      return;
-    }
-
     if (allocation === 0) {
       setError("Please set allocation percentage");
       return;
@@ -228,23 +244,44 @@ export default function Copytrade() {
     }
 
     setSubmitting(true);
+    console.log("🚀 [CopyTrade] Starting copy trade bot creation...", {
+      traderAddress: traderAddress.trim() || undefined,
+      allocatedAmount,
+      allocationPercent: allocation,
+      mode: tradingMode,
+    });
 
     try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Round allocatedAmount to 2 decimal places to avoid floating point precision issues
+      const roundedAmount = Math.round(allocatedAmount * 100) / 100;
 
-      // Mock success
-      setSuccess(true);
-      setTraderAddress("");
-      setAllocation(0);
-      setShowForm(false); // Close form after successful submission
+      const result = await createCopyTradeBot({
+        traderAddress: traderAddress.trim() || undefined,
+        allocatedAmount: roundedAmount,
+        allocationPercent: allocation,
+        mode: tradingMode,
+      });
 
-      // Refresh bots list
-      // TODO: Fetch from API
+      if (result.success && result.data) {
+        setSuccess(true);
+        setTraderAddress("");
+        setAllocation(0);
+        setShowForm(false);
 
-      setTimeout(() => setSuccess(false), 3000);
+        // Refresh bots list
+        await fetchBots();
+
+        setTimeout(() => setSuccess(false), 3000);
+      } else {
+        const errorMsg = result.error || "Failed to start copy trade";
+        setError(errorMsg);
+        setTimeout(() => setError(""), 5000);
+      }
     } catch (err: any) {
-      setError(err.message || "Failed to start copy trade");
+      const errorMsg =
+        err.message || "Failed to start copy trade. Please try again.";
+      setError(errorMsg);
+      setTimeout(() => setError(""), 5000);
     } finally {
       setSubmitting(false);
     }
@@ -252,9 +289,16 @@ export default function Copytrade() {
 
   const handleStopBot = async (botId: string) => {
     try {
-      // TODO: Replace with actual API call
-      console.log("Stopping bot:", botId);
-      // Update bot status
+      const result = await updateCopyTradeBot(botId, {
+        status: "stopped",
+      });
+
+      if (result.success) {
+        // Refresh bots list
+        await fetchBots();
+      } else {
+        setError(result.error || "Failed to stop bot");
+      }
     } catch (err: any) {
       setError(err.message || "Failed to stop bot");
     }
@@ -746,22 +790,20 @@ export default function Copytrade() {
                             {formatCurrency(parseFloat(bot.allocatedAmount))}
                           </span>
                         </div>
-                        {bot.pnl && (
-                          <div>
-                            <span className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1.5">
-                              PNL
-                            </span>
-                            <span
-                              className={`text-lg font-bold ${
-                                bot.pnl.startsWith("+")
-                                  ? "text-green-400"
-                                  : "text-red-400"
-                              }`}
-                            >
-                              {bot.pnl}
-                            </span>
-                          </div>
-                        )}
+                        <div>
+                          <span className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1.5">
+                            PNL
+                          </span>
+                          <span
+                            className={`text-lg font-bold ${
+                              bot.pnl && bot.pnl.startsWith("+")
+                                ? "text-green-400"
+                                : "text-red-400"
+                            }`}
+                          >
+                            {bot.pnl || "$0.00"}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Number of Trades */}
@@ -770,7 +812,7 @@ export default function Copytrade() {
                           Total Trades
                         </span>
                         <span className="text-xl font-bold text-slate-200">
-                          {bot.trades !== undefined ? bot.trades : 0}
+                          {bot.trades || 0}
                         </span>
                       </div>
 
@@ -847,22 +889,20 @@ export default function Copytrade() {
                             {formatCurrency(parseFloat(bot.allocatedAmount))}
                           </span>
                         </div>
-                        {bot.pnl && (
-                          <div>
-                            <span className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1.5">
-                              PNL
-                            </span>
-                            <span
-                              className={`text-lg font-bold ${
-                                bot.pnl.startsWith("+")
-                                  ? "text-green-400"
-                                  : "text-red-400"
-                              }`}
-                            >
-                              {bot.pnl}
-                            </span>
-                          </div>
-                        )}
+                        <div>
+                          <span className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1.5">
+                            PNL
+                          </span>
+                          <span
+                            className={`text-lg font-bold ${
+                              bot.pnl && bot.pnl.startsWith("+")
+                                ? "text-green-400"
+                                : "text-red-400"
+                            }`}
+                          >
+                            {bot.pnl || "$0.00"}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Number of Trades */}
@@ -871,7 +911,7 @@ export default function Copytrade() {
                           Total Trades
                         </span>
                         <span className="text-xl font-bold text-slate-200">
-                          {bot.trades !== undefined ? bot.trades : 0}
+                          {bot.trades || 0}
                         </span>
                       </div>
 
@@ -885,11 +925,21 @@ export default function Copytrade() {
                           <span>Details</span>
                         </button>
                         <button
-                          onClick={() => {
-                            setTraderAddress(bot.traderAddress || "");
-                            setAllocation(bot.allocation);
-                            setShowForm(true);
-                            window.scrollTo({ top: 0, behavior: "smooth" });
+                          onClick={async () => {
+                            try {
+                              const result = await updateCopyTradeBot(bot.id, {
+                                status: "running",
+                              });
+                              if (result.success) {
+                                await fetchBots();
+                              } else {
+                                setError(
+                                  result.error || "Failed to restart bot"
+                                );
+                              }
+                            } catch (err: any) {
+                              setError(err.message || "Failed to restart bot");
+                            }
                           }}
                           className="flex-1 px-3 py-2.5 bg-transparent hover:bg-blue-500/10 border border-blue-500/30 hover:border-blue-500/50 text-blue-400 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-blue-500/20"
                           style={{
