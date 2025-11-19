@@ -702,7 +702,13 @@ export default function ProfilePage() {
                     {/* Copy Trader Button */}
                     <button
                       onClick={() => {
-                        // Do nothing for now
+                        if (user.wallet_address) {
+                          // Redirect to copytrade page with trader wallet address as query parameter
+                          router.push(`/copytrade?address=${encodeURIComponent(user.wallet_address)}`);
+                        } else {
+                          // If no wallet address, still redirect but without address (user can enter manually)
+                          router.push("/copytrade");
+                        }
                       }}
                       className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2 bg-gradient-to-r from-[#3B82F6] to-[#2563EB] hover:from-[#2563EB] hover:to-[#1D4ED8] text-white rounded-lg font-semibold transition-all duration-200 shadow-lg shadow-[#3B82F6]/20 hover:shadow-xl hover:shadow-[#3B82F6]/30 whitespace-nowrap text-xs sm:text-sm"
                     >

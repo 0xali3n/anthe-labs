@@ -106,7 +106,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="bg-[#060913]">
+    <html lang="en" className="bg-[#060913]" data-scroll-behavior="smooth">
       <body className="min-h-screen flex flex-col bg-[#060913] text-slate-100 antialiased">
         {/* Full background that extends behind navbar */}
         <div className="fixed inset-0 pointer-events-none z-0">

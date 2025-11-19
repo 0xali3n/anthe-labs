@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { getUSDTBalance } from "@/lib/walletsApi";
 import {
@@ -47,6 +47,7 @@ interface CopyTradeBot {
 
 export default function Copytrade() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [loading, setLoading] = useState(true);
   const [balance, setBalance] = useState<string>("0.00");
@@ -198,6 +199,45 @@ export default function Copytrade() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn]);
+
+  // Handle address query parameter from leaderboard or open parameter for custom bot
+  useEffect(() => {
+    const addressParam = searchParams.get("address");
+    const openParam = searchParams.get("open");
+
+    if (addressParam) {
+      const decodedAddress = decodeURIComponent(addressParam);
+      // Validate the address
+      if (isValidAptosAddress(decodedAddress)) {
+        setTraderAddress(decodedAddress);
+        // Refresh bots list to get latest running bots count
+        if (isSignedIn) {
+          fetchBots();
+        }
+        // Open the form after a short delay to ensure page is loaded
+        setTimeout(() => {
+          setShowForm(true);
+        }, 100);
+        // Clear the query parameter from URL
+        router.replace("/copytrade", { scroll: false });
+      } else {
+        setError("Invalid trader address in URL");
+      }
+    } else if (openParam === "true") {
+      // Open form for custom bot (no address pre-filled)
+      // Refresh bots list to get latest running bots count
+      if (isSignedIn) {
+        fetchBots();
+      }
+      // Open the form after a short delay to ensure page is loaded
+      setTimeout(() => {
+        setShowForm(true);
+      }, 100);
+      // Clear the query parameter from URL
+      router.replace("/copytrade", { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, isSignedIn]);
 
   const formatAddress = (address: string) => {
     if (!address) return "";

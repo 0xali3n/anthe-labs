@@ -111,8 +111,8 @@ export default function LeaderboardPage() {
   };
 
   const handleCopyTrade = (trader: Trader) => {
-    // TODO: Implement copy trade functionality
-    console.log("Starting copy trade for:", trader.address);
+    // Redirect to copytrade page with trader address as query parameter
+    router.push(`/copytrade?address=${encodeURIComponent(trader.address)}`);
   };
 
   const showTooltip = (e: React.MouseEvent, text: string) => {
@@ -546,6 +546,7 @@ export default function LeaderboardPage() {
           <div
             onMouseEnter={() => setHoveredCard("custom")}
             onMouseLeave={() => setHoveredCard(null)}
+            onClick={() => router.push("/copytrade?open=true")}
             className="group relative bg-slate-900/80 border-2 border-dashed border-slate-800 rounded-xl p-6 sm:p-8 lg:p-10 hover:border-slate-700 transition-all duration-200 flex flex-col items-center justify-center min-h-[280px] sm:min-h-[300px] lg:min-h-[320px] cursor-pointer"
           >
             <div className="flex flex-col items-center justify-center gap-5 text-center">
@@ -564,7 +565,13 @@ export default function LeaderboardPage() {
                   bots.
                 </p>
               </div>
-              <button className="mt-2 px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors duration-200 flex items-center gap-2">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push("/copytrade?open=true");
+                }}
+                className="mt-2 px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors duration-200 flex items-center gap-2"
+              >
                 Build Now
                 <TrendingUp size={18} />
               </button>
