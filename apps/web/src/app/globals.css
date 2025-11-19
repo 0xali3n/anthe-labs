@@ -144,7 +144,8 @@ button.signin-glow:active:not(:disabled) {
 }
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px);
   }
   50% {
@@ -153,7 +154,8 @@ button.signin-glow:active:not(:disabled) {
 }
 
 @keyframes floatDelayed {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px);
   }
   50% {
@@ -185,7 +187,8 @@ html {
 
 /* Gradient animation */
 @keyframes gradientShift {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.15;
     transform: translate(0, 0);
   }
@@ -226,7 +229,9 @@ html {
 }
 
 .animate-chart-wave {
-  animation: chartLine 2s ease-out forwards, float 4s ease-in-out infinite;
+  animation:
+    chartLine 2s ease-out forwards,
+    float 4s ease-in-out infinite;
   stroke-dasharray: 400;
   stroke-dashoffset: 400;
   transform-origin: center;
@@ -234,7 +239,8 @@ html {
 
 /* PNL Glow Pulse Animation */
 @keyframes pnlGlow {
-  0%, 100% {
+  0%,
+  100% {
     text-shadow: 0 0 20px rgba(74, 222, 128, 0.3);
   }
   50% {
@@ -243,7 +249,8 @@ html {
 }
 
 @keyframes pnlGlowRed {
-  0%, 100% {
+  0%,
+  100% {
     text-shadow: 0 0 20px rgba(248, 113, 113, 0.3);
   }
   50% {
@@ -263,6 +270,116 @@ html {
   }
 }
 
+/* Shimmer animation */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+/* Custom Range Slider Styles */
+input[type="range"].slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"].slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgb(59, 130, 246);
+  cursor: pointer;
+  border: 2px solid rgb(15, 23, 42);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+input[type="range"].slider::-webkit-slider-thumb:hover {
+  background: rgb(37, 99, 235);
+  transform: scale(1.1);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+input[type="range"].slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgb(59, 130, 246);
+  cursor: pointer;
+  border: 2px solid rgb(15, 23, 42);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+input[type="range"].slider::-moz-range-thumb:hover {
+  background: rgb(37, 99, 235);
+  transform: scale(1.1);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+/* Modern Slider Styles */
+input[type="range"].slider-modern {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"].slider-modern::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgb(59, 130, 246), rgb(99, 102, 241));
+  cursor: pointer;
+  border: 3px solid rgb(15, 23, 42);
+  box-shadow:
+    0 2px 8px rgba(59, 130, 246, 0.4),
+    0 0 0 0 rgba(59, 130, 246, 0);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+input[type="range"].slider-modern::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow:
+    0 4px 12px rgba(59, 130, 246, 0.6),
+    0 0 0 4px rgba(59, 130, 246, 0.2);
+  border-color: rgb(99, 102, 241);
+}
+
+input[type="range"].slider-modern::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgb(59, 130, 246), rgb(99, 102, 241));
+  cursor: pointer;
+  border: 3px solid rgb(15, 23, 42);
+  box-shadow:
+    0 2px 8px rgba(59, 130, 246, 0.4),
+    0 0 0 0 rgba(59, 130, 246, 0);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+input[type="range"].slider-modern::-moz-range-thumb:hover {
+  transform: scale(1.2);
+  box-shadow:
+    0 4px 12px rgba(59, 130, 246, 0.6),
+    0 0 0 4px rgba(59, 130, 246, 0.2);
+  border-color: rgb(99, 102, 241);
+}
+
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -273,9 +390,124 @@ html {
     transition-duration: 0.01ms !important;
     transform: none !important;
   }
-  
+
   /* Disable hover transforms for reduced motion */
   [style*="transform"] {
     transform: none !important;
+  }
+}
+
+/* Sparkle/Star Background Effect - Pure CSS, GPU Accelerated */
+.sparkle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 1) 0%,
+    rgba(147, 197, 253, 0.6) 40%,
+    transparent 70%
+  );
+  border-radius: 50%;
+  box-shadow:
+    0 0 6px rgba(147, 197, 253, 0.5),
+    0 0 12px rgba(147, 197, 253, 0.3);
+  animation: sparkleFloat 8s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.sparkle-1 {
+  left: 10%;
+  top: 20%;
+  animation-delay: 0s;
+}
+.sparkle-2 {
+  left: 25%;
+  top: 40%;
+  animation-delay: 1s;
+}
+.sparkle-3 {
+  left: 45%;
+  top: 15%;
+  animation-delay: 2s;
+}
+.sparkle-4 {
+  left: 60%;
+  top: 60%;
+  animation-delay: 0.5s;
+}
+.sparkle-5 {
+  left: 75%;
+  top: 30%;
+  animation-delay: 1.5s;
+}
+.sparkle-6 {
+  left: 85%;
+  top: 70%;
+  animation-delay: 2.5s;
+}
+.sparkle-7 {
+  left: 15%;
+  top: 80%;
+  animation-delay: 3s;
+}
+.sparkle-8 {
+  left: 35%;
+  top: 10%;
+  animation-delay: 0.8s;
+}
+.sparkle-9 {
+  left: 55%;
+  top: 50%;
+  animation-delay: 1.8s;
+}
+.sparkle-10 {
+  left: 70%;
+  top: 25%;
+  animation-delay: 2.8s;
+}
+.sparkle-11 {
+  left: 20%;
+  top: 55%;
+  animation-delay: 0.3s;
+}
+.sparkle-12 {
+  left: 40%;
+  top: 75%;
+  animation-delay: 1.3s;
+}
+.sparkle-13 {
+  left: 65%;
+  top: 45%;
+  animation-delay: 2.3s;
+}
+.sparkle-14 {
+  left: 80%;
+  top: 15%;
+  animation-delay: 0.7s;
+}
+.sparkle-15 {
+  left: 90%;
+  top: 85%;
+  animation-delay: 1.7s;
+}
+
+@keyframes sparkleFloat {
+  0%,
+  100% {
+    transform: translateY(0) translateX(0) scale(1);
+    opacity: 0.4;
+  }
+  25% {
+    transform: translateY(-20px) translateX(10px) scale(1.3);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateY(-10px) translateX(-5px) scale(0.9);
+    opacity: 0.5;
+  }
+  75% {
+    transform: translateY(-30px) translateX(15px) scale(1.2);
+    opacity: 0.9;
   }
 }

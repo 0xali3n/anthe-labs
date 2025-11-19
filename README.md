@@ -20,11 +20,34 @@ A modern **Next.js + Nest.js (Turborepo)** project powered by **Supabase** and *
 **Pages & UI:**
 
 - ✅ Landing page with features showcase
-- ✅ Leaderboard page with top traders
-- ✅ Trader registration page (`/trader`) with:
+- ✅ Leaderboard page with premium UI design:
+  - Top traders display with animated PNL counters
+  - Sorting by PNL, ROI, Volume, or Trades
+  - Premium card design with gradients and hover effects
+  - Direct copy trade integration from leaderboard
+  - "Create Your Own Bot" card
+- ✅ Copy Trade Management (`/copytrade`):
+  - Premium modal popup for bot creation
+  - Aptos wallet address validation
+  - Smart ratio allocation mode
+  - Allocation slider with percentage display
+  - Platform fees information with tooltips
+  - Running and stopped bots sections with segmented tabs
+  - Bot cards with ID, metrics, and status badges
+  - Single running bot limit enforcement
+  - Bot restart functionality with pre-filled form
+  - Direct integration from leaderboard and profile pages
+- ✅ Bot Details Page (`/copytrade/details/[botid]`):
+  - Comprehensive bot information display
+  - Parameters section (target address, status, mode, allocation)
+  - Performance metrics (Total PNL, Realized/Unrealized PNL, Trades, Volume)
+  - Open positions table with symbol logos and currency labels
+  - Copy trade history table with symbol logos
+  - Premium table styling matching trade history design
+- ✅ Creator Registration page (`/trader`) with:
   - Aptos wallet connection (OKX, Petra, Martian, Pontem, Fewcha)
   - Professional wallet connection modal
-  - Trader registration form (bot name, wallet address)
+  - Creator registration form (bot name, wallet address)
   - Registration status tracking (pending, approved, rejected)
 - ✅ User profile pages (`/profile/[username]`) with:
   - Profile header with avatar, badges, and stats
@@ -32,9 +55,17 @@ A modern **Next.js + Nest.js (Turborepo)** project powered by **Supabase** and *
   - Verified badge with Twitter connection status
   - Statistics display (Volume, PnL, ROI, Trades)
   - Share profile functionality
+  - Direct copy trade integration
 - ✅ Settings page for user preferences
-- ✅ Responsive navigation bar with mobile support
+- ✅ Responsive navigation bar with mobile support:
+  - Creator registration link
+  - Balance display with refresh on tab focus
+  - Optimized authentication state management
 - ✅ Footer with links and social media
+- ✅ Global background effects:
+  - Animated sparkles
+  - Subtle grid pattern
+  - Consistent gradient across all pages
 
 **Backend API:**
 
@@ -42,9 +73,16 @@ A modern **Next.js + Nest.js (Turborepo)** project powered by **Supabase** and *
 - ✅ Wallet management with encryption
 - ✅ Trader statistics and leaderboard
 - ✅ Trader registration management (separate from leaderboard)
+- ✅ Copy Trade Bots management:
+  - Create, read, update, delete copy trade bots
+  - Bot status management (running/stopped)
+  - Allocation and mode tracking
+  - PNL and trade statistics
+  - User-specific bot queries
 - ✅ Twitter integration service
 - ✅ Avatar management
 - ✅ JWT authentication guard
+- ✅ Row Level Security (RLS) policies for copy trade bots
 
 **Database:**
 
@@ -52,6 +90,14 @@ A modern **Next.js + Nest.js (Turborepo)** project powered by **Supabase** and *
 - ✅ User schema with wallet encryption
 - ✅ Trader statistics tracking (leaderboard)
 - ✅ Trader registration table (separate from leaderboard)
+- ✅ Copy Trade Bots table:
+  - User association
+  - Trader address tracking
+  - Allocation amount and percentage
+  - Trading mode (smart_ratio, fixed_amount, advanced)
+  - Status tracking (running, stopped)
+  - Performance metrics (PNL, total trades)
+  - Timestamps (created, started, stopped)
 - ✅ Avatar and profile data storage
 
 ---
@@ -126,8 +172,12 @@ anthe-labs/
 │   ├── web/              # Next.js Frontend
 │   │   ├── src/
 │   │   │   ├── app/      # Pages & Routes
+│   │   │   │   ├── copytrade/  # Copy Trade Management
+│   │   │   │   │   └── details/[botid]/  # Bot Details Page
 │   │   │   ├── components/  # React Components
 │   │   │   └── lib/      # Utilities & API Clients
+│   │   │       ├── useAuth.ts  # Centralized Auth Hook
+│   │   │       └── copyTradeBotsApi.ts  # Copy Trade API Client
 │   │   └── package.json
 │   │
 │   └── api/              # Nest.js Backend
@@ -135,7 +185,8 @@ anthe-labs/
 │       │   ├── users/    # User Management
 │       │   ├── wallets/  # Wallet Operations
 │       │   ├── traders/  # Trader Statistics (Leaderboard)
-│       │   ├── trader-registrations/  # Trader Registration
+│       │   ├── trader-registrations/  # Creator Registration
+│       │   ├── copy-trade-bots/  # Copy Trade Bot Management
 │       │   ├── twitter/  # Twitter Integration
 │       │   └── avatars/  # Avatar Management
 │       ├── prisma/       # Database Schema
@@ -175,29 +226,78 @@ anthe-labs/
 
 ## 📝 Recent Updates
 
-### Trader Registration & Wallet Integration ✨
+### Copy Trade Management System ✨ (Current Branch)
 
-- ✅ Trader registration page (`/trader`) implementation
-- ✅ Aptos wallet browser extension integration (OKX, Petra, Martian, Pontem, Fewcha)
-- ✅ Professional wallet connection modal with wallet detection
-- ✅ Trader registration system with bot name and wallet address
-- ✅ Separate `TraderRegistration` database table (distinct from leaderboard)
-- ✅ Registration status tracking (pending, approved, rejected)
-- ✅ State management improvements for navigation and loading
-- ✅ Wallet encryption performance analysis and optimization
+- ✅ Complete copy trade management implementation
+- ✅ Premium modal popup for bot creation with compact design
+- ✅ Aptos wallet address validation (real-time with visual feedback)
+- ✅ Smart ratio allocation mode with explanation
+- ✅ Allocation slider with percentage and amount display
+- ✅ Platform fees information with hover tooltips
+- ✅ Running and stopped bots sections with premium segmented tabs
+- ✅ Bot cards with:
+  - 5-8 digit bot ID generation
+  - Status badges with icons
+  - Performance metrics (PNL, trades)
+  - Details and stop/restart buttons
+- ✅ Single running bot limit enforcement
+- ✅ Bot restart functionality with pre-filled form data
+- ✅ Bot details page (`/copytrade/details/[botid]`):
+  - Comprehensive bot information
+  - Performance metrics dashboard
+  - Open positions table with symbol logos
+  - Copy trade history table with symbol logos and currency labels
+- ✅ Database integration:
+  - `CopyTradeBot` table with full schema
+  - Row Level Security (RLS) policies
+  - Prisma schema and migrations
+- ✅ Direct integration:
+  - Copy trade from leaderboard (pre-fills trader address)
+  - Copy trade from user profiles
+  - Create custom bot from leaderboard
+- ✅ Premium UI/UX improvements:
+  - Consistent styling across all pages
+  - Global background effects (sparkles, grid pattern)
+  - Improved typography and spacing
+  - Enhanced card designs with gradients
+  - Micro-interactions and hover effects
 
-### Profile Page Branch ✨
+### Authentication & State Management Improvements ✨
 
-- ✅ Complete profile page redesign with professional UI
-- ✅ Volume tier system with hover tooltips
-- ✅ Verified badge with Twitter connection status
-- ✅ Responsive design for mobile and desktop
-- ✅ Search functionality with user avatars
-- ✅ Statistics display (Volume, PnL, ROI, Trades)
-- ✅ Share profile buttons (Twitter, Telegram, Copy Link)
+- ✅ Centralized authentication with `useAuth` hook
+- ✅ Optimized session management and persistence
+- ✅ Tab visibility handling for auth state refresh
+- ✅ Singleton Supabase client pattern
+- ✅ Improved loading states and error handling
+- ✅ Balance refresh on tab focus
+
+### UI/UX Polish & Premium Design ✨
+
+- ✅ Leaderboard page redesign:
+  - Premium card styling
+  - Centered layout and alignment
+  - Improved typography and spacing
+  - Consistent color scheme
+- ✅ Creator Registration rebranding:
+  - Changed "Trader" to "Creator" throughout
+  - Updated navigation and buttons
+  - Clearer terminology (traders = users, creators = bot creators)
+- ✅ Global background effects:
+  - Animated sparkles
+  - Subtle grid pattern
+  - Consistent gradient across pages
+- ✅ Table improvements:
+  - Symbol logos (BTC, ETH, APT)
+  - Currency labels below size values
+  - Premium table styling
+  - Consistent column headers
 
 ### Previous Updates
 
+- ✅ Trader registration page (`/trader`) implementation
+- ✅ Aptos wallet browser extension integration
+- ✅ Profile page redesign with professional UI
+- ✅ Volume tier system with hover tooltips
 - ✅ User authentication flow with Google OAuth
 - ✅ Wallet creation and encryption
 - ✅ Leaderboard page implementation

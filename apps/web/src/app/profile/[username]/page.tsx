@@ -525,7 +525,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#060913] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-slate-400">Loading profile...</p>
@@ -536,7 +536,7 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#060913] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-white mb-2">User Not Found</h1>
           <p className="text-slate-400">
@@ -555,7 +555,7 @@ export default function ProfilePage() {
     `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6366f1&color=fff`;
 
   return (
-    <div className="min-h-screen bg-[#060913]">
+    <div className="min-h-screen">
       {/* Search Bar with Autocomplete */}
       <section className="pt-16 sm:pt-20 pb-3 sm:pb-4 px-3 sm:px-4 lg:px-8">
         <div className="max-w-7xl mx-auto">
@@ -702,7 +702,13 @@ export default function ProfilePage() {
                     {/* Copy Trader Button */}
                     <button
                       onClick={() => {
-                        // Do nothing for now
+                        if (user.wallet_address) {
+                          // Redirect to copytrade page with trader wallet address as query parameter
+                          router.push(`/copytrade?address=${encodeURIComponent(user.wallet_address)}`);
+                        } else {
+                          // If no wallet address, still redirect but without address (user can enter manually)
+                          router.push("/copytrade");
+                        }
                       }}
                       className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2 bg-gradient-to-r from-[#3B82F6] to-[#2563EB] hover:from-[#2563EB] hover:to-[#1D4ED8] text-white rounded-lg font-semibold transition-all duration-200 shadow-lg shadow-[#3B82F6]/20 hover:shadow-xl hover:shadow-[#3B82F6]/30 whitespace-nowrap text-xs sm:text-sm"
                     >

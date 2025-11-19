@@ -152,18 +152,10 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#060913] relative">
-      {/* Background Patterns */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {/* Grid Pattern */}
-        <div
-          className="absolute inset-0 opacity-[0.02]"
-          style={{
-            backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-            backgroundSize: "50px 50px",
-          }}
-        />
-        {/* Gradient Circles */}
+    <div className="min-h-screen relative">
+      {/* Background is now handled globally in layout.tsx */}
+      {/* Additional gradient circles for home page */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl" />
       </div>
@@ -363,7 +355,7 @@ export default function Home() {
       </section>
 
       {/* Stats Strip */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-900/30 border-y border-slate-800/50 relative">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 border-y border-slate-800/50 relative">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {stats.map((stat, index) => {
@@ -394,7 +386,7 @@ export default function Home() {
       </section>
 
       {/* Features Grid - 6 Tiles */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-[#060913] relative">
+      <section className="py-32 px-4 sm:px-6 lg:px-8 relative">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20 animate-fade-up">
             <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tight">
@@ -471,7 +463,7 @@ export default function Home() {
       </section>
 
       {/* Partner/Audit Trust Strip */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-slate-900/30 border-y border-slate-800/50">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 border-y border-slate-800/50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center">
             <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-8">
@@ -520,7 +512,7 @@ export default function Home() {
       </section>
 
       {/* How It Works - 3 Steps */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-[#060913] relative">
+      <section className="py-24 px-4 sm:px-6 lg:px-8 relative">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16 animate-fade-up">
             <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tight">
@@ -574,12 +566,7 @@ export default function Home() {
       </section>
 
       {/* Testimonials */}
-      <section
-        className="py-24 px-4 sm:px-6 lg:px-8 relative"
-        style={{
-          background: "linear-gradient(to bottom, #0f0f13, #06070a)",
-        }}
-      >
+      <section className="py-24 px-4 sm:px-6 lg:px-8 relative">
         {/* Subtle gradient highlight */}
         <div
           className="absolute inset-0 pointer-events-none opacity-30"
@@ -759,7 +746,7 @@ export default function Home() {
       </section>
 
       {/* Final CTA */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-[#060913] relative">
+      <section className="py-32 px-4 sm:px-6 lg:px-8 relative">
         <div className="max-w-4xl mx-auto text-center">
           <div className="bg-gradient-to-r from-[#2F6BFF]/10 via-[#7A4BFF]/10 to-[#4BD1FF]/10 border border-blue-500/20 rounded-2xl p-12 backdrop-blur-lg shadow-lg animate-fade-up relative overflow-hidden">
             {/* Gradient glow effect */}

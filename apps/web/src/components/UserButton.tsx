@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/lib/useAuth";
 import { upsertUser } from "@/lib/usersApi";
 import { formatWalletAddress } from "@/lib/walletsApi";
 import { Settings, LogOut, Wallet, Copy, Check, ChevronDown, User } from "lucide-react";
@@ -21,8 +22,7 @@ interface User {
 }
 
 export default function UserButton() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { session, isSignedIn, loading: authLoading } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -31,121 +31,52 @@ export default function UserButton() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
+  // Load user data when session is available
   useEffect(() => {
-    let mounted = true;
+    if (authLoading) return;
 
-    // Check initial session first
-    const loadInitialSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!mounted) return;
-
-        if (session?.user) {
-          setUser(session.user as any);
-
-          // Save user to database - wallet is automatically created in backend
-          try {
-            const result = await upsertUser({
-              id: session.user.id,
-              email: session.user.email || "",
-              full_name: session.user.user_metadata?.full_name,
-              avatar_url:
-                session.user.user_metadata?.avatar_url ||
-                session.user.user_metadata?.picture,
-              google_id:
-                session.user.user_metadata?.google_id ||
-                session.user.user_metadata?.sub,
-            });
-            
-            // Wallet address is automatically included in user response
-            if (result?.wallet_address) {
-              setWalletAddress(result.wallet_address);
-            }
-            // Store full user data for username
-            setUserData(result);
-          } catch (error) {
-            console.error("❌ Failed to save user to database:", error);
-          }
-          
-          // Also fetch current user data to get username
-          try {
-            const currentUser = await getCurrentUser();
-            setUserData(currentUser);
-            if (currentUser?.wallet_address) {
-              setWalletAddress(currentUser.wallet_address);
-            }
-          } catch (error) {
-            console.error("❌ Failed to fetch user data:", error);
-          }
-        } else {
-          setUser(null);
-          setWalletAddress(null);
-        }
-        setLoading(false);
-      } catch (error) {
-        console.error("Error loading initial session:", error);
-        if (mounted) setLoading(false);
-      }
-    };
-
-    loadInitialSession();
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!mounted) return;
-
-      if (session?.user) {
-        setUser(session.user as any);
-
-        // Save user to database - wallet is automatically created in backend
-        try {
-          const result = await upsertUser({
-            id: session.user.id,
-            email: session.user.email || "",
-            full_name: session.user.user_metadata?.full_name,
-            avatar_url:
-              session.user.user_metadata?.avatar_url ||
-              session.user.user_metadata?.picture,
-            google_id:
-              session.user.user_metadata?.google_id ||
-              session.user.user_metadata?.sub,
-          });
-          
+    if (session?.user) {
+      // Save user to database - wallet is automatically created in backend
+      upsertUser({
+        id: session.user.id,
+        email: session.user.email || "",
+        full_name: session.user.user_metadata?.full_name,
+        avatar_url:
+          session.user.user_metadata?.avatar_url ||
+          session.user.user_metadata?.picture,
+        google_id:
+          session.user.user_metadata?.google_id ||
+          session.user.user_metadata?.sub,
+      })
+        .then((result) => {
           // Wallet address is automatically included in user response
           if (result?.wallet_address) {
             setWalletAddress(result.wallet_address);
           }
           // Store full user data for username
           setUserData(result);
-        } catch (error) {
+        })
+        .catch((error) => {
           console.error("❌ Failed to save user to database:", error);
-        }
-        
-        // Also fetch current user data to get username
-        try {
-          const currentUser = await getCurrentUser();
+        });
+
+      // Also fetch current user data to get username
+      getCurrentUser()
+        .then((currentUser) => {
           setUserData(currentUser);
           if (currentUser?.wallet_address) {
             setWalletAddress(currentUser.wallet_address);
           }
-        } catch (error) {
+        })
+        .catch((error) => {
           console.error("❌ Failed to fetch user data:", error);
-        }
-      } else {
-        setUser(null);
-        setWalletAddress(null);
-      }
-      setLoading(false);
-      setSigningOut(false);
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
+        });
+    } else {
+      setUserData(null);
+      setWalletAddress(null);
+    }
+    setSigningOut(false);
+  }, [session, authLoading]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -187,7 +118,7 @@ export default function UserButton() {
     }
   };
 
-  if (loading) {
+  if (authLoading) {
     return (
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/50 border border-slate-700/50 animate-pulse">
@@ -198,18 +129,18 @@ export default function UserButton() {
     );
   }
 
-  if (!user) {
+  if (!session?.user) {
     return null;
   }
 
   const displayName =
-    user.user_metadata?.full_name ||
-    user.user_metadata?.name ||
-    user.email?.split("@")[0] ||
+    session.user.user_metadata?.full_name ||
+    session.user.user_metadata?.name ||
+    session.user.email?.split("@")[0] ||
     "User";
   const avatarUrl =
-    user.user_metadata?.avatar_url ||
-    user.user_metadata?.picture ||
+    session.user.user_metadata?.avatar_url ||
+    session.user.user_metadata?.picture ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6366f1&color=fff`;
 
   // Helper to check if URL is a Google avatar

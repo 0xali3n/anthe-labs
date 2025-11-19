@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/lib/useAuth";
 import { getCurrentUser, updateCurrentUser } from "@/lib/usersApi";
 import { AbortError } from "@/lib/apiClient";
 import { getAvatars, type Avatar } from "@/lib/avatarsApi";
@@ -37,6 +37,7 @@ interface UserData {
 export default function Settings() {
   const router = useRouter();
   const pathname = usePathname();
+  const { isSignedIn, loading: authLoading } = useAuth();
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
@@ -123,52 +124,18 @@ export default function Settings() {
     isLoadingRef.current = true;
 
     async function loadUser() {
-      console.log("[Settings] Starting to load user data...");
       setLoading(true);
       setError(null);
 
       try {
-        // Wait for Supabase session to be ready
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession();
-
-        if (!mounted || abortController.signal.aborted) {
-          console.log("[Settings] Load aborted (unmounted or cancelled)");
-          isLoadingRef.current = false;
-          return;
-        }
-
-        if (sessionError) {
-          console.error("[Settings] Session error:", sessionError);
-          isLoadingRef.current = false;
-          if (mounted) {
-            setError("Failed to get session. Please try again.");
-            setLoading(false);
-          }
-          return;
-        }
-
-        if (!session?.access_token) {
-          console.log("[Settings] No session, redirecting to home");
-          isLoadingRef.current = false;
-          if (mounted) {
-            router.push("/");
-          }
-          return;
-        }
-
-        console.log("[Settings] Session found, fetching user data...");
+        // Just call getCurrentUser - it handles auth internally
         const userData = await getCurrentUser(abortController.signal);
 
         if (!mounted || abortController.signal.aborted) {
-          console.log("[Settings] Load aborted after fetch");
           isLoadingRef.current = false;
           return;
         }
 
-        console.log("[Settings] User data loaded successfully");
         setUser(userData);
         const initialDisplayName =
           userData.display_name || userData.full_name || "";
@@ -191,13 +158,12 @@ export default function Settings() {
       } catch (error: any) {
         isLoadingRef.current = false;
 
-        // Silently handle abort errors (intentional cancellation)
+        // Handle abort errors silently
         if (
           error instanceof AbortError ||
           error.message === "Request aborted" ||
           error.name === "AbortError"
         ) {
-          console.log("[Settings] Request aborted (intentional)");
           return;
         }
 
@@ -205,24 +171,18 @@ export default function Settings() {
           return;
         }
 
+        // Check if it's an auth error
         if (
           error.message?.includes("No session") ||
           error.message?.includes("Unauthorized") ||
           error.message?.includes("401")
         ) {
-          console.log("[Settings] Unauthorized, redirecting to home");
           router.push("/");
           return;
         }
 
-        console.error("[Settings] Failed to load user data:", error);
         setError(error.message || "Failed to load user data");
         setLoading(false);
-      } finally {
-        // Ensure loading state is always cleared, even if something unexpected happens
-        if (mounted && !abortController.signal.aborted) {
-          isLoadingRef.current = false;
-        }
       }
     }
 
@@ -238,7 +198,7 @@ export default function Settings() {
         abortController.abort();
       }
     };
-  }, [pathname, router]);
+  }, [pathname, router, user, authLoading, isSignedIn]);
 
   // Close modal when clicking outside
   useEffect(() => {
@@ -1033,15 +993,15 @@ export default function Settings() {
           </div>
         )}
 
-        {/* Register as Trader Section */}
+        {/* Become a Creator Section */}
         <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 mb-6">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-bold text-white mb-1">
-                Become a Trader
+                Become a Creator
               </h3>
               <p className="text-sm text-slate-400">
-                Register as a trader and start earning from your trading
+                Register as a creator and start earning from your trading
                 strategies
               </p>
             </div>
@@ -1050,7 +1010,7 @@ export default function Settings() {
               className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
             >
               <UserPlus size={18} />
-              <span>Register as Trader</span>
+              <span>Become a Creator</span>
             </button>
           </div>
         </div>
