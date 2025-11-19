@@ -196,7 +196,7 @@ export default function BotDetailsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#060913] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Loader className="animate-spin h-12 w-12 text-blue-500 mx-auto mb-4" />
           <p className="text-slate-400">Loading bot details...</p>
@@ -224,7 +224,7 @@ export default function BotDetailsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#060913]">
+    <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Back Button */}
         <button

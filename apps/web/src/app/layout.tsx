@@ -106,21 +106,35 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="bg-[#060913]" data-scroll-behavior="smooth">
-      <body className="min-h-screen flex flex-col bg-[#060913] text-slate-100 antialiased">
+    <html lang="en" className="bg-[#0b0d14]" data-scroll-behavior="smooth">
+      <body className="min-h-screen flex flex-col text-slate-100 antialiased" style={{ background: "linear-gradient(180deg, #0f111a 0%, #0b0d14 100%)" }}>
         {/* Full background that extends behind navbar */}
-        <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
           {/* Base gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#060913] via-[#0a0d17] to-[#060913]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0f111a] via-[#0b0d14] to-[#0b0d14]" />
 
-          {/* Grid Pattern */}
-          <div
-            className="absolute inset-0 opacity-[0.02]"
-            style={{
-              backgroundImage: `linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)`,
-              backgroundSize: "50px 50px",
-            }}
-          />
+          {/* Grid Pattern - Removed to eliminate horizontal lines */}
+
+          {/* Subtle Sparkle/Star Effect - Pure CSS, GPU Accelerated */}
+          <div className="absolute inset-0">
+            <div className="sparkle sparkle-1"></div>
+            <div className="sparkle sparkle-2"></div>
+            <div className="sparkle sparkle-3"></div>
+            <div className="sparkle sparkle-4"></div>
+            <div className="sparkle sparkle-5"></div>
+            <div className="sparkle sparkle-6"></div>
+            <div className="sparkle sparkle-7"></div>
+            <div className="sparkle sparkle-8"></div>
+            <div className="sparkle sparkle-9"></div>
+            <div className="sparkle sparkle-10"></div>
+            <div className="sparkle sparkle-11"></div>
+            <div className="sparkle sparkle-12"></div>
+            <div className="sparkle sparkle-13"></div>
+            <div className="sparkle sparkle-14"></div>
+            <div className="sparkle sparkle-15"></div>
+          </div>
+
+          {/* Trading Chart Lines - Removed per user request */}
         </div>
 
         <Navbar />

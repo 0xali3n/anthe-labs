@@ -525,7 +525,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#060913] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-slate-400">Loading profile...</p>
@@ -536,7 +536,7 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#060913] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-white mb-2">User Not Found</h1>
           <p className="text-slate-400">
@@ -555,7 +555,7 @@ export default function ProfilePage() {
     `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6366f1&color=fff`;
 
   return (
-    <div className="min-h-screen bg-[#060913]">
+    <div className="min-h-screen">
       {/* Search Bar with Autocomplete */}
       <section className="pt-16 sm:pt-20 pb-3 sm:pb-4 px-3 sm:px-4 lg:px-8">
         <div className="max-w-7xl mx-auto">

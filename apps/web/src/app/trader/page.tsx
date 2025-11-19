@@ -246,17 +246,8 @@ export default function TraderPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 relative">
-      {/* Background Pattern */}
-      <div
-        className="fixed inset-0 opacity-[0.02] pointer-events-none"
-        style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-          backgroundSize: "50px 50px",
-        }}
-      />
-      {/* Subtle gradient overlay */}
-      <div className="fixed inset-0 bg-gradient-to-b from-blue-950/5 via-transparent to-slate-950/5 pointer-events-none" />
+    <div className="min-h-screen relative">
+      {/* Background is now handled globally in layout.tsx */}
 
       <div className="max-w-5xl mx-auto py-8 sm:py-10 px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Header */}

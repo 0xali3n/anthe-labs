@@ -31,6 +31,8 @@ import {
   Minus,
   Percent,
   ArrowRight,
+  Eye,
+  Power,
 } from "lucide-react";
 
 interface CopyTradeBot {
@@ -428,35 +430,26 @@ export default function Copytrade() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 relative">
-      {/* Background Pattern */}
-      <div
-        className="fixed inset-0 opacity-[0.02] pointer-events-none"
-        style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-          backgroundSize: "50px 50px",
-        }}
-      />
-      {/* Subtle gradient overlay */}
-      <div className="fixed inset-0 bg-gradient-to-b from-blue-950/5 via-transparent to-slate-950/5 pointer-events-none" />
+    <div className="min-h-screen relative">
+      {/* Background is now handled globally in layout.tsx */}
 
-      <div className="max-w-7xl mx-auto py-6 sm:py-8 px-4 sm:px-6 lg:px-8 relative z-10">
-        {/* Header Section - Enhanced */}
-        <div className="text-center mb-6">
+      <div className="max-w-7xl mx-auto py-4 sm:py-5 px-4 sm:px-6 lg:px-8 relative z-10">
+        {/* Header Section - Enhanced with reduced spacing */}
+        <div className="text-center mb-4">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg mb-3">
             <Sparkles size={14} className="text-blue-400 animate-pulse" />
             <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">
               Copy Trading
             </span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent mb-2 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-semibold bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent mb-1.5 tracking-tight">
             Start Copy Trading
           </h1>
-          <p className="text-slate-400 text-sm max-w-xl mx-auto leading-relaxed mb-2">
+          <p className="text-slate-400 text-sm max-w-xl mx-auto leading-relaxed mb-1.5">
             Automatically mirror top traders and their strategies in real-time
           </p>
           {/* Animated underline */}
-          <div className="w-24 h-0.5 bg-gradient-to-r from-transparent via-blue-500 to-transparent mx-auto mt-2" />
+          <div className="w-24 h-0.5 bg-gradient-to-r from-transparent via-blue-500 to-transparent mx-auto mt-1.5" />
         </div>
 
         {/* Success/Error Messages */}
@@ -475,7 +468,7 @@ export default function Copytrade() {
         )}
 
         {/* Start Copy Trade Button */}
-        <div className="flex justify-center mb-8">
+        <div className="flex justify-center mb-6">
           <button
             onClick={async () => {
               // Refresh bots list to get latest running bots count
@@ -805,152 +798,170 @@ export default function Copytrade() {
 
         {/* Bots Section - Premium Redesign */}
         {(runningBots.length > 0 || stoppedBots.length > 0) && (
-          <div className="mb-8">
-            {/* Section Heading */}
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-white mb-2">
-                Your Active Copy Trades
-              </h2>
-              <p className="text-slate-400 text-sm">
-                Manage your active and stopped copy trading bots.
-              </p>
-            </div>
+          <div className="mb-6">
+            {/* Section Heading with Toggle - Grouped */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-lg font-semibold text-white mb-1">
+                  Your Active Copy Trades
+                </h2>
+                <p className="text-slate-400 text-sm">
+                  Manage your active and stopped copy trading bots.
+                </p>
+              </div>
 
-            {/* Premium Segmented Tabs - Binance Style */}
-            <div className="flex justify-center mb-6">
-              <div
-                className="relative inline-flex items-center gap-0 p-1 rounded-full"
-                style={{
-                  background: "rgba(6, 9, 19, 0.8)",
-                  border: "1px solid rgba(255, 255, 255, 0.1)",
-                  backdropFilter: "blur(20px) saturate(180%)",
-                  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
-                }}
-              >
-                {/* Animated Active Background */}
+              {/* Premium Segmented Tabs - Binance Style */}
+              <div className="flex justify-center sm:justify-end">
                 <div
-                  className={`absolute top-1 bottom-1 rounded-full transition-all duration-300 ease-out ${
-                    activeTab === "running"
-                      ? "left-1 right-1/2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/40 shadow-lg shadow-green-500/20"
-                      : "left-1/2 right-1 bg-gradient-to-r from-slate-500/20 to-slate-600/20 border border-slate-500/40"
-                  }`}
-                />
-                <button
-                  onClick={() => setActiveTab("running")}
-                  className={`relative z-10 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
-                    activeTab === "running"
-                      ? "text-white"
-                      : "text-slate-400 hover:text-slate-300"
-                  }`}
+                  className="relative inline-flex items-center gap-0 p-1 rounded-full"
+                  style={{
+                    background: "rgba(6, 9, 19, 0.8)",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                    backdropFilter: "blur(20px) saturate(180%)",
+                    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
+                  }}
                 >
+                  {/* Animated Active Background */}
                   <div
-                    className={`w-2 h-2 rounded-full ${
+                    className={`absolute top-1 bottom-1 rounded-full transition-all duration-300 ease-out ${
                       activeTab === "running"
-                        ? "bg-green-400 shadow-lg shadow-green-400/50 animate-pulse"
-                        : "bg-slate-500"
+                        ? "left-1 right-1/2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/40 shadow-lg shadow-green-500/20"
+                        : "left-1/2 right-1 bg-gradient-to-r from-slate-500/20 to-slate-600/20 border border-slate-500/40"
                     }`}
                   />
-                  <span>Running</span>
-                  {runningBots.length > 0 && (
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                  <button
+                    onClick={() => setActiveTab("running")}
+                    className={`relative z-10 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
+                      activeTab === "running"
+                        ? "text-white"
+                        : "text-slate-400 hover:text-slate-300"
+                    }`}
+                  >
+                    <div
+                      className={`w-2 h-2 rounded-full ${
                         activeTab === "running"
-                          ? "bg-green-500/30 text-green-300"
-                          : "bg-slate-700/50 text-slate-500"
+                          ? "bg-green-400 shadow-lg shadow-green-400/50 animate-pulse"
+                          : "bg-slate-500"
                       }`}
-                    >
-                      {runningBots.length}
-                    </span>
-                  )}
-                </button>
-                <button
-                  onClick={() => setActiveTab("stopped")}
-                  className={`relative z-10 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
-                    activeTab === "stopped"
-                      ? "text-white"
-                      : "text-slate-400 hover:text-slate-300"
-                  }`}
-                >
-                  <Square
-                    size={12}
-                    className={
+                    />
+                    <span>Running</span>
+                    {runningBots.length > 0 && (
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                          activeTab === "running"
+                            ? "bg-green-500/30 text-green-300"
+                            : "bg-slate-700/50 text-slate-500"
+                        }`}
+                      >
+                        {runningBots.length}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("stopped")}
+                    className={`relative z-10 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
                       activeTab === "stopped"
-                        ? "text-slate-300"
-                        : "text-slate-500"
-                    }
-                  />
-                  <span>Stopped</span>
-                  {stoppedBots.length > 0 && (
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                        ? "text-white"
+                        : "text-slate-400 hover:text-slate-300"
+                    }`}
+                  >
+                    <Square
+                      size={12}
+                      className={
                         activeTab === "stopped"
-                          ? "bg-slate-500/30 text-slate-300"
-                          : "bg-slate-700/50 text-slate-500"
-                      }`}
-                    >
-                      {stoppedBots.length}
-                    </span>
-                  )}
-                </button>
+                          ? "text-slate-300"
+                          : "text-slate-500"
+                      }
+                    />
+                    <span>Stopped</span>
+                    {stoppedBots.length > 0 && (
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                          activeTab === "stopped"
+                            ? "bg-slate-500/30 text-slate-300"
+                            : "bg-slate-700/50 text-slate-500"
+                        }`}
+                      >
+                        {stoppedBots.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Running Bots Grid - Centered */}
+            {/* Running Bots Grid - Responsive with consistent gaps */}
             {activeTab === "running" && runningBots.length > 0 && (
               <div className="flex justify-center">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl w-full">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-7xl w-full">
                   {runningBots.map((bot, index) => (
                     <div
                       key={bot.id}
-                      className="relative rounded-2xl p-5 hover:border-green-500/50 transition-all group flex flex-col animate-fadeIn"
+                      className="relative rounded-[18px] p-5 sm:p-6 transition-all duration-300 group flex flex-col animate-fadeIn hover:scale-[1.01] hover:shadow-xl"
                       style={{
                         background:
-                          "linear-gradient(180deg, #1c1f2e 0%, #161821 100%)",
-                        border: "1px solid rgba(255, 255, 255, 0.07)",
-                        boxShadow: "0 0 30px rgba(0, 0, 0, 0.35)",
+                          "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
+                        border: "1px solid rgba(255, 255, 255, 0.06)",
+                        boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
                         animationDelay: `${index * 0.1}s`,
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor =
+                          "rgba(255, 255, 255, 0.15)";
+                        e.currentTarget.style.boxShadow =
+                          "0px 12px 28px rgba(0, 0, 0, 0.35)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor =
+                          "rgba(255, 255, 255, 0.06)";
+                        e.currentTarget.style.boxShadow =
+                          "0px 8px 20px rgba(0, 0, 0, 0.25)";
                       }}
                     >
                       {/* Header Row with Bot ID */}
                       <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-800/50">
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-base font-bold text-white mb-1">
+                          <h3 className="text-lg font-semibold text-white mb-1">
                             {formatBotId(bot.id)}
                           </h3>
-                          <p className="text-xs text-slate-500 font-mono truncate">
+                          <p className="text-sm text-slate-500 font-mono truncate">
                             {bot.traderAddress
                               ? formatAddress(bot.traderAddress)
                               : "No trader assigned"}
                           </p>
                         </div>
-                        {/* Status Badge - Glowing */}
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-500/20 border border-green-500/40 rounded-lg backdrop-blur-sm shadow-lg shadow-green-500/20">
-                          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50" />
-                          <span className="text-[10px] font-bold text-green-400 uppercase">
+                        {/* Status Badge - Chip-like with icon */}
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-500/20 border border-green-500/30 rounded-full backdrop-blur-sm shadow-lg shadow-green-500/20">
+                          <Play
+                            size={10}
+                            className="text-green-400"
+                            fill="currentColor"
+                          />
+                          <span className="text-[10px] font-semibold text-green-400 uppercase tracking-wide">
                             Running
                           </span>
                         </div>
                       </div>
 
-                      {/* Stats Grid - Premium Style */}
+                      {/* Stats Grid - Premium Style with aligned labels */}
                       <div className="grid grid-cols-2 gap-4 mb-4">
                         <div>
-                          <span className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1.5">
+                          <span className="text-[13px] text-slate-500 uppercase tracking-wider block mb-1.5 font-medium">
                             Allocation
                           </span>
-                          <span className="text-lg font-bold text-white">
+                          <span className="text-base font-medium text-white">
                             {formatCurrency(parseFloat(bot.allocatedAmount))}
                           </span>
                         </div>
                         <div>
-                          <span className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1.5">
+                          <span className="text-[13px] text-slate-500 uppercase tracking-wider block mb-1.5 font-medium">
                             PNL
                           </span>
                           <span
-                            className={`text-lg font-bold ${
+                            className={`text-base font-semibold ${
                               bot.pnl && bot.pnl.startsWith("+")
-                                ? "text-green-400"
-                                : "text-red-400"
+                                ? "text-[#4ADE80]"
+                                : "text-[#F87171]"
                             }`}
                           >
                             {bot.pnl || "$0.00"}
@@ -968,25 +979,28 @@ export default function Copytrade() {
                         </span>
                       </div>
 
-                      {/* Action Buttons */}
-                      <div className="flex gap-2">
+                      {/* Action Buttons - Standardized */}
+                      <div className="flex gap-2.5 mt-auto">
                         <button
                           onClick={() =>
                             router.push(`/copytrade/details/${bot.id}`)
                           }
-                          className="flex-1 px-3 py-2.5 bg-transparent hover:bg-slate-500/10 border border-slate-500/30 hover:border-slate-500/50 text-slate-300 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 hover:shadow-lg"
+                          className="flex-1 px-3 py-2.5 bg-transparent hover:bg-slate-800/50 border border-slate-700/50 hover:border-slate-600/50 text-slate-300 rounded-[15px] text-xs font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md group/btn"
                         >
-                          <Info size={14} />
+                          <Eye
+                            size={14}
+                            className="group-hover/btn:translate-x-0.5 transition-transform"
+                          />
                           <span>Details</span>
                         </button>
                         <button
                           onClick={() => handleStopBot(bot.id)}
-                          className="flex-1 px-3 py-2.5 bg-transparent hover:bg-red-500/10 border border-red-500/30 hover:border-red-500/50 text-red-400 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-red-500/20"
-                          style={{
-                            boxShadow: "0 0 15px rgba(239, 68, 68, 0.1)",
-                          }}
+                          className="flex-1 px-3 py-2.5 bg-transparent hover:bg-red-500/10 border border-red-500/40 hover:border-red-500/60 text-red-400 rounded-[15px] text-xs font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-red-500/30 group/btn"
                         >
-                          <Square size={14} />
+                          <Power
+                            size={14}
+                            className="group-hover/btn:scale-110 transition-transform"
+                          />
                           <span>Stop</span>
                         </button>
                       </div>
@@ -996,62 +1010,78 @@ export default function Copytrade() {
               </div>
             )}
 
-            {/* Stopped Bots Grid - Centered */}
+            {/* Stopped Bots Grid - Responsive with consistent gaps */}
             {activeTab === "stopped" && stoppedBots.length > 0 && (
               <div className="flex justify-center">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl w-full">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-7xl w-full">
                   {stoppedBots.map((bot, index) => (
                     <div
                       key={bot.id}
-                      className="relative rounded-2xl p-5 hover:border-slate-600/50 transition-all group opacity-80 hover:opacity-100 flex flex-col animate-fadeIn"
+                      className="relative rounded-[18px] p-5 sm:p-6 transition-all duration-300 group opacity-80 hover:opacity-100 flex flex-col animate-fadeIn hover:scale-[1.01] hover:shadow-xl"
                       style={{
                         background:
-                          "linear-gradient(180deg, #1c1f2e 0%, #161821 100%)",
-                        border: "1px solid rgba(255, 255, 255, 0.07)",
-                        boxShadow: "0 0 30px rgba(0, 0, 0, 0.35)",
+                          "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
+                        border: "1px solid rgba(255, 255, 255, 0.06)",
+                        boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
                         animationDelay: `${index * 0.1}s`,
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor =
+                          "rgba(255, 255, 255, 0.15)";
+                        e.currentTarget.style.boxShadow =
+                          "0px 12px 28px rgba(0, 0, 0, 0.35)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor =
+                          "rgba(255, 255, 255, 0.06)";
+                        e.currentTarget.style.boxShadow =
+                          "0px 8px 20px rgba(0, 0, 0, 0.25)";
                       }}
                     >
                       {/* Header Row with Bot ID */}
                       <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-800/50">
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-base font-bold text-white mb-1">
+                          <h3 className="text-lg font-semibold text-white mb-1">
                             {formatBotId(bot.id)}
                           </h3>
-                          <p className="text-xs text-slate-500 font-mono truncate">
+                          <p className="text-sm text-slate-500 font-mono truncate">
                             {bot.traderAddress
                               ? formatAddress(bot.traderAddress)
                               : "No trader assigned"}
                           </p>
                         </div>
-                        {/* Status Badge */}
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-500/20 border border-slate-500/40 rounded-lg backdrop-blur-sm">
-                          <XCircle size={12} className="text-slate-400" />
-                          <span className="text-[10px] font-bold text-slate-400 uppercase">
+                        {/* Status Badge - Chip-like with icon */}
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-500/20 border border-slate-500/30 rounded-full backdrop-blur-sm">
+                          <Square
+                            size={10}
+                            className="text-slate-400"
+                            fill="currentColor"
+                          />
+                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
                             Stopped
                           </span>
                         </div>
                       </div>
 
-                      {/* Stats Grid - Premium Style */}
+                      {/* Stats Grid - Premium Style with aligned labels */}
                       <div className="grid grid-cols-2 gap-4 mb-4">
                         <div>
-                          <span className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1.5">
+                          <span className="text-[13px] text-slate-500 uppercase tracking-wider block mb-1.5 font-medium">
                             Allocation
                           </span>
-                          <span className="text-lg font-bold text-slate-200">
+                          <span className="text-base font-medium text-slate-200">
                             {formatCurrency(parseFloat(bot.allocatedAmount))}
                           </span>
                         </div>
                         <div>
-                          <span className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1.5">
+                          <span className="text-[13px] text-slate-500 uppercase tracking-wider block mb-1.5 font-medium">
                             PNL
                           </span>
                           <span
-                            className={`text-lg font-bold ${
+                            className={`text-base font-semibold ${
                               bot.pnl && bot.pnl.startsWith("+")
-                                ? "text-green-400"
-                                : "text-red-400"
+                                ? "text-[#4ADE80]"
+                                : "text-[#F87171]"
                             }`}
                           >
                             {bot.pnl || "$0.00"}
@@ -1060,24 +1090,27 @@ export default function Copytrade() {
                       </div>
 
                       {/* Number of Trades */}
-                      <div className="mb-4 p-3 bg-slate-900/30 rounded-lg border border-slate-800/50">
-                        <span className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1.5">
+                      <div className="mb-4 p-5 bg-slate-900/30 rounded-lg border border-slate-800/50">
+                        <span className="text-[13px] text-slate-500 uppercase tracking-wider block mb-1.5 font-medium">
                           Total Trades
                         </span>
-                        <span className="text-xl font-bold text-slate-200">
+                        <span className="text-lg font-semibold text-slate-200">
                           {bot.trades || 0}
                         </span>
                       </div>
 
-                      {/* Action Buttons */}
-                      <div className="flex gap-2">
+                      {/* Action Buttons - Standardized */}
+                      <div className="flex gap-2.5 mt-auto">
                         <button
                           onClick={() =>
                             router.push(`/copytrade/details/${bot.id}`)
                           }
-                          className="flex-1 px-3 py-2.5 bg-transparent hover:bg-slate-500/10 border border-slate-500/30 hover:border-slate-500/50 text-slate-300 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 hover:shadow-lg"
+                          className="flex-1 px-3 py-2.5 bg-transparent hover:bg-slate-800/50 border border-slate-700/50 hover:border-slate-600/50 text-slate-300 rounded-[15px] text-xs font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md group/btn"
                         >
-                          <Info size={14} />
+                          <Eye
+                            size={14}
+                            className="group-hover/btn:translate-x-0.5 transition-transform"
+                          />
                           <span>Details</span>
                         </button>
                         <button
@@ -1091,12 +1124,12 @@ export default function Copytrade() {
                             setTradingMode(bot.mode);
                             setShowForm(true);
                           }}
-                          className="flex-1 px-3 py-2.5 bg-transparent hover:bg-blue-500/10 border border-blue-500/30 hover:border-blue-500/50 text-blue-400 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-blue-500/20"
-                          style={{
-                            boxShadow: "0 0 15px rgba(59, 130, 246, 0.1)",
-                          }}
+                          className="flex-1 px-3 py-2.5 bg-transparent hover:bg-blue-500/10 border border-blue-500/40 hover:border-blue-500/60 text-blue-400 rounded-[15px] text-xs font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-blue-500/30 group/btn"
                         >
-                          <Play size={14} />
+                          <RefreshCw
+                            size={14}
+                            className="group-hover/btn:rotate-180 transition-transform duration-300"
+                          />
                           <span>Restart</span>
                         </button>
                       </div>

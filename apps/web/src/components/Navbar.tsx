@@ -159,8 +159,7 @@ export default function Navbar() {
         <div
           className="rounded-xl sm:rounded-2xl header-pill flex items-center justify-between px-3 sm:px-4 lg:px-5 py-2 sm:py-3"
           style={{
-            background: "rgba(6, 9, 19, 0.75)",
-            borderBottom: "1px solid rgba(255,255,255,0.05)",
+            background: "linear-gradient(180deg, rgba(15, 17, 26, 0.85) 0%, rgba(11, 13, 20, 0.85) 100%)",
             border: "1px solid rgba(255,255,255,0.05)",
             backdropFilter: "blur(20px) saturate(180%)",
             WebkitBackdropFilter: "blur(20px) saturate(180%)",
@@ -315,9 +314,9 @@ export default function Navbar() {
         {showMobileMenu && (
           <div
             ref={mobileMenuRef}
-            className="lg:hidden mt-2 bg-[#0b1220] border border-[#1F242D] rounded-xl shadow-xl overflow-hidden"
+            className="lg:hidden mt-2 border border-[#1F242D] rounded-xl shadow-xl overflow-hidden"
             style={{
-              background: "rgba(6, 9, 19, 0.95)",
+              background: "linear-gradient(180deg, rgba(15, 17, 26, 0.95) 0%, rgba(11, 13, 20, 0.95) 100%)",
               backdropFilter: "blur(20px)",
             }}
           >
