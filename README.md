@@ -96,12 +96,6 @@ cd apps/api
 pnpm dlx prisma generate
 ```
 
-2. **Sync Schema with Supabase (if needed):**
-
-```bash
-pnpm dlx prisma db pull
-```
-
 ---
 
 ### 5️⃣ Run the Apps
