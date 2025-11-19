@@ -14,6 +14,7 @@ const navLinks = [
   { name: "Home", path: "/" },
   { name: "Leaderboard", path: "/leaderboard" },
   { name: "Copytrade", path: "/copytrade" },
+  { name: "Creator", path: "/trader" },
 ];
 
 export default function Navbar() {

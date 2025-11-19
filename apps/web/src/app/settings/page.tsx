@@ -993,15 +993,15 @@ export default function Settings() {
           </div>
         )}
 
-        {/* Register as Trader Section */}
+        {/* Become a Creator Section */}
         <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 mb-6">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-bold text-white mb-1">
-                Become a Trader
+                Become a Creator
               </h3>
               <p className="text-sm text-slate-400">
-                Register as a trader and start earning from your trading
+                Register as a creator and start earning from your trading
                 strategies
               </p>
             </div>
@@ -1010,7 +1010,7 @@ export default function Settings() {
               className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
             >
               <UserPlus size={18} />
-              <span>Register as Trader</span>
+              <span>Become a Creator</span>
             </button>
           </div>
         </div>

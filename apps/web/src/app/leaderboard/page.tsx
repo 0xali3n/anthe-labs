@@ -234,69 +234,68 @@ export default function LeaderboardPage() {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8 xl:px-12 relative z-10">
-        {/* Header Section */}
-        <div className="mb-6 sm:mb-8 lg:mb-12">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 mb-6 sm:mb-8 lg:mb-10">
-            <div>
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent mb-2 sm:mb-3 lg:mb-4">
-                Top Traders to Copy
-              </h1>
-              <p className="text-slate-300 text-sm sm:text-base font-semibold">
-                Discover elite traders and mirror their strategies
-              </p>
-            </div>
-            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-              {/* Register as Trader Button */}
-              <button
-                onClick={() => router.push("/trader")}
-                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
-              >
-                <UserPlus size={16} />
-                <span>Register as Trader</span>
-              </button>
-              {/* Sort by */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
-                  Sort by:
-                </span>
-                <div className="relative">
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as SortOption)}
-                    className="appearance-none bg-slate-900/80 border border-slate-700 rounded-2xl px-4 py-2.5 pr-8 text-sm text-slate-200 font-medium cursor-pointer hover:border-slate-600 hover:bg-slate-900 transition-all focus:outline-none focus:border-slate-600"
-                    style={{ borderRadius: "0.75rem" }}
-                  >
-                    <option value="pnl">PNL</option>
-                    <option value="roi">ROI</option>
-                    <option value="volume">Volume</option>
-                    <option value="trades">Trades</option>
-                  </select>
-                  <ChevronDown
-                    size={16}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                  />
-                </div>
-              </div>
-              {/* Refresh Button */}
-              <button
-                onClick={fetchTraders}
-                disabled={loading}
-                title="Refresh leaderboard"
-                className="flex items-center gap-2 px-4 py-2.5 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded-xl text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <RefreshCw
+      <div className="max-w-7xl mx-auto py-4 sm:py-5 px-4 sm:px-6 lg:px-8 relative z-10">
+        {/* Header Section - Premium Styling */}
+        <div className="mb-6">
+          <div className="text-center mb-6">
+            <h1 className="text-3xl sm:text-4xl font-semibold bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent tracking-tight mb-3">
+              Top Traders to Copy
+            </h1>
+            <p className="text-slate-300 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed font-medium">
+              Discover elite traders and mirror their strategies
+            </p>
+            {/* Animated underline */}
+            <div className="w-24 h-0.5 bg-gradient-to-r from-transparent via-blue-500 to-transparent mx-auto mt-4" />
+          </div>
+
+          {/* Action and Filter Section - Centered Alignment */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-4 mb-6">
+            {/* Become a Creator Button */}
+            <button
+              onClick={() => router.push("/trader")}
+              className="group relative inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 text-white rounded-[15px] text-sm font-medium transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5 hover:scale-105 overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-400/0 via-white/0 to-purple-400/0 group-hover:from-blue-400/20 group-hover:via-white/10 group-hover:to-purple-400/20 transition-all duration-300" />
+              <UserPlus size={16} className="relative z-10" />
+              <span className="relative z-10">Become a Creator</span>
+            </button>
+            {/* Sort by */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+                Sort by:
+              </span>
+              <div className="relative">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortOption)}
+                  className="appearance-none bg-slate-900/50 border border-slate-700/50 rounded-[15px] px-4 py-2.5 pr-8 text-sm text-slate-200 font-medium cursor-pointer hover:border-slate-600/50 hover:bg-slate-900/70 transition-all focus:outline-none focus:border-blue-500/50"
+                >
+                  <option value="pnl">PNL</option>
+                  <option value="roi">ROI</option>
+                  <option value="volume">Volume</option>
+                  <option value="trades">Trades</option>
+                </select>
+                <ChevronDown
                   size={16}
-                  className={loading ? "animate-spin" : ""}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
                 />
-                <span>Refresh</span>
-              </button>
+              </div>
             </div>
+            {/* Refresh Button */}
+            <button
+              onClick={fetchTraders}
+              disabled={loading}
+              title="Refresh leaderboard"
+              className="flex items-center gap-2 px-4 py-2.5 bg-transparent hover:bg-slate-800/50 border border-slate-700/50 hover:border-slate-600/50 text-slate-300 rounded-[15px] text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+              <span>Refresh</span>
+            </button>
           </div>
         </div>
 
-        {/* Traders Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        {/* Traders Grid - Premium Styling */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {sortedTraders.map((trader, index) => {
             const pnl = parseFloat(trader.pnl);
             const roi = parseFloat(trader.roi);
@@ -312,15 +311,35 @@ export default function LeaderboardPage() {
                 key={trader.id}
                 onMouseEnter={() => setHoveredCard(trader.id)}
                 onMouseLeave={() => setHoveredCard(null)}
-                className={`group relative bg-slate-900/80 border rounded-xl p-4 sm:p-5 lg:p-6 overflow-hidden ${
-                  rank <= 3 ? rankStyle.border : "border-slate-800"
+                className={`group relative rounded-[18px] p-5 sm:p-6 overflow-hidden transition-all duration-300 ${
+                  rank <= 3 ? rankStyle.border : "border-slate-800/50"
                 }`}
                 style={{
+                  background:
+                    "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
+                  border:
+                    rank <= 3
+                      ? rankStyle.border
+                      : "1px solid rgba(255, 255, 255, 0.06)",
+                  boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
                   willChange: "transform",
                   transform: isHovered
-                    ? "translateY(-8px) scale(1.02) translateZ(0)"
+                    ? "translateY(-4px) scale(1.01) translateZ(0)"
                     : "translateZ(0)",
-                  transition: "transform 0.2s cubic-bezier(0.2, 0.9, 0.2, 1)",
+                  transition:
+                    "transform 0.3s cubic-bezier(0.2, 0.9, 0.2, 1), border-color 0.3s, box-shadow 0.3s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor =
+                    "rgba(255, 255, 255, 0.15)";
+                  e.currentTarget.style.boxShadow =
+                    "0px 12px 28px rgba(0, 0, 0, 0.35)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor =
+                    rank <= 3 ? rankStyle.border : "rgba(255, 255, 255, 0.06)";
+                  e.currentTarget.style.boxShadow =
+                    "0px 8px 20px rgba(0, 0, 0, 0.25)";
                 }}
               >
                 {/* Base shadow layer - static, no animation */}
@@ -389,10 +408,10 @@ export default function LeaderboardPage() {
 
                   {/* Bot Name and Address */}
                   <div className="min-w-0 flex-1">
-                    <p className="text-base sm:text-lg text-slate-200 font-bold mb-0.5 break-words">
+                    <p className="text-lg text-slate-200 font-semibold mb-1 break-words">
                       {trader.botName || formatAddress(trader.address)}
                     </p>
-                    <p className="text-xs text-slate-500 font-mono break-all">
+                    <p className="text-sm text-slate-500 font-mono break-all">
                       {formatAddress(trader.address)}
                     </p>
                   </div>
@@ -402,31 +421,8 @@ export default function LeaderboardPage() {
                     onClick={() => handleCopyTrade(trader)}
                     onMouseEnter={() => setHoveredCard(trader.id)}
                     onMouseLeave={() => setHoveredCard(null)}
-                    className="flex-shrink-0 px-3 py-1.5 sm:px-4 sm:py-2 text-white rounded-lg text-xs sm:text-sm font-semibold bg-blue-600 overflow-hidden ml-2"
-                    style={{
-                      willChange: "transform",
-                      transform: isHovered
-                        ? "translateY(-3px) scale(1.08) translateZ(0)"
-                        : "translateZ(0)",
-                      transition:
-                        "transform 0.2s cubic-bezier(0.2, 0.9, 0.2, 1), background-color 0.2s ease",
-                      backgroundColor: isHovered
-                        ? "rgb(29, 78, 216)"
-                        : "rgb(37, 99, 235)",
-                    }}
+                    className="flex-shrink-0 px-3 py-1.5 sm:px-4 sm:py-2 text-white rounded-[15px] text-xs sm:text-sm font-medium bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 overflow-hidden ml-2 transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-0.5"
                   >
-                    {/* Button glow overlay - synced with card */}
-                    <div
-                      className="absolute inset-0 rounded-lg pointer-events-none"
-                      style={{
-                        background:
-                          "radial-gradient(circle, rgba(255, 255, 255, 0.15), transparent 70%)",
-                        opacity: isHovered ? 1 : 0,
-                        transition:
-                          "opacity 0.2s cubic-bezier(0.2, 0.9, 0.2, 1)",
-                        transform: "translateZ(0)",
-                      }}
-                    />
                     <span className="relative z-10">Copy</span>
                   </button>
                 </div>
@@ -435,8 +431,10 @@ export default function LeaderboardPage() {
                 <div className="flex flex-col gap-3 sm:gap-4 lg:gap-5">
                   {/* Upper Half - Large PNL with Animation */}
                   <div className="flex flex-col justify-center">
-                    <div className="flex items-center gap-1.5 mb-1 sm:mb-2">
-                      <p className="text-xs text-slate-500">PNL (USD)</p>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <p className="text-[13px] text-slate-500 uppercase tracking-wider font-medium">
+                        PNL (USD)
+                      </p>
                       <div
                         onMouseEnter={(e) =>
                           showTooltip(
@@ -451,8 +449,8 @@ export default function LeaderboardPage() {
                       </div>
                     </div>
                     <p
-                      className={`text-3xl sm:text-4xl lg:text-5xl font-bold ${
-                        isPositive ? "text-green-400" : "text-red-400"
+                      className={`text-3xl sm:text-4xl lg:text-5xl font-semibold ${
+                        isPositive ? "text-[#4ADE80]" : "text-[#F87171]"
                       }`}
                       style={
                         isPositive
@@ -473,9 +471,11 @@ export default function LeaderboardPage() {
 
                   {/* Lower Half - Volume, ROI, Trades Side by Side */}
                   <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                    <div className="bg-slate-950/50 rounded-lg p-2 sm:p-2.5 border border-slate-800/30">
-                      <div className="flex items-center gap-1 mb-1">
-                        <p className="text-xs text-slate-500">Volume</p>
+                    <div className="bg-slate-900/30 rounded-lg p-3 sm:p-4 border border-slate-800/50">
+                      <div className="flex items-center gap-1 mb-1.5">
+                        <p className="text-[13px] text-slate-500 uppercase tracking-wider font-medium">
+                          Volume
+                        </p>
                         <div
                           onMouseEnter={(e) =>
                             showTooltip(e, "Total trading volume in USD")
@@ -486,13 +486,15 @@ export default function LeaderboardPage() {
                           <Info size={10} className="text-slate-500" />
                         </div>
                       </div>
-                      <p className="text-sm sm:text-base font-semibold text-slate-300">
+                      <p className="text-base font-medium text-slate-300">
                         {formatCurrency(trader.totalVolume)}
                       </p>
                     </div>
-                    <div className="bg-slate-950/50 rounded-lg p-2 sm:p-2.5 border border-slate-800/30">
-                      <div className="flex items-center gap-1 mb-1">
-                        <p className="text-xs text-slate-500">ROI</p>
+                    <div className="bg-slate-900/30 rounded-lg p-3 sm:p-4 border border-slate-800/50">
+                      <div className="flex items-center gap-1 mb-1.5">
+                        <p className="text-[13px] text-slate-500 uppercase tracking-wider font-medium">
+                          ROI
+                        </p>
                         <div
                           onMouseEnter={(e) =>
                             showTooltip(
@@ -506,13 +508,15 @@ export default function LeaderboardPage() {
                           <Info size={10} className="text-slate-500" />
                         </div>
                       </div>
-                      <p className="text-sm sm:text-base font-semibold text-blue-400">
+                      <p className="text-base font-medium text-blue-400">
                         {formatNumber(trader.roi)}%
                       </p>
                     </div>
-                    <div className="bg-slate-950/50 rounded-lg p-2 sm:p-2.5 border border-slate-800/30">
-                      <div className="flex items-center gap-1 mb-1">
-                        <p className="text-xs text-slate-500">Trades</p>
+                    <div className="bg-slate-900/30 rounded-lg p-3 sm:p-4 border border-slate-800/50">
+                      <div className="flex items-center gap-1 mb-1.5">
+                        <p className="text-[13px] text-slate-500 uppercase tracking-wider font-medium">
+                          Trades
+                        </p>
                         <div
                           onMouseEnter={(e) =>
                             showTooltip(e, "Total number of executed trades")
@@ -523,7 +527,7 @@ export default function LeaderboardPage() {
                           <Info size={10} className="text-slate-500" />
                         </div>
                       </div>
-                      <p className="text-sm sm:text-base font-semibold text-slate-300">
+                      <p className="text-base font-medium text-slate-300">
                         {trader.numberOfTxns}
                       </p>
                     </div>
@@ -538,7 +542,12 @@ export default function LeaderboardPage() {
             onMouseEnter={() => setHoveredCard("custom")}
             onMouseLeave={() => setHoveredCard(null)}
             onClick={() => router.push("/copytrade?open=true")}
-            className="group relative bg-slate-900/80 border-2 border-dashed border-slate-800 rounded-xl p-6 sm:p-8 lg:p-10 hover:border-slate-700 transition-all duration-200 flex flex-col items-center justify-center min-h-[280px] sm:min-h-[300px] lg:min-h-[320px] cursor-pointer"
+            className="group relative rounded-[18px] p-6 sm:p-8 lg:p-10 border-2 border-dashed border-slate-800/50 hover:border-slate-700/50 transition-all duration-300 flex flex-col items-center justify-center min-h-[280px] sm:min-h-[300px] lg:min-h-[320px] cursor-pointer hover:scale-[1.01]"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(28, 31, 46, 0.4) 0%, rgba(22, 24, 33, 0.4) 100%)",
+              boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
+            }}
           >
             <div className="flex flex-col items-center justify-center gap-5 text-center">
               <div className="w-20 h-20 rounded-full bg-slate-800/50 border-2 border-slate-700 flex items-center justify-center transition-colors group-hover:border-slate-600">
@@ -556,15 +565,19 @@ export default function LeaderboardPage() {
                   bots.
                 </p>
               </div>
-              <button 
+              <button
                 onClick={(e) => {
                   e.stopPropagation();
                   router.push("/copytrade?open=true");
                 }}
-                className="mt-2 px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors duration-200 flex items-center gap-2"
+                className="group/btn mt-2 px-8 py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 text-white rounded-[15px] text-sm font-medium transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5 hover:scale-105 flex items-center gap-2 overflow-hidden"
               >
-                Build Now
-                <TrendingUp size={18} />
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-400/0 via-white/0 to-purple-400/0 group-hover/btn:from-blue-400/20 group-hover/btn:via-white/10 group-hover/btn:to-purple-400/20 transition-all duration-300" />
+                <span className="relative z-10">Build Now</span>
+                <TrendingUp
+                  size={18}
+                  className="relative z-10 group-hover/btn:translate-x-1 transition-transform"
+                />
               </button>
             </div>
           </div>

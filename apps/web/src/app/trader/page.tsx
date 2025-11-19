@@ -92,7 +92,7 @@ export default function TraderPage() {
           return;
         }
 
-        // Check if user has existing trader registration
+        // Check if user has existing creator registration
         try {
           const registrationResult = await getMyTraderRegistration();
 
@@ -180,7 +180,7 @@ export default function TraderPage() {
       const result = await registerTrader(walletAddress, botName.trim());
 
       if (!result.success) {
-        throw new Error(result.error || "Failed to register as trader");
+        throw new Error(result.error || "Failed to register as creator");
       }
 
       // Update existing registration state
@@ -193,7 +193,7 @@ export default function TraderPage() {
       // }, 2000);
     } catch (error: any) {
       console.error("Registration error:", error);
-      setError(error.message || "Failed to register as trader");
+      setError(error.message || "Failed to register as creator");
     } finally {
       setSubmitting(false);
     }
@@ -255,15 +255,15 @@ export default function TraderPage() {
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full mb-4">
             <Sparkles size={14} className="text-blue-400" />
             <span className="text-xs font-medium text-blue-400 uppercase tracking-wider">
-              Trader Registration
+              Creator Registration
             </span>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent mb-4 tracking-tight">
-            Register as Trader
+            Become a Creator
           </h1>
           <p className="text-slate-400 text-base max-w-2xl mx-auto leading-relaxed">
-            Join our elite community of traders and start earning from your
-            strategies
+            Join our elite community of creators and start earning from your
+            trading strategies
           </p>
         </div>
 
@@ -288,9 +288,9 @@ export default function TraderPage() {
               }`}
             >
               {existingRegistration.status === "approved"
-                ? "✅ Your trader registration has been approved!"
+                ? "✅ Your creator registration has been approved!"
                 : existingRegistration.status === "rejected"
-                  ? "❌ Your trader registration was rejected. Please contact support."
+                  ? "❌ Your creator registration was rejected. Please contact support."
                   : "⏳ Your registration is pending approval. Please wait while we review your application."}
             </p>
           </div>

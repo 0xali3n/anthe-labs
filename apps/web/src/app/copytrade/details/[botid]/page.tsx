@@ -18,22 +18,25 @@ import {
   AlertCircle,
   Loader,
   ExternalLink,
+  Sparkles,
 } from "lucide-react";
+import Image from "next/image";
 
 interface TradeHistory {
   id: string;
   timestamp: string;
-  type: "BUY" | "SELL";
-  pair: string;
+  direction: "Long" | "Exit Long" | "Short" | "Exit Short";
+  symbol: "BTC" | "ETH" | "APT";
+  leverage: string;
+  size: string;
   price: string;
-  usdtValue: string;
+  orderValue: string;
   pnl: string;
-  status: "FILLED" | "PARTIAL" | "CANCELLED";
 }
 
 interface OpenPosition {
   id: string;
-  pair: string;
+  symbol: "BTC" | "ETH" | "APT";
   side: "LONG" | "SHORT";
   size: string;
   entryPrice: string;
@@ -52,51 +55,87 @@ export default function BotDetailsPage() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Dummy data for now
+  // Dummy data for now - matching the image structure
   const [tradeHistory] = useState<TradeHistory[]>([
     {
       id: "1",
-      timestamp: "2024-01-15 10:30:25",
-      type: "BUY",
-      pair: "APT/USDT",
-      price: "12.45",
-      usdtValue: "1250.50",
-      pnl: "+45.20",
-      status: "FILLED",
+      timestamp: "12:35:40 PM • 10/3/2025",
+      direction: "Exit Long",
+      symbol: "BTC",
+      leverage: "5x",
+      size: "0.00011",
+      price: "119,917",
+      orderValue: "13.19",
+      pnl: "+1.14",
     },
     {
       id: "2",
-      timestamp: "2024-01-15 09:15:10",
-      type: "SELL",
-      pair: "APT/USDT",
-      price: "12.80",
-      usdtValue: "1280.00",
-      pnl: "+125.50",
-      status: "FILLED",
+      timestamp: "12:01:30 AM • 9/26/2025",
+      direction: "Long",
+      symbol: "BTC",
+      leverage: "5x",
+      size: "0.00011",
+      price: "109,481",
+      orderValue: "12.04",
+      pnl: "-0.01",
     },
     {
       id: "3",
-      timestamp: "2024-01-14 16:45:30",
-      type: "BUY",
-      pair: "APT/USDT",
-      price: "11.90",
-      usdtValue: "1190.00",
-      pnl: "-15.30",
-      status: "FILLED",
+      timestamp: "9:13:23 PM • 9/24/2025",
+      direction: "Exit Long",
+      symbol: "BTC",
+      leverage: "5x",
+      size: "0.00010",
+      price: "113,653",
+      orderValue: "11.37",
+      pnl: "-0.01",
+    },
+    {
+      id: "4",
+      timestamp: "2:15:10 PM • 9/20/2025",
+      direction: "Long",
+      symbol: "ETH",
+      leverage: "3x",
+      size: "0.0047",
+      price: "3,245.50",
+      orderValue: "15.25",
+      pnl: "+2.45",
+    },
+    {
+      id: "5",
+      timestamp: "11:30:45 AM • 9/18/2025",
+      direction: "Long",
+      symbol: "APT",
+      leverage: "10x",
+      size: "2.23",
+      price: "8.95",
+      orderValue: "20.00",
+      pnl: "+5.20",
     },
   ]);
 
   const [openPositions] = useState<OpenPosition[]>([
     {
       id: "1",
-      pair: "APT/USDT",
+      symbol: "APT",
       side: "LONG",
-      size: "100.50",
+      size: "2.23",
       entryPrice: "12.45",
       markPrice: "12.78",
       pnl: "+33.15",
       pnlPercent: "+2.65%",
       leverage: "10x",
+    },
+    {
+      id: "2",
+      symbol: "BTC",
+      side: "LONG",
+      size: "0.00011",
+      entryPrice: "109,481",
+      markPrice: "110,200",
+      pnl: "+0.08",
+      pnlPercent: "+0.66%",
+      leverage: "5x",
     },
   ]);
 
@@ -194,6 +233,19 @@ export default function BotDetailsPage() {
     }
   };
 
+  const getSymbolLogo = (symbol: "BTC" | "ETH" | "APT") => {
+    switch (symbol) {
+      case "BTC":
+        return "/btc.png";
+      case "ETH":
+        return "/eth.png";
+      case "APT":
+        return "/aptos.png";
+      default:
+        return "/aptos.png";
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -224,21 +276,27 @@ export default function BotDetailsPage() {
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+    <div className="min-h-screen relative">
+      <div className="max-w-7xl mx-auto py-4 sm:py-5 px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Back Button */}
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition-colors"
+          className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition-colors"
         >
           <ArrowLeft size={18} />
           <span className="text-sm font-medium">Back</span>
         </button>
 
-        {/* Bot Details ID Header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">
+        {/* Bot Details ID Header - Premium Styling */}
+        <div className="text-center mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg mb-3">
+            <Sparkles size={14} className="text-blue-400 animate-pulse" />
+            <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">
+              Bot Details
+            </span>
+          </div>
+          <div className="flex items-center justify-center gap-3 mb-1.5">
+            <h1 className="text-2xl sm:text-3xl font-semibold bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent tracking-tight">
               Bot Details
             </h1>
             <div className="px-3 py-1 bg-blue-600/20 border border-blue-500/30 rounded-lg">
@@ -247,23 +305,29 @@ export default function BotDetailsPage() {
               </span>
             </div>
           </div>
-          <p className="text-slate-400 text-sm">
+          <p className="text-slate-400 text-sm max-w-xl mx-auto leading-relaxed mb-1.5">
             Comprehensive overview of your copy trading bot performance
           </p>
+          {/* Animated underline */}
+          <div className="w-24 h-0.5 bg-gradient-to-r from-transparent via-blue-500 to-transparent mx-auto mt-1.5" />
         </div>
 
-        {/* Parameters Section */}
-        <div className="mb-6 bg-gradient-to-br from-[#1a1d2e] via-[#151824] to-[#0f1117] border border-slate-700/50 rounded-xl p-5 sm:p-6 shadow-lg">
+        {/* Parameters Section - Premium Styling */}
+        <div className="mb-6 rounded-[18px] p-5 sm:p-6" style={{
+          background: "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
+          border: "1px solid rgba(255, 255, 255, 0.06)",
+          boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
+        }}>
           <div className="flex items-center gap-2 mb-4">
             <Settings size={18} className="text-blue-400" />
-            <h2 className="text-lg font-bold text-white">Parameters</h2>
+            <h2 className="text-lg font-semibold text-white">Parameters</h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Target Address */}
-            <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-800/50">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="bg-slate-900/30 rounded-lg p-4 border border-slate-800/50">
+              <div className="flex items-center gap-2 mb-1.5">
                 <Wallet size={14} className="text-slate-400" />
-                <span className="text-xs text-slate-400 uppercase tracking-wider">
+                <span className="text-[13px] text-slate-500 uppercase tracking-wider font-medium">
                   Target Address
                 </span>
               </div>
@@ -287,15 +351,15 @@ export default function BotDetailsPage() {
             </div>
 
             {/* Status */}
-            <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-800/50">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="bg-slate-900/30 rounded-lg p-4 border border-slate-800/50">
+              <div className="flex items-center gap-2 mb-1.5">
                 <Activity size={14} className="text-slate-400" />
-                <span className="text-xs text-slate-400 uppercase tracking-wider">
+                <span className="text-[13px] text-slate-500 uppercase tracking-wider font-medium">
                   Status
                 </span>
               </div>
               <div
-                className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-semibold ${
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold ${
                   bot.status === "running"
                     ? "bg-green-500/20 text-green-400 border border-green-500/30"
                     : "bg-red-500/20 text-red-400 border border-red-500/30"
@@ -311,28 +375,28 @@ export default function BotDetailsPage() {
             </div>
 
             {/* Mode */}
-            <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-800/50">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="bg-slate-900/30 rounded-lg p-4 border border-slate-800/50">
+              <div className="flex items-center gap-2 mb-1.5">
                 <Settings size={14} className="text-slate-400" />
-                <span className="text-xs text-slate-400 uppercase tracking-wider">
+                <span className="text-[13px] text-slate-500 uppercase tracking-wider font-medium">
                   Trading Mode
                 </span>
               </div>
-              <span className="text-sm font-semibold text-slate-200 capitalize">
+              <span className="text-sm font-medium text-slate-200 capitalize">
                 {bot.mode.replace("_", " ")}
               </span>
             </div>
 
             {/* Allocation */}
-            <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-800/50">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="bg-slate-900/30 rounded-lg p-4 border border-slate-800/50">
+              <div className="flex items-center gap-2 mb-1.5">
                 <DollarSign size={14} className="text-slate-400" />
-                <span className="text-xs text-slate-400 uppercase tracking-wider">
+                <span className="text-[13px] text-slate-500 uppercase tracking-wider font-medium">
                   Allocation
                 </span>
               </div>
               <div>
-                <span className="text-sm font-semibold text-slate-200">
+                <span className="text-sm font-medium text-slate-200">
                   ${parseFloat(bot.allocatedAmount).toFixed(2)}
                 </span>
                 <span className="text-xs text-slate-400 ml-2">
@@ -342,10 +406,10 @@ export default function BotDetailsPage() {
             </div>
 
             {/* Created At */}
-            <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-800/50">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="bg-slate-900/30 rounded-lg p-4 border border-slate-800/50">
+              <div className="flex items-center gap-2 mb-1.5">
                 <Clock size={14} className="text-slate-400" />
-                <span className="text-xs text-slate-400 uppercase tracking-wider">
+                <span className="text-[13px] text-slate-500 uppercase tracking-wider font-medium">
                   Created
                 </span>
               </div>
@@ -355,10 +419,10 @@ export default function BotDetailsPage() {
             </div>
 
             {/* Started At */}
-            <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-800/50">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="bg-slate-900/30 rounded-lg p-4 border border-slate-800/50">
+              <div className="flex items-center gap-2 mb-1.5">
                 <Clock size={14} className="text-slate-400" />
-                <span className="text-xs text-slate-400 uppercase tracking-wider">
+                <span className="text-[13px] text-slate-500 uppercase tracking-wider font-medium">
                   Started
                 </span>
               </div>
@@ -369,24 +433,28 @@ export default function BotDetailsPage() {
           </div>
         </div>
 
-        {/* Performance Metrics Section */}
+        {/* Performance Metrics Section - Premium Styling */}
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-4">
             <BarChart3 size={18} className="text-blue-400" />
-            <h2 className="text-lg font-bold text-white">Performance Metrics</h2>
+            <h2 className="text-lg font-semibold text-white">Performance Metrics</h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Total PNL */}
-            <div className="bg-gradient-to-br from-[#1a1d2e] via-[#151824] to-[#0f1117] border border-slate-700/50 rounded-xl p-5 shadow-lg">
+            <div className="rounded-[18px] p-5" style={{
+              background: "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
+              border: "1px solid rgba(255, 255, 255, 0.06)",
+              boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
+            }}>
               <div className="flex items-center gap-2 mb-3">
                 <TrendingUp size={16} className="text-slate-400" />
-                <span className="text-xs text-slate-400 uppercase tracking-wider">
+                <span className="text-[13px] text-slate-500 uppercase tracking-wider font-medium">
                   Total PNL
                 </span>
               </div>
               <p
-                className={`text-2xl font-bold ${
-                  totalPnl >= 0 ? "text-green-400" : "text-red-400"
+                className={`text-2xl font-semibold ${
+                  totalPnl >= 0 ? "text-[#4ADE80]" : "text-[#F87171]"
                 }`}
               >
                 {totalPnl >= 0 ? "+" : ""}
@@ -395,16 +463,20 @@ export default function BotDetailsPage() {
             </div>
 
             {/* Realized PNL */}
-            <div className="bg-gradient-to-br from-[#1a1d2e] via-[#151824] to-[#0f1117] border border-slate-700/50 rounded-xl p-5 shadow-lg">
+            <div className="rounded-[18px] p-5" style={{
+              background: "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
+              border: "1px solid rgba(255, 255, 255, 0.06)",
+              boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
+            }}>
               <div className="flex items-center gap-2 mb-3">
                 <TrendingUp size={16} className="text-slate-400" />
-                <span className="text-xs text-slate-400 uppercase tracking-wider">
+                <span className="text-[13px] text-slate-500 uppercase tracking-wider font-medium">
                   Realized PNL
                 </span>
               </div>
               <p
-                className={`text-2xl font-bold ${
-                  realizedPnl >= 0 ? "text-green-400" : "text-red-400"
+                className={`text-2xl font-semibold ${
+                  realizedPnl >= 0 ? "text-[#4ADE80]" : "text-[#F87171]"
                 }`}
               >
                 {realizedPnl >= 0 ? "+" : ""}
@@ -413,16 +485,20 @@ export default function BotDetailsPage() {
             </div>
 
             {/* Unrealized PNL */}
-            <div className="bg-gradient-to-br from-[#1a1d2e] via-[#151824] to-[#0f1117] border border-slate-700/50 rounded-xl p-5 shadow-lg">
+            <div className="rounded-[18px] p-5" style={{
+              background: "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
+              border: "1px solid rgba(255, 255, 255, 0.06)",
+              boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
+            }}>
               <div className="flex items-center gap-2 mb-3">
                 <TrendingDown size={16} className="text-slate-400" />
-                <span className="text-xs text-slate-400 uppercase tracking-wider">
+                <span className="text-[13px] text-slate-500 uppercase tracking-wider font-medium">
                   Unrealized PNL
                 </span>
               </div>
               <p
-                className={`text-2xl font-bold ${
-                  unrealizedPnl >= 0 ? "text-green-400" : "text-red-400"
+                className={`text-2xl font-semibold ${
+                  unrealizedPnl >= 0 ? "text-[#4ADE80]" : "text-[#F87171]"
                 }`}
               >
                 {unrealizedPnl >= 0 ? "+" : ""}
@@ -431,77 +507,93 @@ export default function BotDetailsPage() {
             </div>
 
             {/* Number of Trades */}
-            <div className="bg-gradient-to-br from-[#1a1d2e] via-[#151824] to-[#0f1117] border border-slate-700/50 rounded-xl p-5 shadow-lg">
+            <div className="rounded-[18px] p-5" style={{
+              background: "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
+              border: "1px solid rgba(255, 255, 255, 0.06)",
+              boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
+            }}>
               <div className="flex items-center gap-2 mb-3">
                 <Activity size={16} className="text-slate-400" />
-                <span className="text-xs text-slate-400 uppercase tracking-wider">
+                <span className="text-[13px] text-slate-500 uppercase tracking-wider font-medium">
                   Number of Trades
                 </span>
               </div>
-              <p className="text-2xl font-bold text-slate-200">
+              <p className="text-2xl font-semibold text-slate-200">
                 {bot.totalTrades || 0}
               </p>
             </div>
 
             {/* Activation Time */}
-            <div className="bg-gradient-to-br from-[#1a1d2e] via-[#151824] to-[#0f1117] border border-slate-700/50 rounded-xl p-5 shadow-lg">
+            <div className="rounded-[18px] p-5" style={{
+              background: "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
+              border: "1px solid rgba(255, 255, 255, 0.06)",
+              boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
+            }}>
               <div className="flex items-center gap-2 mb-3">
                 <Clock size={16} className="text-slate-400" />
-                <span className="text-xs text-slate-400 uppercase tracking-wider">
+                <span className="text-[13px] text-slate-500 uppercase tracking-wider font-medium">
                   Activation Time
                 </span>
               </div>
-              <p className="text-sm font-semibold text-slate-200">
+              <p className="text-sm font-medium text-slate-200">
                 {formatDate(activationTime)}
               </p>
             </div>
 
             {/* Total Volume */}
-            <div className="bg-gradient-to-br from-[#1a1d2e] via-[#151824] to-[#0f1117] border border-slate-700/50 rounded-xl p-5 shadow-lg">
+            <div className="rounded-[18px] p-5" style={{
+              background: "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
+              border: "1px solid rgba(255, 255, 255, 0.06)",
+              boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
+            }}>
               <div className="flex items-center gap-2 mb-3">
                 <DollarSign size={16} className="text-slate-400" />
-                <span className="text-xs text-slate-400 uppercase tracking-wider">
+                <span className="text-[13px] text-slate-500 uppercase tracking-wider font-medium">
                   Total Volume
                 </span>
               </div>
-              <p className="text-2xl font-bold text-slate-200">
+              <p className="text-2xl font-semibold text-slate-200">
                 ${totalVolume.toLocaleString()} USDT
               </p>
             </div>
           </div>
         </div>
 
-        {/* Open Positions Section */}
+        {/* Open Positions Section - Premium Styling */}
         {openPositions.length > 0 && (
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp size={18} className="text-blue-400" />
-              <h2 className="text-lg font-bold text-white">Open Positions</h2>
+              <h2 className="text-lg font-semibold text-white">Open Positions</h2>
             </div>
-            <div className="bg-gradient-to-br from-[#1a1d2e] via-[#151824] to-[#0f1117] border border-slate-700/50 rounded-xl overflow-hidden shadow-lg">
+            <div className="rounded-[18px] overflow-hidden" style={{
+              background: "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
+              border: "1px solid rgba(255, 255, 255, 0.06)",
+              boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
+            }}>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-slate-900/50 border-b border-slate-800/50">
+                  <thead className="bg-slate-900/30 border-b border-slate-800/50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                        Pair
+                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                        Symbol
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
                         Side
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                        Size (USDT)
+                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                        Size
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                        Entry Price
+                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                        Entry Price (USDT)
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                        Mark Price
+                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                        Mark Price (USDT)
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                        PNL
+                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                        PnL (USDT)
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
                         Leverage
                       </th>
                     </tr>
@@ -512,12 +604,28 @@ export default function BotDetailsPage() {
                         key={position.id}
                         className="hover:bg-slate-900/30 transition-colors"
                       >
-                        <td className="px-4 py-3 text-sm font-semibold text-slate-200">
-                          {position.pair}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <Image
+                              src={getSymbolLogo(position.symbol)}
+                              alt={position.symbol}
+                              width={24}
+                              height={24}
+                              className="rounded-full"
+                            />
+                            <div>
+                              <p className="text-sm font-semibold text-slate-200">
+                                {position.symbol}
+                              </p>
+                              <p className={`text-xs ${position.side === "LONG" ? "text-green-400" : "text-red-400"}`}>
+                                {position.leverage} • {position.side}
+                              </p>
+                            </div>
+                          </div>
                         </td>
                         <td className="px-4 py-3">
                           <span
-                            className={`px-2 py-1 rounded text-xs font-semibold ${
+                            className={`px-2 py-1 rounded text-xs font-medium ${
                               position.side === "LONG"
                                 ? "bg-green-500/20 text-green-400 border border-green-500/30"
                                 : "bg-red-500/20 text-red-400 border border-red-500/30"
@@ -526,31 +634,38 @@ export default function BotDetailsPage() {
                             {position.side}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-200">
-                          {position.size}
+                        <td className="px-4 py-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-200">
+                              {position.size}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {position.symbol}
+                            </p>
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-200">
-                          ${position.entryPrice}
+                          {position.entryPrice}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-200">
-                          ${position.markPrice}
+                          {position.markPrice}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-col">
                             <span
                               className={`text-sm font-semibold ${
                                 position.pnl.startsWith("+")
-                                  ? "text-green-400"
-                                  : "text-red-400"
+                                  ? "text-[#4ADE80]"
+                                  : "text-[#F87171]"
                               }`}
                             >
-                              {position.pnl} USDT
+                              {position.pnl}
                             </span>
                             <span
                               className={`text-xs ${
                                 position.pnlPercent.startsWith("+")
-                                  ? "text-green-400"
-                                  : "text-red-400"
+                                  ? "text-[#4ADE80]"
+                                  : "text-[#F87171]"
                               }`}
                             >
                               {position.pnlPercent}
@@ -569,37 +684,41 @@ export default function BotDetailsPage() {
           </div>
         )}
 
-        {/* Copy Trade History Section */}
+        {/* Copy Trade History Section - Premium Styling */}
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-4">
             <Activity size={18} className="text-blue-400" />
-            <h2 className="text-lg font-bold text-white">Copy Trade History</h2>
+            <h2 className="text-lg font-semibold text-white">Copy Trade History</h2>
           </div>
-          <div className="bg-gradient-to-br from-[#1a1d2e] via-[#151824] to-[#0f1117] border border-slate-700/50 rounded-xl overflow-hidden shadow-lg">
+          <div className="rounded-[18px] overflow-hidden" style={{
+            background: "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
+            border: "1px solid rgba(255, 255, 255, 0.06)",
+            boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
+          }}>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-slate-900/50 border-b border-slate-800/50">
+                <thead className="bg-slate-900/30 border-b border-slate-800/50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                      Symbol
+                    </th>
+                    <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
                       Time
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                      Type
+                    <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                      Direction
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                      Pair
+                    <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                      Size
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                      Price
+                    <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                      Price (USDT)
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                      Value (USDT)
+                    <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                      Order Value (USDT)
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                      PNL
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                      Status
+                    <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                      PnL (USDT)
                     </th>
                   </tr>
                 </thead>
@@ -609,51 +728,64 @@ export default function BotDetailsPage() {
                       key={trade.id}
                       className="hover:bg-slate-900/30 transition-colors"
                     >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Image
+                            src={getSymbolLogo(trade.symbol)}
+                            alt={trade.symbol}
+                            width={24}
+                            height={24}
+                            className="rounded-full"
+                          />
+                          <div>
+                            <p className="text-sm font-semibold text-slate-200">
+                              {trade.symbol}
+                            </p>
+                            <p className={`text-xs ${trade.direction.includes("Long") ? "text-green-400" : "text-red-400"}`}>
+                              {trade.leverage} • {trade.direction.includes("Long") ? "Long" : "Short"}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-sm text-slate-300">
                         {trade.timestamp}
                       </td>
                       <td className="px-4 py-3">
                         <span
-                          className={`px-2 py-1 rounded text-xs font-semibold ${
-                            trade.type === "BUY"
+                          className={`px-2 py-1 rounded text-xs font-medium ${
+                            trade.direction.includes("Long")
                               ? "bg-green-500/20 text-green-400 border border-green-500/30"
                               : "bg-red-500/20 text-red-400 border border-red-500/30"
                           }`}
                         >
-                          {trade.type}
+                          {trade.direction}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm font-semibold text-slate-200">
-                        {trade.pair}
+                      <td className="px-4 py-3">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-200">
+                            {trade.size}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {trade.symbol}
+                          </p>
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-200">
-                        ${trade.price}
+                        {trade.price}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-200">
-                        {trade.usdtValue} USDT
+                        {trade.orderValue}
                       </td>
                       <td className="px-4 py-3">
                         <span
                           className={`text-sm font-semibold ${
                             trade.pnl.startsWith("+")
-                              ? "text-green-400"
-                              : "text-red-400"
+                              ? "text-[#4ADE80]"
+                              : "text-[#F87171]"
                           }`}
                         >
-                          {trade.pnl} USDT
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`px-2 py-1 rounded text-xs font-semibold ${
-                            trade.status === "FILLED"
-                              ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                              : trade.status === "PARTIAL"
-                              ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
-                              : "bg-red-500/20 text-red-400 border border-red-500/30"
-                          }`}
-                        >
-                          {trade.status}
+                          {trade.pnl}
                         </span>
                       </td>
                     </tr>
