@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/lib/useAuth";
 import { getCurrentUser } from "@/lib/usersApi";
 import { registerTrader, getMyTraderRegistration } from "@/lib/tradersApi";
 import { AbortError } from "@/lib/apiClient";
@@ -21,7 +21,7 @@ import WalletConnectModal from "@/components/WalletConnectModal";
 export default function TraderPage() {
   const router = useRouter();
   const pathname = usePathname();
-  const [isSignedIn, setIsSignedIn] = useState(false);
+  const { isSignedIn, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [connectedWalletName, setConnectedWalletName] = useState<string | null>(
@@ -40,7 +40,6 @@ export default function TraderPage() {
     // Only run if we're on the trader page
     if (pathname !== "/trader") {
       // Reset state when not on trader page
-      setIsSignedIn(false);
       setWalletAddress(null);
       setBotName("");
       setExistingRegistration(null);
@@ -52,6 +51,17 @@ export default function TraderPage() {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
       }
+      return;
+    }
+
+    // Wait for auth to load
+    if (authLoading) {
+      return;
+    }
+
+    // Only load if signed in
+    if (!isSignedIn) {
+      setLoading(false);
       return;
     }
 
@@ -69,136 +79,58 @@ export default function TraderPage() {
     // Reset state when starting a new load
     setLoading(true);
     setError(null);
-    setIsSignedIn(false);
     setWalletAddress(null);
     setBotName("");
     setExistingRegistration(null);
 
     async function loadUser() {
-      console.log("[Trader] Starting to load user data...");
-
       try {
-        // Wait for Supabase session to be ready
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession();
+        // Just call getCurrentUser - it handles auth internally
+        const userData = await getCurrentUser(abortController.signal);
 
         if (!mounted || abortController.signal.aborted) {
-          console.log("[Trader] Load aborted (unmounted or cancelled)");
           return;
         }
 
-        if (sessionError) {
-          console.error("[Trader] Session error:", sessionError);
-          if (mounted) {
-            setError("Failed to get session. Please try again.");
-            setLoading(false);
-          }
-          return;
-        }
-
-        if (!session?.access_token) {
-          console.log("[Trader] No session, user not signed in");
-          if (mounted) {
-            setIsSignedIn(false);
-            setWalletAddress(null);
-            setLoading(false);
-          }
-          return;
-        }
-
-        console.log("[Trader] Session found, fetching user data...");
-        if (mounted) {
-          setIsSignedIn(true);
-        }
-
+        // Check if user has existing trader registration
         try {
-          const userData = await getCurrentUser(abortController.signal);
+          const registrationResult = await getMyTraderRegistration();
 
           if (!mounted || abortController.signal.aborted) {
-            console.log("[Trader] Load aborted after fetch");
             return;
           }
 
-          console.log("[Trader] User data loaded successfully");
-
-          // Check if user has existing trader registration
-          try {
-            const registrationResult = await getMyTraderRegistration();
-
-            if (!mounted || abortController.signal.aborted) {
-              return;
-            }
-
-            if (registrationResult.success && registrationResult.data) {
-              console.log(
-                "[Trader] Existing registration found:",
-                registrationResult.data
-              );
-              setExistingRegistration(registrationResult.data);
-              // Pre-fill form with existing registration data
-              setWalletAddress(registrationResult.data.address);
-              setBotName(registrationResult.data.botName || "");
-            }
-          } catch (regError) {
-            // No existing registration - that's fine
-            if (!mounted || abortController.signal.aborted) {
-              return;
-            }
-            console.log("[Trader] No existing registration found");
+          if (registrationResult.success && registrationResult.data) {
+            setExistingRegistration(registrationResult.data);
+            setWalletAddress(registrationResult.data.address);
+            setBotName(registrationResult.data.botName || "");
           }
-
-          // Always clear loading state after all operations complete
-          if (mounted && !abortController.signal.aborted) {
-            setLoading(false);
-          }
-        } catch (error: any) {
-          // Silently handle abort errors (intentional cancellation)
-          if (
-            error instanceof AbortError ||
-            error.message === "Request aborted" ||
-            error.name === "AbortError" ||
-            abortController.signal.aborted
-          ) {
-            console.log("[Trader] Request aborted (intentional)");
-            return;
-          }
-
-          if (!mounted) return;
-
-          console.error("[Trader] Failed to load user data:", error);
-          setError(error.message || "Failed to load user data");
-          setLoading(false);
+        } catch (regError) {
+          // No existing registration - that's fine, just continue
         }
-      } catch (error: any) {
-        if (!mounted || abortController.signal.aborted) return;
-        console.error("[Trader] Error in loadUser:", error);
-        setError(error.message || "Failed to load data");
-        setLoading(false);
-      } finally {
-        // Ensure loading state is always cleared if component is still mounted
+
         if (mounted && !abortController.signal.aborted) {
           setLoading(false);
         }
+      } catch (error: any) {
+        // Handle abort errors silently
+        if (
+          error instanceof AbortError ||
+          error.message === "Request aborted" ||
+          error.name === "AbortError" ||
+          abortController.signal.aborted
+        ) {
+          return;
+        }
+
+        if (!mounted) return;
+
+        setError(error.message || "Failed to load user data");
+        setLoading(false);
       }
     }
 
     loadUser();
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!mounted) return;
-
-      setIsSignedIn(!!session);
-      // Don't pre-fill wallet address - trader must connect their own trading wallet
-      if (!session) {
-        setWalletAddress(null);
-        setExistingRegistration(null);
-      }
-    });
 
     return () => {
       mounted = false;
@@ -206,9 +138,8 @@ export default function TraderPage() {
       if (abortControllerRef.current === abortController) {
         abortControllerRef.current = null;
       }
-      subscription.unsubscribe();
     };
-  }, [pathname]);
+  }, [pathname, isSignedIn, authLoading]);
 
   const handleConnectWallet = () => {
     setIsWalletModalOpen(true);

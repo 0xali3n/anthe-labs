@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/lib/useAuth";
 import { getUSDTBalance } from "@/lib/walletsApi";
 import {
   createCopyTradeBot,
@@ -48,7 +48,7 @@ interface CopyTradeBot {
 export default function Copytrade() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [isSignedIn, setIsSignedIn] = useState(false);
+  const { isSignedIn, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [balance, setBalance] = useState<string>("0.00");
   const [traderAddress, setTraderAddress] = useState("");
@@ -65,9 +65,6 @@ export default function Copytrade() {
   const [runningBots, setRunningBots] = useState<CopyTradeBot[]>([]);
   const [stoppedBots, setStoppedBots] = useState<CopyTradeBot[]>([]);
   const [activeTab, setActiveTab] = useState<"running" | "stopped">("running");
-  const [selectedBotDetails, setSelectedBotDetails] = useState<string | null>(
-    null
-  );
   const [botToRestart, setBotToRestart] = useState<CopyTradeBot | null>(null);
   const [addressError, setAddressError] = useState<string | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -116,34 +113,20 @@ export default function Copytrade() {
     }
   };
 
+  // Use shared auth state - no need for separate auth checks
   useEffect(() => {
-    const loadBalance = async () => {
-      await fetchBalance();
-    };
+    // Set loading based on auth state
+    setLoading(authLoading);
 
-    // Check auth state
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsSignedIn(!!session);
-      setLoading(false);
-      if (session) {
-        loadBalance();
-      }
-    });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsSignedIn(!!session);
-      if (session) {
-        loadBalance();
-      } else {
-        setBalance("0.00");
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+    // Fetch balance when signed in
+    if (!authLoading && isSignedIn) {
+      fetchBalance().catch(() => {
+        // Ignore balance errors
+      });
+    } else if (!authLoading && !isSignedIn) {
+      setBalance("0.00");
+    }
+  }, [authLoading, isSignedIn]);
 
   // Fetch bots from API
   const fetchBots = async () => {
@@ -988,7 +971,9 @@ export default function Copytrade() {
                       {/* Action Buttons */}
                       <div className="flex gap-2">
                         <button
-                          onClick={() => setSelectedBotDetails(bot.id)}
+                          onClick={() =>
+                            router.push(`/copytrade/details/${bot.id}`)
+                          }
                           className="flex-1 px-3 py-2.5 bg-transparent hover:bg-slate-500/10 border border-slate-500/30 hover:border-slate-500/50 text-slate-300 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 hover:shadow-lg"
                         >
                           <Info size={14} />
@@ -1087,7 +1072,9 @@ export default function Copytrade() {
                       {/* Action Buttons */}
                       <div className="flex gap-2">
                         <button
-                          onClick={() => setSelectedBotDetails(bot.id)}
+                          onClick={() =>
+                            router.push(`/copytrade/details/${bot.id}`)
+                          }
                           className="flex-1 px-3 py-2.5 bg-transparent hover:bg-slate-500/10 border border-slate-500/30 hover:border-slate-500/50 text-slate-300 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 hover:shadow-lg"
                         >
                           <Info size={14} />

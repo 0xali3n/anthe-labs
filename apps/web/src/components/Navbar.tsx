@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/lib/useAuth";
 import { useEffect, useState, useRef, useCallback } from "react";
 import UserButton from "./UserButton";
 import DepositWithdrawModal from "./DepositWithdrawModal";
@@ -18,8 +18,7 @@ const navLinks = [
 
 export default function Navbar() {
   const pathname = usePathname();
-  const [isSignedIn, setIsSignedIn] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { isSignedIn, loading: authLoading } = useAuth();
   const [signingIn, setSigningIn] = useState(false);
   const [balance, setBalance] = useState<string>("0.00");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -53,50 +52,25 @@ export default function Navbar() {
     }
   }, [isSignedIn, walletAddress]);
 
+  // Fetch wallet address when signed in
   useEffect(() => {
-    // Check initial auth state
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setIsSignedIn(!!session);
-      if (session?.user) {
-        // Fetch wallet address
-        try {
-          const userData = await getCurrentUser();
+    if (!authLoading && isSignedIn) {
+      getCurrentUser()
+        .then((userData) => {
           if (userData?.wallet_address) {
             setWalletAddress(userData.wallet_address);
           }
-        } catch (error) {
-          console.error("Failed to fetch wallet address:", error);
-        }
-      }
-      setLoading(false);
-    });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setIsSignedIn(!!session);
-      if (session?.user) {
-        // Fetch wallet address
-        try {
-          const userData = await getCurrentUser();
-          if (userData?.wallet_address) {
-            setWalletAddress(userData.wallet_address);
-          }
-        } catch (error) {
-          console.error("Failed to fetch wallet address:", error);
-        }
-      } else {
-        setWalletAddress(null);
-        setBalance("0.00");
-        balanceFetchedRef.current = false;
-      }
-      setLoading(false);
-      setSigningIn(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+        })
+        .catch((error) => {
+          console.error("[Navbar] Failed to fetch wallet address:", error);
+        });
+    } else if (!authLoading && !isSignedIn) {
+      setWalletAddress(null);
+      setBalance("0.00");
+      balanceFetchedRef.current = false;
+    }
+    setSigningIn(false);
+  }, [authLoading, isSignedIn]);
 
   // Fetch balance when wallet address is available (only once on mount)
   useEffect(() => {
@@ -253,7 +227,7 @@ export default function Navbar() {
 
           {/* Right: deposit / balance / profile */}
           <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 shrink-0">
-            {loading ? (
+            {authLoading ? (
               <div className="flex items-center gap-2">
                 <div className="h-8 sm:h-9 w-16 sm:w-20 bg-slate-800/50 rounded-lg animate-pulse"></div>
                 <div className="hidden sm:block h-8 sm:h-9 w-20 sm:w-24 bg-slate-800/50 rounded-lg animate-pulse"></div>
