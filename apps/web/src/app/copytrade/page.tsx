@@ -67,8 +67,18 @@ export default function Copytrade() {
   const [selectedBotDetails, setSelectedBotDetails] = useState<string | null>(
     null
   );
+  const [botToRestart, setBotToRestart] = useState<CopyTradeBot | null>(null);
+  const [addressError, setAddressError] = useState<string | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const modeDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Validate Aptos address format
+  const isValidAptosAddress = (address: string): boolean => {
+    if (!address || address.trim() === "") return true; // Empty is allowed (optional field)
+    // Aptos addresses: 0x followed by exactly 64 hexadecimal characters
+    const aptosAddressRegex = /^0x[a-fA-F0-9]{64}$/;
+    return aptosAddressRegex.test(address.trim());
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -232,6 +242,30 @@ export default function Copytrade() {
     e.preventDefault();
     setError(null);
     setSuccess(false);
+    setAddressError(null);
+
+    // Validate Aptos address if provided
+    const trimmedAddress = traderAddress.trim();
+    if (trimmedAddress && !isValidAptosAddress(trimmedAddress)) {
+      setAddressError(
+        "Invalid Aptos wallet address. Must be 66 characters starting with 0x followed by 64 hex characters."
+      );
+      return;
+    }
+
+    // Check if user already has a running bot (skip check if restarting the same bot)
+    const hasOtherRunningBot = botToRestart
+      ? runningBots.some(
+          (bot) => bot.id !== botToRestart.id && bot.status === "running"
+        )
+      : runningBots.length >= 1;
+
+    if (hasOtherRunningBot) {
+      setError(
+        "You can only run 1 copy trade bot at a time. Please stop your running bot first to start a new one. Multiple bots support coming soon!"
+      );
+      return;
+    }
 
     if (allocation === 0) {
       setError("Please set allocation percentage");
@@ -244,38 +278,58 @@ export default function Copytrade() {
     }
 
     setSubmitting(true);
-    console.log("🚀 [CopyTrade] Starting copy trade bot creation...", {
-      traderAddress: traderAddress.trim() || undefined,
-      allocatedAmount,
-      allocationPercent: allocation,
-      mode: tradingMode,
-    });
 
     try {
       // Round allocatedAmount to 2 decimal places to avoid floating point precision issues
       const roundedAmount = Math.round(allocatedAmount * 100) / 100;
 
-      const result = await createCopyTradeBot({
-        traderAddress: traderAddress.trim() || undefined,
-        allocatedAmount: roundedAmount,
-        allocationPercent: allocation,
-        mode: tradingMode,
-      });
+      if (botToRestart) {
+        // Restart existing bot
+        const result = await updateCopyTradeBot(botToRestart.id, {
+          status: "running",
+          traderAddress: traderAddress.trim() || undefined,
+        });
 
-      if (result.success && result.data) {
-        setSuccess(true);
-        setTraderAddress("");
-        setAllocation(0);
-        setShowForm(false);
+        if (result.success && result.data) {
+          setSuccess(true);
+          setTraderAddress("");
+          setAllocation(0);
+          setBotToRestart(null);
+          setShowForm(false);
 
-        // Refresh bots list
-        await fetchBots();
+          // Refresh bots list
+          await fetchBots();
 
-        setTimeout(() => setSuccess(false), 3000);
+          setTimeout(() => setSuccess(false), 3000);
+        } else {
+          const errorMsg = result.error || "Failed to restart copy trade bot";
+          setError(errorMsg);
+          setTimeout(() => setError(""), 5000);
+        }
       } else {
-        const errorMsg = result.error || "Failed to start copy trade";
-        setError(errorMsg);
-        setTimeout(() => setError(""), 5000);
+        // Create new bot
+        const result = await createCopyTradeBot({
+          traderAddress: traderAddress.trim() || undefined,
+          allocatedAmount: roundedAmount,
+          allocationPercent: allocation,
+          mode: tradingMode,
+        });
+
+        if (result.success && result.data) {
+          setSuccess(true);
+          setTraderAddress("");
+          setAllocation(0);
+          setShowForm(false);
+
+          // Refresh bots list
+          await fetchBots();
+
+          setTimeout(() => setSuccess(false), 3000);
+        } else {
+          const errorMsg = result.error || "Failed to start copy trade";
+          setError(errorMsg);
+          setTimeout(() => setError(""), 5000);
+        }
       }
     } catch (err: any) {
       const errorMsg =
@@ -400,7 +454,16 @@ export default function Copytrade() {
         {/* Start Copy Trade Button */}
         <div className="flex justify-center mb-8">
           <button
-            onClick={() => setShowForm(true)}
+            onClick={async () => {
+              // Refresh bots list to get latest running bots count
+              await fetchBots();
+              // Reset form for new bot creation
+              setBotToRestart(null);
+              setTraderAddress("");
+              setAllocation(0);
+              setTradingMode("smart_ratio");
+              setShowForm(true);
+            }}
             className="group relative inline-flex items-center gap-2.5 px-6 py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 text-white rounded-xl text-sm font-semibold transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-1 hover:scale-105 overflow-hidden"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-blue-400/0 via-white/0 to-purple-400/0 group-hover:from-blue-400/20 group-hover:via-white/10 group-hover:to-purple-400/20 transition-all duration-300" />
@@ -424,6 +487,10 @@ export default function Copytrade() {
                 setShowForm(false);
                 setError(null);
                 setSuccess(false);
+                setAddressError(null);
+                setBotToRestart(null);
+                setTraderAddress("");
+                setAllocation(0);
               }
             }}
           >
@@ -448,7 +515,9 @@ export default function Copytrade() {
                       <Sparkles size={14} className="text-blue-400" />
                     </div>
                     <h2 className="text-base font-bold text-white">
-                      Start Copy Trading
+                      {botToRestart
+                        ? "Restart Copy Trading"
+                        : "Start Copy Trading"}
                     </h2>
                   </div>
                   <button
@@ -456,6 +525,10 @@ export default function Copytrade() {
                       setShowForm(false);
                       setError(null);
                       setSuccess(false);
+                      setAddressError(null);
+                      setBotToRestart(null);
+                      setTraderAddress("");
+                      setAllocation(0);
                     }}
                     className="p-1 hover:bg-slate-800/50 rounded transition-all duration-200 text-slate-400 hover:text-white"
                     aria-label="Close modal"
@@ -493,17 +566,67 @@ export default function Copytrade() {
                       </label>
                       <div className="relative">
                         <div className="absolute left-2.5 top-1/2 -translate-y-1/2 z-10">
-                          <Wallet size={14} className="text-slate-500" />
+                          <Wallet
+                            size={14}
+                            className={
+                              addressError ? "text-red-500" : "text-slate-500"
+                            }
+                          />
                         </div>
                         <input
                           id="trader-address"
                           type="text"
                           value={traderAddress}
-                          onChange={(e) => setTraderAddress(e.target.value)}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setTraderAddress(value);
+                            // Real-time validation
+                            if (value.trim() && !isValidAptosAddress(value)) {
+                              setAddressError("Invalid Aptos address format");
+                            } else {
+                              setAddressError(null);
+                            }
+                          }}
+                          onBlur={(e) => {
+                            // Validate on blur
+                            const value = e.target.value.trim();
+                            if (value && !isValidAptosAddress(value)) {
+                              setAddressError(
+                                "Invalid Aptos wallet address. Must be 66 characters starting with 0x followed by 64 hex characters."
+                              );
+                            } else {
+                              setAddressError(null);
+                            }
+                          }}
                           placeholder="0x1234..."
-                          className="w-full pl-9 pr-3 py-2 bg-slate-900/50 border border-slate-700/50 rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all font-mono"
+                          className={`w-full pl-9 pr-3 py-2 bg-slate-900/50 border rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 transition-all font-mono ${
+                            addressError
+                              ? "border-red-500/50 focus:ring-red-500/50 focus:border-red-500/50"
+                              : "border-slate-700/50 focus:ring-blue-500/50 focus:border-blue-500/50"
+                          }`}
                         />
+                        {traderAddress &&
+                          isValidAptosAddress(traderAddress) && (
+                            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10">
+                              <CheckCircle2
+                                size={14}
+                                className="text-green-500"
+                              />
+                            </div>
+                          )}
                       </div>
+                      {addressError && (
+                        <p className="mt-1 text-[10px] text-red-400">
+                          {addressError}
+                        </p>
+                      )}
+                      {!addressError &&
+                        traderAddress &&
+                        isValidAptosAddress(traderAddress) && (
+                          <p className="mt-1 text-[10px] text-green-400">
+                            ✓ Valid Aptos address
+                          </p>
+                        )}
                     </div>
 
                     {/* Trading Mode */}
@@ -635,11 +758,17 @@ export default function Copytrade() {
                       {submitting ? (
                         <>
                           <Loader className="animate-spin" size={14} />
-                          <span>Starting...</span>
+                          <span>
+                            {botToRestart ? "Restarting..." : "Starting..."}
+                          </span>
                         </>
                       ) : (
                         <>
-                          <span>Start Copy Trade</span>
+                          <span>
+                            {botToRestart
+                              ? "Restart Copy Trade"
+                              : "Start Copy Trade"}
+                          </span>
                           <ArrowRight size={14} />
                         </>
                       )}
@@ -926,20 +1055,14 @@ export default function Copytrade() {
                         </button>
                         <button
                           onClick={async () => {
-                            try {
-                              const result = await updateCopyTradeBot(bot.id, {
-                                status: "running",
-                              });
-                              if (result.success) {
-                                await fetchBots();
-                              } else {
-                                setError(
-                                  result.error || "Failed to restart bot"
-                                );
-                              }
-                            } catch (err: any) {
-                              setError(err.message || "Failed to restart bot");
-                            }
+                            // Refresh bots list to get latest running bots count
+                            await fetchBots();
+                            // Pre-fill form with bot data
+                            setBotToRestart(bot);
+                            setTraderAddress(bot.traderAddress || "");
+                            setAllocation(bot.allocation);
+                            setTradingMode(bot.mode);
+                            setShowForm(true);
                           }}
                           className="flex-1 px-3 py-2.5 bg-transparent hover:bg-blue-500/10 border border-blue-500/30 hover:border-blue-500/50 text-blue-400 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-blue-500/20"
                           style={{

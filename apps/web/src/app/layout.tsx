@@ -86,17 +86,18 @@ export const metadata: Metadata = {
     shortcut: "/logo.png",
   },
   manifest: "/manifest.json",
-  themeColor: "#060913",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-  },
   verification: {
     // Add your verification codes here when available
     // google: "your-google-verification-code",
     // yandex: "your-yandex-verification-code",
   },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#060913",
 };
 
 export default function RootLayout({
