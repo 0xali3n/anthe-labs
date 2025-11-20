@@ -79,6 +79,13 @@ A modern **Next.js + Nest.js (Turborepo)** project powered by **Supabase** and *
   - Allocation and mode tracking
   - PNL and trade statistics
   - User-specific bot queries
+  - Redis syncing for active subscriptions
+- ✅ Redis integration:
+  - Redis service with connection management
+  - Set operations (SADD, SREM, SCARD)
+  - Automatic syncing of bot start/stop events
+  - Active trader profiles tracking
+  - Subscriber management per trader
 - ✅ Twitter integration service
 - ✅ Avatar management
 - ✅ JWT authentication guard
@@ -193,6 +200,7 @@ anthe-labs/
 │       │   ├── traders/  # Trader Statistics (Leaderboard)
 │       │   ├── trader-registrations/  # Creator Registration
 │       │   ├── copy-trade-bots/  # Copy Trade Bot Management
+│       │   ├── redis/    # Redis Service & Integration
 │       │   ├── twitter/  # Twitter Integration
 │       │   └── avatars/  # Avatar Management
 │       ├── prisma/       # Database Schema
@@ -219,6 +227,7 @@ anthe-labs/
 - **Framework:** Nest.js
 - **ORM:** Prisma
 - **Database:** Supabase (PostgreSQL)
+- **Cache/Queue:** Redis (ioredis)
 - **Authentication:** JWT (Supabase)
 - **Encryption:** AES-256-GCM (for wallet keys)
 
@@ -227,12 +236,31 @@ anthe-labs/
 - **Package Manager:** pnpm
 - **Monorepo:** Turborepo
 - **Database:** Supabase PostgreSQL
+- **Cache/Queue:** Redis (Docker)
 
 ---
 
 ## 📝 Recent Updates
 
-### Copy Trade Management System ✨ (Current Branch)
+### Redis Integration & Bot Syncing ✨ (Current Branch)
+
+- ✅ Redis service implementation with ioredis
+- ✅ Set operations (SADD, SREM, SCARD) for subscription tracking
+- ✅ Automatic Redis syncing for copy-trade bots:
+  - `syncStartBot()` - Syncs when bot starts:
+    - Adds user to `subs:profile:<traderAddress>` set
+    - Adds trader to `profiles:active` set
+  - `syncStopBot()` - Syncs when bot stops:
+    - Removes user from trader's subscriber set
+    - Removes trader from active profiles if no subscribers remain
+- ✅ Idempotent Redis operations (safe to call multiple times)
+- ✅ Error handling (Redis errors don't break Postgres operations)
+- ✅ Integration with CopyTradeBotsService (create/update methods)
+- ✅ Redis keys structure:
+  - `subs:profile:<traderAddress>` - Set of user addresses subscribing to trader
+  - `profiles:active` - Set of trader addresses with active subscribers
+
+### Copy Trade Management System ✨
 
 - ✅ Complete copy trade management implementation
 - ✅ Premium modal popup for bot creation with compact design
