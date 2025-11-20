@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
 import { CreateCopyTradeBotDto } from './dto/create-copy-trade-bot.dto';
 import { UpdateCopyTradeBotDto } from './dto/update-copy-trade-bot.dto';
 
@@ -21,7 +22,12 @@ export interface BotResponse {
 
 @Injectable()
 export class CopyTradeBotsService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(CopyTradeBotsService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private redisService: RedisService,
+  ) {}
 
   /**
    * Generate a unique 8-9 character bot ID
@@ -37,6 +43,68 @@ export class CopyTradeBotsService {
     }
     
     return result;
+  }
+
+  /**
+   * Sync bot start to Redis
+   * - Add user to trader's subscriber set
+   * - Add trader to active profiles set
+   */
+  async syncStartBot(userAddress: string, traderAddress: string): Promise<void> {
+    try {
+      if (!traderAddress) {
+        this.logger.warn('syncStartBot called without traderAddress, skipping Redis sync');
+        return;
+      }
+
+      const subscriberKey = `subs:profile:${traderAddress}`;
+      const activeProfilesKey = 'profiles:active';
+
+      // Add user to trader's subscriber set (idempotent)
+      await this.redisService.sadd(subscriberKey, userAddress);
+
+      // Add trader to active profiles set (idempotent)
+      await this.redisService.sadd(activeProfilesKey, traderAddress);
+
+      this.logger.log(`Redis sync: Bot started - user ${userAddress} subscribed to trader ${traderAddress}`);
+    } catch (error: any) {
+      // Log error but don't fail the operation
+      this.logger.error(`Redis sync error in syncStartBot: ${error.message}`, error.stack);
+    }
+  }
+
+  /**
+   * Sync bot stop to Redis
+   * - Remove user from trader's subscriber set
+   * - If no more subscribers, remove trader from active profiles set
+   */
+  async syncStopBot(userAddress: string, traderAddress: string): Promise<void> {
+    try {
+      if (!traderAddress) {
+        this.logger.warn('syncStopBot called without traderAddress, skipping Redis sync');
+        return;
+      }
+
+      const subscriberKey = `subs:profile:${traderAddress}`;
+      const activeProfilesKey = 'profiles:active';
+
+      // Remove user from trader's subscriber set (idempotent)
+      await this.redisService.srem(subscriberKey, userAddress);
+
+      // Check if trader has any remaining subscribers
+      const subscriberCount = await this.redisService.scard(subscriberKey);
+
+      // If no subscribers left, remove trader from active profiles (idempotent)
+      if (subscriberCount === 0) {
+        await this.redisService.srem(activeProfilesKey, traderAddress);
+        this.logger.log(`Redis sync: Bot stopped - trader ${traderAddress} removed from active profiles (no subscribers)`);
+      } else {
+        this.logger.log(`Redis sync: Bot stopped - user ${userAddress} unsubscribed from trader ${traderAddress} (${subscriberCount} remaining)`);
+      }
+    } catch (error: any) {
+      // Log error but don't fail the operation
+      this.logger.error(`Redis sync error in syncStopBot: ${error.message}`, error.stack);
+    }
   }
 
   /**
@@ -103,6 +171,11 @@ export class CopyTradeBotsService {
           pnl: parseFloat((Math.random() * 200 - 100).toFixed(2)),
         },
       });
+
+      // Sync to Redis after successful Postgres write
+      if (traderAddress) {
+        await this.syncStartBot(userAddress, traderAddress);
+      }
 
       return {
         success: true,
@@ -218,6 +291,7 @@ export class CopyTradeBotsService {
         },
         select: {
           status: true,
+          trader_address: true,
         },
       });
 
@@ -229,6 +303,8 @@ export class CopyTradeBotsService {
       }
 
       const updateData: any = {};
+      const oldStatus = existingBot.status;
+      const oldTraderAddress = existingBot.trader_address;
 
       if (updateDto.status) {
         updateData.status = updateDto.status;
@@ -251,6 +327,33 @@ export class CopyTradeBotsService {
         where: { id },
         data: updateData,
       });
+
+      // Sync to Redis after successful Postgres update
+      const newStatus = updateData.status || oldStatus;
+      const newTraderAddress = updateData.trader_address !== undefined 
+        ? updateData.trader_address 
+        : oldTraderAddress;
+
+      // Handle status changes
+      if (newStatus === 'stopped' && oldStatus === 'running' && oldTraderAddress) {
+        // Bot stopped: remove from Redis
+        await this.syncStopBot(userAddress, oldTraderAddress);
+      } else if (newStatus === 'running' && oldStatus === 'stopped' && newTraderAddress) {
+        // Bot restarted: add to Redis
+        await this.syncStartBot(userAddress, newTraderAddress);
+      }
+
+      // Handle trader address changes
+      if (oldTraderAddress !== newTraderAddress) {
+        if (oldStatus === 'running' && oldTraderAddress) {
+          // Remove from old trader
+          await this.syncStopBot(userAddress, oldTraderAddress);
+        }
+        if (newStatus === 'running' && newTraderAddress) {
+          // Add to new trader
+          await this.syncStartBot(userAddress, newTraderAddress);
+        }
+      }
 
       return {
         success: true,
