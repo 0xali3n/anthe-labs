@@ -232,20 +232,8 @@ export default function Copytrade() {
 
   const formatBotId = (id: string) => {
     if (!id) return "";
-    // Generate a consistent 5-8 digit code from the bot ID
-    // Use a simple hash-like approach to convert string to numeric code
-    let hash = 0;
-    for (let i = 0; i < id.length; i++) {
-      const char = id.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    // Convert to positive number and format as 5-8 digit code
-    const code = Math.abs(hash).toString().slice(0, 8);
-    // Pad with zeros if needed, or take first 5-8 digits
-    const finalCode =
-      code.length < 5 ? code.padStart(5, "0") : code.slice(0, 8);
-    return `#${finalCode}`;
+    // Bot ID is already 8-9 characters, just add # prefix
+    return `#${id}`;
   };
 
   const formatCurrency = (value: number | string) => {

@@ -194,15 +194,8 @@ export default function BotDetailsPage() {
 
   const formatBotId = (id: string) => {
     if (!id) return "";
-    let hash = 0;
-    for (let i = 0; i < id.length; i++) {
-      const char = id.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash;
-    }
-    const code = Math.abs(hash).toString().slice(0, 8);
-    const finalCode = code.length < 5 ? code.padStart(5, "0") : code.slice(0, 8);
-    return `#${finalCode}`;
+    // Bot ID is already 8-9 characters, just add # prefix
+    return `#${id}`;
   };
 
   const formatAddress = (address: string | null) => {
