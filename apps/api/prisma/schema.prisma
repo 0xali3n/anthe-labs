@@ -36,7 +36,6 @@ model User {
   // Relations
   wallet              Wallet?
   traderRegistrations TraderRegistration[]
-  copyTradeBots       CopyTradeBot[]
 
   @@map("users")
 }
@@ -100,8 +99,8 @@ model TraderRegistration {
 }
 
 model CopyTradeBot {
-  id                 String  @id @default(uuid())
-  user_id            String // User who created this bot
+  id                 String  @id // 8-9 character bot ID (generated in application)
+  user_address       String // User wallet address who created this bot
   trader_address     String? // Target trader wallet address (can be null initially)
   allocated_amount   Decimal @db.Decimal(20, 2) // Amount allocated for copy trading
   allocation_percent Decimal @db.Decimal(5, 2) // Percentage of user's balance allocated (0-100)
@@ -118,10 +117,7 @@ model CopyTradeBot {
   started_at DateTime  @default(now())
   stopped_at DateTime?
 
-  // Relations
-  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@index([user_id])
+  @@index([user_address])
   @@index([trader_address])
   @@index([status])
   @@map("copy_trade_bots")

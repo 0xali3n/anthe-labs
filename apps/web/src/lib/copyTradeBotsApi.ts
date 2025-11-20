@@ -14,8 +14,8 @@ export interface UpdateCopyTradeBotDto {
 }
 
 export interface CopyTradeBot {
-  id: string;
-  userId: string;
+  id: string; // 8-9 character bot ID
+  userAddress: string; // User wallet address
   traderAddress: string | null;
   allocatedAmount: string;
   allocationPercent: string;

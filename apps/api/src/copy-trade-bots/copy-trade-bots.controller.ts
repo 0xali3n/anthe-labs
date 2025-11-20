@@ -13,10 +13,25 @@ import { CopyTradeBotsService } from './copy-trade-bots.service';
 import { CreateCopyTradeBotDto } from './dto/create-copy-trade-bot.dto';
 import { UpdateCopyTradeBotDto } from './dto/update-copy-trade-bot.dto';
 import { AuthGuard } from '../auth/auth.guard';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('copy-trade-bots')
 export class CopyTradeBotsController {
-  constructor(private readonly copyTradeBotsService: CopyTradeBotsService) {}
+  constructor(
+    private readonly copyTradeBotsService: CopyTradeBotsService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  /**
+   * Helper method to get user wallet address from user ID
+   */
+  private async getUserWalletAddress(userId: string): Promise<string | null> {
+    const wallet = await this.prisma.wallet.findUnique({
+      where: { user_id: userId },
+      select: { address: true },
+    });
+    return wallet?.address || null;
+  }
 
   /**
    * Create a new copy trade bot
@@ -33,8 +48,17 @@ export class CopyTradeBotsController {
         };
       }
 
+      // Get user wallet address
+      const userAddress = await this.getUserWalletAddress(req.user.id);
+      if (!userAddress) {
+        return {
+          success: false,
+          error: 'User wallet not found. Please connect your wallet first.',
+        };
+      }
+
       const result = await this.copyTradeBotsService.create(
-        req.user.id,
+        userAddress,
         createDto,
       );
       return result;
@@ -57,7 +81,29 @@ export class CopyTradeBotsController {
   @Get('me')
   @UseGuards(AuthGuard)
   async getMyBots(@Request() req: any) {
-    return this.copyTradeBotsService.findByUserId(req.user.id);
+    try {
+      if (!req.user?.id) {
+        return {
+          success: false,
+          error: 'User not authenticated',
+        };
+      }
+
+      const userAddress = await this.getUserWalletAddress(req.user.id);
+      if (!userAddress) {
+        return {
+          success: false,
+          error: 'User wallet not found. Please connect your wallet first.',
+        };
+      }
+
+      return this.copyTradeBotsService.findByUserAddress(userAddress);
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Failed to fetch bots',
+      };
+    }
   }
 
   /**
@@ -67,7 +113,29 @@ export class CopyTradeBotsController {
   @Get(':id')
   @UseGuards(AuthGuard)
   async findOne(@Request() req: any, @Param('id') id: string) {
-    return this.copyTradeBotsService.findOne(id, req.user.id);
+    try {
+      if (!req.user?.id) {
+        return {
+          success: false,
+          error: 'User not authenticated',
+        };
+      }
+
+      const userAddress = await this.getUserWalletAddress(req.user.id);
+      if (!userAddress) {
+        return {
+          success: false,
+          error: 'User wallet not found. Please connect your wallet first.',
+        };
+      }
+
+      return this.copyTradeBotsService.findOne(id, userAddress);
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Failed to fetch bot',
+      };
+    }
   }
 
   /**
@@ -81,7 +149,29 @@ export class CopyTradeBotsController {
     @Param('id') id: string,
     @Body() updateDto: UpdateCopyTradeBotDto,
   ) {
-    return this.copyTradeBotsService.update(id, req.user.id, updateDto);
+    try {
+      if (!req.user?.id) {
+        return {
+          success: false,
+          error: 'User not authenticated',
+        };
+      }
+
+      const userAddress = await this.getUserWalletAddress(req.user.id);
+      if (!userAddress) {
+        return {
+          success: false,
+          error: 'User wallet not found. Please connect your wallet first.',
+        };
+      }
+
+      return this.copyTradeBotsService.update(id, userAddress, updateDto);
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Failed to update bot',
+      };
+    }
   }
 
   /**
@@ -91,6 +181,28 @@ export class CopyTradeBotsController {
   @Delete(':id')
   @UseGuards(AuthGuard)
   async remove(@Request() req: any, @Param('id') id: string) {
-    return this.copyTradeBotsService.remove(id, req.user.id);
+    try {
+      if (!req.user?.id) {
+        return {
+          success: false,
+          error: 'User not authenticated',
+        };
+      }
+
+      const userAddress = await this.getUserWalletAddress(req.user.id);
+      if (!userAddress) {
+        return {
+          success: false,
+          error: 'User wallet not found. Please connect your wallet first.',
+        };
+      }
+
+      return this.copyTradeBotsService.remove(id, userAddress);
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Failed to delete bot',
+      };
+    }
   }
 }

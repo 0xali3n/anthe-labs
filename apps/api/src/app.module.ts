@@ -10,9 +10,10 @@ import { TwitterModule } from './twitter/twitter.module';
 import { TradersModule } from './traders/traders.module';
 import { TraderRegistrationsModule } from './trader-registrations/trader-registrations.module';
 import { CopyTradeBotsModule } from './copy-trade-bots/copy-trade-bots.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
-  imports: [PrismaModule, UsersModule, WalletsModule, AvatarsModule, TwitterModule, TradersModule, TraderRegistrationsModule, CopyTradeBotsModule], // PrismaModule is Global, so PrismaService available everywhere
+  imports: [PrismaModule, UsersModule, WalletsModule, AvatarsModule, TwitterModule, TradersModule, TraderRegistrationsModule, CopyTradeBotsModule, RedisModule], // PrismaModule is Global, so PrismaService available everywhere
   controllers: [AppController, HealthController],
   providers: [AppService],
 })
