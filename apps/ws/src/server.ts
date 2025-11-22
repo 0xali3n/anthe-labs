@@ -6,12 +6,15 @@ async function initializeServices(): Promise<void> {
   try {
     validateConfig();
     Logger.info("🔌 Initializing services...");
-    if (config.targetWalletAddress) {
-      Logger.info(`🎯 Starting monitoring for: ${config.targetWalletAddress}`);
-      await orderHistoryService.startMonitoring(config.targetWalletAddress);
+
+    if (config.targetWalletAddresses.length > 0) {
+      Logger.info(
+        `🎯 Starting monitoring for ${config.targetWalletAddresses.length} wallet(s)`
+      );
+      await orderHistoryService.startMonitoring(config.targetWalletAddresses);
       Logger.success("Monitoring started successfully");
     } else {
-      Logger.warn("No target wallet address configured");
+      Logger.warn("No target wallet addresses configured");
     }
   } catch (error) {
     Logger.error("Failed to initialize services", error);

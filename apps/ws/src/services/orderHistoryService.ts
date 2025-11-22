@@ -16,71 +16,97 @@ export class OrderHistoryService {
   private serviceStartTime: number = 0;
 
   public isMonitoring: boolean = false;
-  public targetProfileAddress: string | null = null;
+  // Map: walletAddress -> profileAddress
+  private walletToProfile: Map<string, string> = new Map();
+  // Map: profileAddress -> walletAddress (reverse lookup)
+  private profileToWallet: Map<string, string> = new Map();
   public trackedOrders: Set<string> = new Set();
 
-  async startMonitoring(targetWalletAddress: string): Promise<void> {
+  async startMonitoring(targetWalletAddresses: string[]): Promise<void> {
     try {
       this.serviceStartTime =
         Math.floor(Date.now() / 1000) - WEBSOCKET_CONFIG.SERVICE_START_BUFFER;
 
       Logger.info(
-        `🎯 Starting order history monitoring for: ${targetWalletAddress}`
+        `🎯 Starting order history monitoring for ${targetWalletAddresses.length} wallet(s)`
       );
 
-      await this.getTargetProfileAddress(targetWalletAddress);
+      // Get profile addresses for all wallets
+      await this.getProfileAddressesForWallets(targetWalletAddresses);
+
       await this.connectWebSocket();
-      this.subscribeToOrderHistory();
+      this.subscribeToAllWallets();
 
       this.isMonitoring = true;
-      Logger.success("Order history monitoring started successfully!");
-      Logger.info(`📊 Monitoring address: ${targetWalletAddress}`);
+      Logger.success(
+        `Order history monitoring started for ${targetWalletAddresses.length} wallet(s)!`
+      );
     } catch (error) {
       Logger.error("Failed to start order history monitoring", error);
       throw error;
     }
   }
 
-  private async getTargetProfileAddress(
-    targetWalletAddress: string
+  private async getProfileAddressesForWallets(
+    walletAddresses: string[]
   ): Promise<void> {
-    try {
-      Logger.info(
-        `🔍 Getting profile address for wallet: ${targetWalletAddress}`
-      );
+    Logger.info(
+      `🔍 Resolving profile addresses for ${walletAddresses.length} wallet(s)...`
+    );
 
-      const response = await fetch(
-        `${config.kanaRestUrl}/getProfileAddress?userAddress=${targetWalletAddress}`,
-        {
-          headers: {
-            "x-api-key": config.kanaApiKey,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = (await response.json()) as {
-        success?: boolean;
-        data?: string;
-        message?: string;
-      };
-
-      if (data?.success && data.data) {
-        this.targetProfileAddress = data.data;
-        Logger.info(`🎯 Target profile address resolved: ${data.data}`);
-      } else {
-        throw new Error(
-          `Failed to get profile address: ${data?.message || "Unknown error"}`
+    const promises = walletAddresses.map(async (walletAddress) => {
+      try {
+        const response = await fetch(
+          `${config.kanaRestUrl}/getProfileAddress?userAddress=${walletAddress}`,
+          {
+            headers: {
+              "x-api-key": config.kanaApiKey,
+              "Content-Type": "application/json",
+            },
+          }
         );
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = (await response.json()) as {
+          success?: boolean;
+          data?: string;
+          message?: string;
+        };
+
+        if (data?.success && data.data) {
+          this.walletToProfile.set(walletAddress, data.data);
+          this.profileToWallet.set(data.data, walletAddress);
+          Logger.info(
+            `✅ Wallet ${walletAddress.substring(0, 10)}... -> Profile ${data.data.substring(0, 10)}...`
+          );
+          return { walletAddress, profileAddress: data.data, success: true };
+        } else {
+          throw new Error(
+            `Failed to get profile address: ${data?.message || "Unknown error"}`
+          );
+        }
+      } catch (error) {
+        Logger.error(
+          `❌ Failed to get profile for wallet ${walletAddress.substring(0, 10)}...`,
+          error
+        );
+        return { walletAddress, success: false, error };
       }
-    } catch (error) {
-      Logger.error("Error getting profile address", error);
-      throw error;
+    });
+
+    const results = await Promise.all(promises);
+    const successful = results.filter((r) => r.success).length;
+
+    if (successful === 0) {
+      throw new Error("Failed to resolve profile addresses for any wallet");
     }
+
+    Logger.success(
+      `✅ Resolved ${successful}/${walletAddresses.length} profile address(es)`
+    );
   }
 
   private async connectWebSocket(): Promise<void> {
@@ -126,24 +152,32 @@ export class OrderHistoryService {
     });
   }
 
-  private subscribeToOrderHistory(): void {
-    if (!this.ws || !this.targetProfileAddress) {
+  private subscribeToAllWallets(): void {
+    if (!this.ws || this.walletToProfile.size === 0) {
       Logger.error(
-        "Cannot subscribe: WebSocket or target profile address not available"
+        "Cannot subscribe: WebSocket or profile addresses not available"
       );
       return;
     }
 
-    this.ws.send(
-      JSON.stringify({
+    const timestamp = Math.floor(Date.now() / 1000);
+    let subscribedCount = 0;
+
+    for (const [walletAddress, profileAddress] of this.walletToProfile) {
+      const subscriptionMessage = {
         topic: "order_history",
-        address: this.targetProfileAddress,
-        from_timestamp: Math.floor(Date.now() / 1000),
-      })
-    );
-    Logger.success(
-      `Subscribed to order history for profile: ${this.targetProfileAddress}`
-    );
+        address: profileAddress,
+        from_timestamp: timestamp,
+      };
+
+      this.ws.send(JSON.stringify(subscriptionMessage));
+      subscribedCount++;
+      Logger.info(
+        `📡 Subscribed to wallet ${walletAddress.substring(0, 10)}... (profile: ${profileAddress.substring(0, 10)}...)`
+      );
+    }
+
+    Logger.success(`✅ Subscribed to ${subscribedCount} wallet(s)`);
   }
 
   private handleMessage(message: string): void {
@@ -217,9 +251,13 @@ export class OrderHistoryService {
       ORDER_TYPE_DESCRIPTIONS[order.order_type] ||
       `Unknown (${order.order_type})`;
 
+    // Find which wallet this order belongs to
+    const walletAddress = this.profileToWallet.get(order.address) || "Unknown";
+
     console.log("\n" + "=".repeat(80));
     console.log("🎯 NEW ORDER DETECTED");
     console.log("=".repeat(80));
+    console.log(`👤 Wallet: ${walletAddress}`);
     console.log(`📅 Time: ${time}`);
     console.log(`🆔 Order ID: ${order.order_id}`);
     console.log(`📊 Market: ${market} (ID: ${order.market_id})`);
@@ -227,7 +265,7 @@ export class OrderHistoryService {
     console.log(`💰 Price: $${parseFloat(order.price).toLocaleString()}`);
     console.log(`📏 Size: ${order.size} | ⚡ Leverage: ${order.leverage}x`);
     console.log(`📊 Status: ${order.status}`);
-    console.log(`📍 Address: ${order.address}`);
+    console.log(`📍 Profile Address: ${order.address}`);
 
     if (info.isBuy) console.log("🟢 ACTION: BUY (LONG)");
     else if (info.isSell) console.log("🔴 ACTION: SELL (SHORT)");
@@ -308,7 +346,8 @@ export class OrderHistoryService {
       this.ws = null;
     }
     this.isMonitoring = false;
-    this.targetProfileAddress = null;
+    this.walletToProfile.clear();
+    this.profileToWallet.clear();
     this.trackedOrders.clear();
     Logger.success("Order history monitoring stopped.");
   }
@@ -316,10 +355,51 @@ export class OrderHistoryService {
   getStatus(): ServiceStatus {
     return {
       isMonitoring: this.isMonitoring,
-      targetProfileAddress: this.targetProfileAddress,
+      targetProfileAddress:
+        Array.from(this.walletToProfile.values())[0] || null,
       trackedOrdersCount: this.trackedOrders.size,
       reconnectAttempts: this.reconnectAttempts,
     };
+  }
+
+  // Public methods for dynamic wallet management (for future bot feature)
+  async addWallet(walletAddress: string): Promise<void> {
+    if (this.walletToProfile.has(walletAddress)) {
+      Logger.warn(
+        `Wallet ${walletAddress.substring(0, 10)}... already being monitored`
+      );
+      return;
+    }
+
+    await this.getProfileAddressesForWallets([walletAddress]);
+
+    if (this.ws && this.walletToProfile.has(walletAddress)) {
+      const profileAddress = this.walletToProfile.get(walletAddress)!;
+      const subscriptionMessage = {
+        topic: "order_history",
+        address: profileAddress,
+        from_timestamp: Math.floor(Date.now() / 1000),
+      };
+      this.ws.send(JSON.stringify(subscriptionMessage));
+      Logger.success(
+        `✅ Added and subscribed to wallet ${walletAddress.substring(0, 10)}...`
+      );
+    }
+  }
+
+  removeWallet(walletAddress: string): void {
+    const profileAddress = this.walletToProfile.get(walletAddress);
+    if (profileAddress) {
+      this.walletToProfile.delete(walletAddress);
+      this.profileToWallet.delete(profileAddress);
+      Logger.info(
+        `🗑️ Removed wallet ${walletAddress.substring(0, 10)}... from monitoring`
+      );
+    }
+  }
+
+  getMonitoredWallets(): string[] {
+    return Array.from(this.walletToProfile.keys());
   }
 }
 
