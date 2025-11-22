@@ -147,15 +147,32 @@ For each order, the service displays:
 
 ```
 apps/ws/
-├── server.ts              # Express server and initialization
-├── orderHistoryService.ts # WebSocket connection and order processing
-├── config.ts              # Configuration and environment variables
-├── kanaClient.ts          # Kana Labs API client utilities
-├── package.json           # Dependencies and scripts
-├── tsconfig.json          # TypeScript configuration
-├── .env.example           # Environment variables template
-├── .gitignore             # Git ignore rules
-└── README.md              # This file
+├── src/
+│   ├── config/
+│   │   └── index.ts              # Configuration and environment variables
+│   ├── constants/
+│   │   └── index.ts              # Application constants
+│   ├── middleware/
+│   │   └── errorHandler.ts       # Error handling middleware
+│   ├── routes/
+│   │   └── index.ts              # API route handlers
+│   ├── services/
+│   │   ├── orderHistoryService.ts # WebSocket connection and order processing
+│   │   └── kanaClient.ts         # Kana Labs API client utilities
+│   ├── types/
+│   │   └── index.ts              # TypeScript type definitions
+│   ├── utils/
+│   │   ├── logger.ts             # Logging utility
+│   │   ├── security.ts           # Security utilities (address masking)
+│   │   └── validators.ts         # Validation utilities
+│   ├── app.ts                    # Express app configuration
+│   └── server.ts                 # Server entry point
+├── dist/                         # Compiled JavaScript (generated)
+├── package.json                  # Dependencies and scripts
+├── tsconfig.json                 # TypeScript configuration
+├── .env.example                  # Environment variables template
+├── .gitignore                    # Git ignore rules
+└── README.md                     # This file
 ```
 
 ## License
