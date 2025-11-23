@@ -87,5 +87,15 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async scard(key: string): Promise<number> {
     return await this.client.scard(key);
   }
+
+  async sismember(key: string, member: string): Promise<boolean> {
+    const result = await this.client.sismember(key, member);
+    return result === 1;
+  }
+
+  // Pub/Sub operations
+  async publish(channel: string, message: string): Promise<number> {
+    return await this.client.publish(channel, message);
+  }
 }
 

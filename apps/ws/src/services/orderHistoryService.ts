@@ -31,15 +31,18 @@ export class OrderHistoryService {
         `🎯 Starting order history monitoring for ${targetWalletAddresses.length} wallet(s)`
       );
 
-      // Get profile addresses for all wallets
-      await this.getProfileAddressesForWallets(targetWalletAddresses);
-
+      // Connect WebSocket first (needed even if no addresses yet)
       await this.connectWebSocket();
-      this.subscribeToAllWallets();
+
+      // Get profile addresses for all wallets (if any)
+      if (targetWalletAddresses.length > 0) {
+        await this.getProfileAddressesForWallets(targetWalletAddresses);
+        this.subscribeToAllWallets();
+      }
 
       this.isMonitoring = true;
       Logger.success(
-        `Order history monitoring started for ${targetWalletAddresses.length} wallet(s)!`
+        `Order history monitoring started${targetWalletAddresses.length > 0 ? ` for ${targetWalletAddresses.length} wallet(s)` : " (waiting for addresses from Redis)"}!`
       );
     } catch (error) {
       Logger.error("Failed to start order history monitoring", error);
@@ -50,24 +53,29 @@ export class OrderHistoryService {
   private async getProfileAddressesForWallets(
     walletAddresses: string[]
   ): Promise<void> {
+    // Filter out already resolved addresses
+    const unresolved = walletAddresses.filter(
+      (addr) => !this.walletToProfile.has(addr)
+    );
+    if (unresolved.length === 0) return;
+
     Logger.info(
-      `🔍 Resolving profile addresses for ${walletAddresses.length} wallet(s)...`
+      `🔍 Resolving profile addresses for ${unresolved.length} wallet(s)...`
     );
 
-    const promises = walletAddresses.map(async (walletAddress) => {
+    // Parallel fetch with optimized headers
+    const headers = {
+      "x-api-key": config.kanaApiKey,
+      "Content-Type": "application/json",
+    };
+    const baseUrl = `${config.kanaRestUrl}/getProfileAddress?userAddress=`;
+
+    const promises = unresolved.map(async (walletAddress) => {
       try {
-        const response = await fetch(
-          `${config.kanaRestUrl}/getProfileAddress?userAddress=${walletAddress}`,
-          {
-            headers: {
-              "x-api-key": config.kanaApiKey,
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        const response = await fetch(baseUrl + walletAddress, { headers });
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          throw new Error(`HTTP ${response.status}`);
         }
 
         const data = (await response.json()) as {
@@ -79,21 +87,16 @@ export class OrderHistoryService {
         if (data?.success && data.data) {
           this.walletToProfile.set(walletAddress, data.data);
           this.profileToWallet.set(data.data, walletAddress);
-          Logger.info(
-            `✅ Wallet ${walletAddress.substring(0, 10)}... -> Profile ${data.data.substring(0, 10)}...`
-          );
-          return { walletAddress, profileAddress: data.data, success: true };
+          return { success: true };
         } else {
-          throw new Error(
-            `Failed to get profile address: ${data?.message || "Unknown error"}`
-          );
+          throw new Error(data?.message || "Unknown error");
         }
       } catch (error) {
         Logger.error(
           `❌ Failed to get profile for wallet ${walletAddress.substring(0, 10)}...`,
           error
         );
-        return { walletAddress, success: false, error };
+        return { success: false, error };
       }
     });
 
@@ -105,7 +108,7 @@ export class OrderHistoryService {
     }
 
     Logger.success(
-      `✅ Resolved ${successful}/${walletAddresses.length} profile address(es)`
+      `✅ Resolved ${successful}/${unresolved.length} profile address(es)`
     );
   }
 
@@ -119,6 +122,10 @@ export class OrderHistoryService {
           Logger.success("WebSocket connected successfully!");
           this.reconnectAttempts = 0;
           this.startPingInterval();
+          // Resubscribe to all wallets after reconnection
+          if (this.walletToProfile.size > 0) {
+            this.subscribeToAllWallets();
+          }
           resolve();
         });
 
@@ -153,136 +160,151 @@ export class OrderHistoryService {
   }
 
   private subscribeToAllWallets(): void {
-    if (!this.ws || this.walletToProfile.size === 0) {
-      Logger.error(
-        "Cannot subscribe: WebSocket or profile addresses not available"
-      );
+    if (
+      !this.ws ||
+      this.ws.readyState !== WebSocket.OPEN ||
+      this.walletToProfile.size === 0
+    ) {
       return;
     }
 
     const timestamp = Math.floor(Date.now() / 1000);
-    let subscribedCount = 0;
 
-    for (const [walletAddress, profileAddress] of this.walletToProfile) {
-      const subscriptionMessage = {
+    // Batch send subscriptions for lower latency
+    for (const profileAddress of this.walletToProfile.values()) {
+      const subscriptionMessage = JSON.stringify({
         topic: "order_history",
         address: profileAddress,
         from_timestamp: timestamp,
-      };
-
-      this.ws.send(JSON.stringify(subscriptionMessage));
-      subscribedCount++;
-      Logger.info(
-        `📡 Subscribed to wallet ${walletAddress.substring(0, 10)}... (profile: ${profileAddress.substring(0, 10)}...)`
-      );
+      });
+      this.ws.send(subscriptionMessage);
     }
 
-    Logger.success(`✅ Subscribed to ${subscribedCount} wallet(s)`);
+    Logger.success(`✅ Subscribed to ${this.walletToProfile.size} wallet(s)`);
   }
 
   private handleMessage(message: string): void {
+    // Fast path: check message type before parsing
+    if (
+      !message.includes('"message":"order_history"') ||
+      !message.includes('"data"')
+    ) {
+      return;
+    }
+
     try {
       const data = JSON.parse(message) as {
         message?: string;
         data?: OrderData[];
       };
 
-      if (data.message === "order_history" && data.data) {
-        this.processOrders(data.data).catch((error) => {
-          Logger.error("Error processing orders", error);
-        });
+      if (data.message === "order_history" && data.data?.length) {
+        // Process synchronously for lower latency
+        this.processOrders(data.data);
       }
     } catch (error) {
       Logger.error("Error parsing WebSocket message", error);
     }
   }
 
-  private async processOrders(orders: OrderData[]): Promise<void> {
-    // First, deduplicate within the batch - prefer "Filled" status over others
+  private processOrders(orders: OrderData[]): void {
+    if (!orders.length) return;
+
+    // Fast path: single order processing
+    if (orders.length === 1) {
+      const order = orders[0];
+      // Early exit checks
+      if (this.trackedOrders.has(order.order_id)) return;
+
+      const orderTimestamp = parseInt(order.timestamp, 10);
+      if (orderTimestamp < this.serviceStartTime) return;
+
+      if (!this.profileToWallet.has(order.address)) return;
+
+      this.trackedOrders.add(order.order_id);
+      this.displayOrder(order);
+      return;
+    }
+
+    // Batch processing for multiple orders
     const orderMap = new Map<string, OrderData>();
     for (const order of orders) {
       const existing = orderMap.get(order.order_id);
       if (!existing) {
         orderMap.set(order.order_id, order);
       } else if (order.status === "Filled" && existing.status !== "Filled") {
-        // Prefer Filled status if we have multiple statuses for same order
         orderMap.set(order.order_id, order);
       }
     }
 
-    // Now filter out already tracked orders and historical orders
-    const newOrders = Array.from(orderMap.values()).filter((order) => {
-      if (this.trackedOrders.has(order.order_id)) {
-        return false;
-      }
+    // Pre-parse timestamps and filter in single pass
+    const newOrders: OrderData[] = [];
+    for (const order of orderMap.values()) {
+      // Fast rejection checks
+      if (this.trackedOrders.has(order.order_id)) continue;
 
       const orderTimestamp = parseInt(order.timestamp, 10);
-      if (orderTimestamp < this.serviceStartTime) {
-        return false;
-      }
+      if (orderTimestamp < this.serviceStartTime) continue;
 
-      return true;
-    });
+      if (!this.profileToWallet.has(order.address)) continue;
 
-    if (newOrders.length === 0) {
-      return;
+      newOrders.push(order);
+      this.trackedOrders.add(order.order_id);
     }
 
+    if (newOrders.length === 0) return;
+
+    // Log only if significant
     if (newOrders.length <= LOG_CONFIG.MAX_ORDERS_FOR_VERBOSE_LOG) {
       Logger.info(`📊 Processing ${newOrders.length} NEW orders...`);
-    } else {
-      Logger.info(
-        `📊 Received ${orders.length} orders, deduplicated to ${orderMap.size}, processing ${newOrders.length} NEW orders...`
-      );
     }
 
+    // Process all new orders
     for (const order of newOrders) {
-      this.trackedOrders.add(order.order_id);
       this.displayOrder(order);
     }
   }
 
   private displayOrder(order: OrderData): void {
+    // Cache lookups
     const ts = parseInt(order.timestamp, 10);
-    const time = new Date(ts * 1000).toLocaleString();
     const info = this.getOrderTypeInfo(order.order_type);
+    const walletAddress = this.profileToWallet.get(order.address) || "Unknown";
     const market = MARKETS[order.market_id] || `Market ${order.market_id}`;
     const typeDesc =
       ORDER_TYPE_DESCRIPTIONS[order.order_type] ||
       `Unknown (${order.order_type})`;
+    const price = parseFloat(order.price).toLocaleString();
 
-    // Find which wallet this order belongs to
-    const walletAddress = this.profileToWallet.get(order.address) || "Unknown";
+    // Build output string for single console.log (faster)
+    const time = new Date(ts * 1000).toLocaleString();
+    const action = info.isBuy
+      ? "🟢 ACTION: BUY (LONG)"
+      : info.isSell
+        ? "🔴 ACTION: SELL (SHORT)"
+        : info.isExit
+          ? "🟡 ACTION: EXIT"
+          : "❓ ACTION: UNKNOWN";
 
-    console.log("\n" + "=".repeat(80));
-    console.log("🎯 NEW ORDER DETECTED");
-    console.log("=".repeat(80));
-    console.log(`👤 Wallet: ${walletAddress}`);
-    console.log(`📅 Time: ${time}`);
-    console.log(`🆔 Order ID: ${order.order_id}`);
-    console.log(`📊 Market: ${market} (ID: ${order.market_id})`);
-    console.log(`📈 Type: ${typeDesc}`);
-    console.log(`💰 Price: $${parseFloat(order.price).toLocaleString()}`);
-    console.log(`📏 Size: ${order.size} | ⚡ Leverage: ${order.leverage}x`);
-    console.log(`📊 Status: ${order.status}`);
-    console.log(`📍 Profile Address: ${order.address}`);
-
-    if (info.isBuy) console.log("🟢 ACTION: BUY (LONG)");
-    else if (info.isSell) console.log("🔴 ACTION: SELL (SHORT)");
-    else if (info.isExit) console.log("🟡 ACTION: EXIT");
-    else console.log("❓ ACTION: UNKNOWN");
-
-    if (config.nodeEnv !== "production") {
-      console.log(`🔍 Analysis:`, {
-        isBuy: info.isBuy,
-        isSell: info.isSell,
-        isExit: info.isExit,
-        isLong: info.isLong,
-        isShort: info.isShort,
-      });
-    }
-
-    console.log("=".repeat(80) + "\n");
+    console.log(
+      `\n${"=".repeat(80)}\n` +
+        `🎯 NEW ORDER DETECTED\n` +
+        `${"=".repeat(80)}\n` +
+        `👤 Wallet: ${walletAddress}\n` +
+        `📅 Time: ${time}\n` +
+        `🆔 Order ID: ${order.order_id}\n` +
+        `📊 Market: ${market} (ID: ${order.market_id})\n` +
+        `📈 Type: ${typeDesc}\n` +
+        `💰 Price: $${price}\n` +
+        `📏 Size: ${order.size} | ⚡ Leverage: ${order.leverage}x\n` +
+        `📊 Status: ${order.status}\n` +
+        `📍 Profile Address: ${order.address}\n` +
+        `${action}\n` +
+        (config.nodeEnv !== "production"
+          ? `🔍 Analysis: ${JSON.stringify({ isBuy: info.isBuy, isSell: info.isSell, isExit: info.isExit, isLong: info.isLong, isShort: info.isShort })}\n`
+          : "") +
+        `${"=".repeat(80)}\n`
+    );
   }
 
   private getOrderTypeInfo(orderType: number): OrderTypeInfo {
@@ -362,28 +384,30 @@ export class OrderHistoryService {
     };
   }
 
-  // Public methods for dynamic wallet management (for future bot feature)
+  // Public methods for dynamic wallet management
   async addWallet(walletAddress: string): Promise<void> {
+    // Fast path: check if already monitoring
     if (this.walletToProfile.has(walletAddress)) {
-      Logger.warn(
-        `Wallet ${walletAddress.substring(0, 10)}... already being monitored`
-      );
       return;
     }
 
     await this.getProfileAddressesForWallets([walletAddress]);
 
-    if (this.ws && this.walletToProfile.has(walletAddress)) {
-      const profileAddress = this.walletToProfile.get(walletAddress)!;
-      const subscriptionMessage = {
-        topic: "order_history",
-        address: profileAddress,
-        from_timestamp: Math.floor(Date.now() / 1000),
-      };
-      this.ws.send(JSON.stringify(subscriptionMessage));
-      Logger.success(
-        `✅ Added and subscribed to wallet ${walletAddress.substring(0, 10)}...`
-      );
+    // Subscribe immediately if WebSocket is ready
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      const profileAddress = this.walletToProfile.get(walletAddress);
+      if (profileAddress) {
+        this.ws.send(
+          JSON.stringify({
+            topic: "order_history",
+            address: profileAddress,
+            from_timestamp: Math.floor(Date.now() / 1000),
+          })
+        );
+        Logger.success(
+          `✅ Added and subscribed to wallet ${walletAddress.substring(0, 10)}...`
+        );
+      }
     }
   }
 
@@ -393,7 +417,14 @@ export class OrderHistoryService {
       this.walletToProfile.delete(walletAddress);
       this.profileToWallet.delete(profileAddress);
       Logger.info(
-        `🗑️ Removed wallet ${walletAddress.substring(0, 10)}... from monitoring`
+        `🗑️ Removed wallet ${walletAddress.substring(0, 10)}... (profile: ${profileAddress.substring(0, 10)}...) from monitoring`
+      );
+      Logger.info(
+        `   Future orders from this address will be ignored. Currently monitoring ${this.walletToProfile.size} wallet(s)`
+      );
+    } else {
+      Logger.warn(
+        `Wallet ${walletAddress.substring(0, 10)}... was not being monitored`
       );
     }
   }

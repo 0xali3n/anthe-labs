@@ -48,7 +48,9 @@ export class CopyTradeBotsService {
   /**
    * Sync bot start to Redis
    * - Add user to trader's subscriber set
-   * - Add trader to active profiles set
+   * - Check if trader is in active profiles set
+   * - If not in active profiles, add to not_synced set
+   * - If already in active profiles, do nothing (keep existing behavior)
    */
   async syncStartBot(userAddress: string, traderAddress: string): Promise<void> {
     try {
@@ -59,14 +61,24 @@ export class CopyTradeBotsService {
 
       const subscriberKey = `subs:profile:${traderAddress}`;
       const activeProfilesKey = 'profiles:active';
+      const notSyncedKey = 'profiles:not_synced';
 
       // Add user to trader's subscriber set (idempotent)
       await this.redisService.sadd(subscriberKey, userAddress);
 
-      // Add trader to active profiles set (idempotent)
-      await this.redisService.sadd(activeProfilesKey, traderAddress);
+      // Check if trader address is already in active profiles
+      const isInActive = await this.redisService.sismember(activeProfilesKey, traderAddress);
 
-      this.logger.log(`Redis sync: Bot started - user ${userAddress} subscribed to trader ${traderAddress}`);
+      if (isInActive) {
+        // Already in active profiles, do nothing (existing behavior)
+        this.logger.log(`Redis sync: Bot started - user ${userAddress} subscribed to trader ${traderAddress} (already in active profiles)`);
+      } else {
+        // Not in active profiles, add to not_synced set
+        await this.redisService.sadd(notSyncedKey, traderAddress);
+        // Send signal to WebSocket service to check for new addresses
+        await this.redisService.publish('ws:check', 'new_address');
+        this.logger.log(`Redis sync: Bot started - user ${userAddress} subscribed to trader ${traderAddress} (added to not_synced, signal sent)`);
+      }
     } catch (error: any) {
       // Log error but don't fail the operation
       this.logger.error(`Redis sync error in syncStartBot: ${error.message}`, error.stack);
@@ -77,6 +89,7 @@ export class CopyTradeBotsService {
    * Sync bot stop to Redis
    * - Remove user from trader's subscriber set
    * - If no more subscribers, remove trader from active profiles set
+   * - Also remove from not_synced set if present
    */
   async syncStopBot(userAddress: string, traderAddress: string): Promise<void> {
     try {
@@ -87,6 +100,7 @@ export class CopyTradeBotsService {
 
       const subscriberKey = `subs:profile:${traderAddress}`;
       const activeProfilesKey = 'profiles:active';
+      const notSyncedKey = 'profiles:not_synced';
 
       // Remove user from trader's subscriber set (idempotent)
       await this.redisService.srem(subscriberKey, userAddress);
@@ -94,10 +108,11 @@ export class CopyTradeBotsService {
       // Check if trader has any remaining subscribers
       const subscriberCount = await this.redisService.scard(subscriberKey);
 
-      // If no subscribers left, remove trader from active profiles (idempotent)
+      // If no subscribers left, remove trader from active profiles and not_synced (idempotent)
       if (subscriberCount === 0) {
         await this.redisService.srem(activeProfilesKey, traderAddress);
-        this.logger.log(`Redis sync: Bot stopped - trader ${traderAddress} removed from active profiles (no subscribers)`);
+        await this.redisService.srem(notSyncedKey, traderAddress);
+        this.logger.log(`Redis sync: Bot stopped - trader ${traderAddress} removed from active profiles and not_synced (no subscribers)`);
       } else {
         this.logger.log(`Redis sync: Bot stopped - user ${userAddress} unsubscribed from trader ${traderAddress} (${subscriberCount} remaining)`);
       }
