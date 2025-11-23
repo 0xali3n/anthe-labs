@@ -8,6 +8,8 @@ export interface OrderData {
   order_id: string;
   timestamp: string;
   status: string;
+  transaction_version?: string | number;
+  [key: string]: any; // Allow additional fields from WebSocket
 }
 
 export interface OrderTypeInfo {
@@ -24,4 +26,3 @@ export interface ServiceStatus {
   trackedOrdersCount: number;
   reconnectAttempts: number;
 }
-

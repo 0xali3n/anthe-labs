@@ -1,9 +1,7 @@
 import { validateConfig } from "./config";
 import { orderHistoryService } from "./services/orderHistoryService";
-import { RedisService } from "./services/redis.service";
+import { redisService } from "./services/redis.service";
 import { Logger } from "./utils/logger";
-
-const redisService = new RedisService();
 let currentAddresses: Set<string> = new Set();
 let isProcessingNotSynced = false;
 let signalDebounceTimer: NodeJS.Timeout | null = null;

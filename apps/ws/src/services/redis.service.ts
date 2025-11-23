@@ -164,6 +164,63 @@ export class RedisService {
     return this.isConnected;
   }
 
+  // Stream operations for storing orders
+  async transactionVersionExists(transactionVersion: string): Promise<boolean> {
+    if (!this.client) {
+      return false;
+    }
+
+    try {
+      // Read all entries from the stream (use - and + to get all entries)
+      const entries = await this.client.xrange("orders:stream", "-", "+");
+
+      // Check if any entry has the same transaction_version
+      for (const entry of entries) {
+        const [, fields] = entry;
+        // fields is an array of [key1, value1, key2, value2, ...]
+        for (let i = 0; i < fields.length; i += 2) {
+          if (
+            fields[i] === "transaction_version" &&
+            fields[i + 1] === transactionVersion
+          ) {
+            return true;
+          }
+        }
+      }
+      return false;
+    } catch (error) {
+      Logger.error(
+        "Failed to check transaction_version in Redis stream",
+        error
+      );
+      return false;
+    }
+  }
+
+  async addOrderToStream(
+    orderData: Record<string, string>
+  ): Promise<string | null> {
+    if (!this.client) {
+      Logger.error("Redis client not available, cannot add order to stream");
+      return null;
+    }
+
+    try {
+      // Use XADD to add order to stream
+      // Stream key: orders:stream
+      // Auto-generate ID with * (Redis generates timestamp-based ID)
+      const streamId = await this.client.xadd(
+        "orders:stream",
+        "*", // Auto-generate ID
+        ...Object.entries(orderData).flat() // Flatten object to [key1, value1, key2, value2, ...]
+      );
+      return streamId as string;
+    } catch (error) {
+      Logger.error("Failed to add order to Redis stream", error);
+      return null;
+    }
+  }
+
   async disconnect(): Promise<void> {
     if (this.subscriber) {
       await this.subscriber.quit();
@@ -177,3 +234,6 @@ export class RedisService {
     }
   }
 }
+
+// Export singleton instance
+export const redisService = new RedisService();
