@@ -1,12 +1,22 @@
-import { config, validateConfig } from "./config";
+import { validateConfig } from "./config";
 import { orderHistoryService } from "./services/orderHistoryService";
 import { RedisService } from "./services/redis.service";
 import { Logger } from "./utils/logger";
 
 const redisService = new RedisService();
 let currentAddresses: Set<string> = new Set();
+let isProcessingNotSynced = false;
+let signalDebounceTimer: NodeJS.Timeout | null = null;
 
 async function processNotSyncedAddresses(): Promise<void> {
+  // Prevent concurrent processing
+  if (isProcessingNotSynced) {
+    Logger.debug("Already processing not_synced addresses, skipping...");
+    return;
+  }
+
+  isProcessingNotSynced = true;
+
   try {
     Logger.info("🔍 Checking for not_synced addresses...");
     const notSyncedAddresses = await redisService.getNotSyncedProfiles();
@@ -16,30 +26,64 @@ async function processNotSyncedAddresses(): Promise<void> {
       return;
     }
 
-    Logger.info(`📥 Found ${notSyncedAddresses.length} address(es) in not_synced`);
+    Logger.info(
+      `📥 Found ${notSyncedAddresses.length} address(es) in not_synced`
+    );
 
-    for (const address of notSyncedAddresses) {
+    // Process addresses in parallel for better performance
+    const processPromises = notSyncedAddresses.map(async (address) => {
       try {
-        // Subscribe to WebSocket
-        Logger.info(`➕ Subscribing to address: ${address.substring(0, 10)}...`);
+        // Subscribe to WebSocket first
+        Logger.info(
+          `➕ Subscribing to address: ${address.substring(0, 10)}...`
+        );
         await orderHistoryService.addWallet(address);
 
-        // Move from not_synced to active
+        // Only move to active if subscription succeeded
         await redisService.moveToActive(address);
 
         // Update current addresses tracking
         currentAddresses.add(address);
 
-        Logger.success(`✅ Successfully processed address: ${address.substring(0, 10)}...`);
+        Logger.success(
+          `✅ Successfully processed address: ${address.substring(0, 10)}...`
+        );
+        return { address, success: true };
       } catch (error) {
-        Logger.error(`❌ Failed to process address ${address.substring(0, 10)}...`, error);
+        Logger.error(
+          `❌ Failed to process address ${address.substring(0, 10)}...`,
+          error
+        );
+        return { address, success: false, error };
       }
-    }
+    });
 
-    Logger.success(`✅ Processed ${notSyncedAddresses.length} address(es) from not_synced`);
+    const results = await Promise.all(processPromises);
+    const successful = results.filter((r) => r.success).length;
+
+    Logger.success(
+      `✅ Processed ${successful}/${notSyncedAddresses.length} address(es) from not_synced`
+    );
   } catch (error) {
     Logger.error("Error processing not_synced addresses", error);
+  } finally {
+    isProcessingNotSynced = false;
   }
+}
+
+function debouncedProcessNotSynced(): void {
+  // Clear existing timer
+  if (signalDebounceTimer) {
+    clearTimeout(signalDebounceTimer);
+  }
+
+  // Debounce: wait 100ms before processing to batch multiple signals
+  signalDebounceTimer = setTimeout(() => {
+    processNotSyncedAddresses().catch((error) => {
+      Logger.error("Error processing not_synced addresses after signal", error);
+    });
+    signalDebounceTimer = null;
+  }, 100);
 }
 
 export async function syncAddressesFromRedis(): Promise<void> {
@@ -56,13 +100,17 @@ export async function syncAddressesFromRedis(): Promise<void> {
 
     // Add new addresses
     for (const address of toAdd) {
-      Logger.info(`➕ Adding new address from Redis: ${address.substring(0, 10)}...`);
+      Logger.info(
+        `➕ Adding new address from Redis: ${address.substring(0, 10)}...`
+      );
       await orderHistoryService.addWallet(address);
     }
 
     // Remove addresses that are no longer active
     for (const address of toRemove) {
-      Logger.info(`➖ Removing address from Redis: ${address.substring(0, 10)}...`);
+      Logger.info(
+        `➖ Removing address from Redis: ${address.substring(0, 10)}...`
+      );
       orderHistoryService.removeWallet(address);
     }
 
@@ -116,7 +164,9 @@ async function initializeServices(): Promise<void> {
       await orderHistoryService.startMonitoring(initialAddresses);
       Logger.success("Monitoring started successfully");
     } else {
-      Logger.warn("No active profiles found in Redis. Waiting for profiles to be added...");
+      Logger.warn(
+        "No active profiles found in Redis. Waiting for profiles to be added..."
+      );
       // Start monitoring with empty array
       await orderHistoryService.startMonitoring([]);
     }
@@ -127,9 +177,7 @@ async function initializeServices(): Promise<void> {
     // Subscribe to Redis channel for signals from backend
     redisService.subscribeToChannel("ws:check", (message) => {
       Logger.info(`📨 Received signal from backend: ${message}`);
-      processNotSyncedAddresses().catch((error) => {
-        Logger.error("Error processing not_synced addresses after signal", error);
-      });
+      debouncedProcessNotSynced();
     });
   } catch (error) {
     Logger.error("Failed to initialize services", error);
@@ -153,6 +201,9 @@ process.on("unhandledRejection", (reason: unknown) => {
 
 process.on("SIGTERM", async () => {
   Logger.info("SIGTERM received, shutting down...");
+  if (signalDebounceTimer) {
+    clearTimeout(signalDebounceTimer);
+  }
   orderHistoryService.stopMonitoring();
   await redisService.disconnect();
   process.exit(0);
@@ -160,6 +211,9 @@ process.on("SIGTERM", async () => {
 
 process.on("SIGINT", async () => {
   Logger.info("SIGINT received, shutting down...");
+  if (signalDebounceTimer) {
+    clearTimeout(signalDebounceTimer);
+  }
   orderHistoryService.stopMonitoring();
   await redisService.disconnect();
   process.exit(0);

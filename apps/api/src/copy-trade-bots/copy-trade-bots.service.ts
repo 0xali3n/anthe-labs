@@ -47,12 +47,12 @@ export class CopyTradeBotsService {
 
   /**
    * Sync bot start to Redis
-   * - Add user to trader's subscriber set
+   * - Add user to trader's subscriber Hash with allocated amount
    * - Check if trader is in active profiles set
    * - If not in active profiles, add to not_synced set
    * - If already in active profiles, do nothing (keep existing behavior)
    */
-  async syncStartBot(userAddress: string, traderAddress: string): Promise<void> {
+  async syncStartBot(userAddress: string, traderAddress: string, allocatedAmount: string): Promise<void> {
     try {
       if (!traderAddress) {
         this.logger.warn('syncStartBot called without traderAddress, skipping Redis sync');
@@ -63,21 +63,30 @@ export class CopyTradeBotsService {
       const activeProfilesKey = 'profiles:active';
       const notSyncedKey = 'profiles:not_synced';
 
-      // Add user to trader's subscriber set (idempotent)
-      await this.redisService.sadd(subscriberKey, userAddress);
+      // Add user to trader's subscriber Hash with allocated amount (idempotent)
+      // Hash structure: field = userAddress, value = allocatedAmount
+      await this.redisService.hset(subscriberKey, userAddress, allocatedAmount);
 
       // Check if trader address is already in active profiles
       const isInActive = await this.redisService.sismember(activeProfilesKey, traderAddress);
 
       if (isInActive) {
         // Already in active profiles, do nothing (existing behavior)
-        this.logger.log(`Redis sync: Bot started - user ${userAddress} subscribed to trader ${traderAddress} (already in active profiles)`);
+        this.logger.log(`Redis sync: Bot started - user ${userAddress} subscribed to trader ${traderAddress} with amount ${allocatedAmount} (already in active profiles)`);
       } else {
-        // Not in active profiles, add to not_synced set
+        // Check if already in not_synced to avoid duplicate signals
+        const isInNotSynced = await this.redisService.sismember(notSyncedKey, traderAddress);
+        
+        // Not in active profiles, add to not_synced set (idempotent)
         await this.redisService.sadd(notSyncedKey, traderAddress);
-        // Send signal to WebSocket service to check for new addresses
-        await this.redisService.publish('ws:check', 'new_address');
-        this.logger.log(`Redis sync: Bot started - user ${userAddress} subscribed to trader ${traderAddress} (added to not_synced, signal sent)`);
+        
+        // Only send signal if it's a new addition (not already in not_synced)
+        if (!isInNotSynced) {
+          await this.redisService.publish('ws:check', 'new_address');
+          this.logger.log(`Redis sync: Bot started - user ${userAddress} subscribed to trader ${traderAddress} with amount ${allocatedAmount} (added to not_synced, signal sent)`);
+        } else {
+          this.logger.log(`Redis sync: Bot started - user ${userAddress} subscribed to trader ${traderAddress} with amount ${allocatedAmount} (already in not_synced, no signal)`);
+        }
       }
     } catch (error: any) {
       // Log error but don't fail the operation
@@ -87,7 +96,7 @@ export class CopyTradeBotsService {
 
   /**
    * Sync bot stop to Redis
-   * - Remove user from trader's subscriber set
+   * - Remove user from trader's subscriber Hash
    * - If no more subscribers, remove trader from active profiles set
    * - Also remove from not_synced set if present
    */
@@ -102,16 +111,18 @@ export class CopyTradeBotsService {
       const activeProfilesKey = 'profiles:active';
       const notSyncedKey = 'profiles:not_synced';
 
-      // Remove user from trader's subscriber set (idempotent)
-      await this.redisService.srem(subscriberKey, userAddress);
+      // Remove user from trader's subscriber Hash (idempotent)
+      await this.redisService.hdel(subscriberKey, userAddress);
 
-      // Check if trader has any remaining subscribers
-      const subscriberCount = await this.redisService.scard(subscriberKey);
+      // Check if trader has any remaining subscribers (using Hash length)
+      const subscriberCount = await this.redisService.hlen(subscriberKey);
 
       // If no subscribers left, remove trader from active profiles and not_synced (idempotent)
       if (subscriberCount === 0) {
         await this.redisService.srem(activeProfilesKey, traderAddress);
         await this.redisService.srem(notSyncedKey, traderAddress);
+        // Also delete the empty Hash to clean up
+        await this.redisService.del(subscriberKey);
         this.logger.log(`Redis sync: Bot stopped - trader ${traderAddress} removed from active profiles and not_synced (no subscribers)`);
       } else {
         this.logger.log(`Redis sync: Bot stopped - user ${userAddress} unsubscribed from trader ${traderAddress} (${subscriberCount} remaining)`);
@@ -189,7 +200,7 @@ export class CopyTradeBotsService {
 
       // Sync to Redis after successful Postgres write
       if (traderAddress) {
-        await this.syncStartBot(userAddress, traderAddress);
+        await this.syncStartBot(userAddress, traderAddress, createDto.allocatedAmount.toString());
       }
 
       return {
@@ -307,6 +318,7 @@ export class CopyTradeBotsService {
         select: {
           status: true,
           trader_address: true,
+          allocated_amount: true,
         },
       });
 
@@ -320,6 +332,7 @@ export class CopyTradeBotsService {
       const updateData: any = {};
       const oldStatus = existingBot.status;
       const oldTraderAddress = existingBot.trader_address;
+      const oldAllocatedAmount = existingBot.allocated_amount;
 
       if (updateDto.status) {
         updateData.status = updateDto.status;
@@ -338,6 +351,10 @@ export class CopyTradeBotsService {
         updateData.trader_address = updateDto.traderAddress?.trim() || null;
       }
 
+      if (updateDto.allocatedAmount !== undefined) {
+        updateData.allocated_amount = updateDto.allocatedAmount;
+      }
+
       const bot = await this.prisma.copyTradeBot.update({
         where: { id },
         data: updateData,
@@ -348,14 +365,17 @@ export class CopyTradeBotsService {
       const newTraderAddress = updateData.trader_address !== undefined 
         ? updateData.trader_address 
         : oldTraderAddress;
+      const newAllocatedAmount = updateData.allocated_amount !== undefined
+        ? updateData.allocated_amount
+        : oldAllocatedAmount;
 
       // Handle status changes
       if (newStatus === 'stopped' && oldStatus === 'running' && oldTraderAddress) {
         // Bot stopped: remove from Redis
         await this.syncStopBot(userAddress, oldTraderAddress);
       } else if (newStatus === 'running' && oldStatus === 'stopped' && newTraderAddress) {
-        // Bot restarted: add to Redis
-        await this.syncStartBot(userAddress, newTraderAddress);
+        // Bot restarted: add to Redis with current allocated amount
+        await this.syncStartBot(userAddress, newTraderAddress, newAllocatedAmount.toString());
       }
 
       // Handle trader address changes
@@ -365,9 +385,17 @@ export class CopyTradeBotsService {
           await this.syncStopBot(userAddress, oldTraderAddress);
         }
         if (newStatus === 'running' && newTraderAddress) {
-          // Add to new trader
-          await this.syncStartBot(userAddress, newTraderAddress);
+          // Add to new trader with current allocated amount
+          await this.syncStartBot(userAddress, newTraderAddress, newAllocatedAmount.toString());
         }
+      }
+
+      // Handle allocated amount changes (if bot is running and trader address exists)
+      if (newStatus === 'running' && newTraderAddress && oldAllocatedAmount !== newAllocatedAmount) {
+        // Update allocated amount in Redis Hash
+        const subscriberKey = `subs:profile:${newTraderAddress}`;
+        await this.redisService.hset(subscriberKey, userAddress, newAllocatedAmount.toString());
+        this.logger.log(`Redis sync: Updated allocated amount for user ${userAddress} on trader ${newTraderAddress} to ${newAllocatedAmount}`);
       }
 
       return {

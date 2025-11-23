@@ -53,16 +53,18 @@ export class RedisService {
 
     try {
       const result = await this.client.ping();
-      return result === "PONG";
+      const connected = result === "PONG";
+      this.isConnected = connected;
+      return connected;
     } catch (error) {
       Logger.error("Redis ping failed", error);
+      this.isConnected = false;
       return false;
     }
   }
 
   async getActiveProfiles(): Promise<string[]> {
-    if (!this.client || !this.isConnected) {
-      Logger.warn("Redis not connected, returning empty array");
+    if (!this.client) {
       return [];
     }
 
@@ -76,8 +78,7 @@ export class RedisService {
   }
 
   async getNotSyncedProfiles(): Promise<string[]> {
-    if (!this.client || !this.isConnected) {
-      Logger.warn("Redis not connected, returning empty array");
+    if (!this.client) {
       return [];
     }
 
@@ -91,24 +92,36 @@ export class RedisService {
   }
 
   async moveToActive(address: string): Promise<void> {
-    if (!this.client || !this.isConnected) {
-      Logger.warn("Redis not connected, cannot move address to active");
-      return;
+    if (!this.client) {
+      throw new Error("Redis client not available");
     }
 
     try {
       // Remove from not_synced and add to active atomically
-      await this.client.multi()
+      const results = await this.client
+        .multi()
         .srem("profiles:not_synced", address)
         .sadd("profiles:active", address)
         .exec();
-      Logger.info(`✅ Moved address ${address.substring(0, 10)}... from not_synced to active`);
+
+      // Check if transaction succeeded
+      if (!results || results.some((result) => result[0] !== null)) {
+        throw new Error("Redis transaction failed");
+      }
+
+      Logger.info(
+        `✅ Moved address ${address.substring(0, 10)}... from not_synced to active`
+      );
     } catch (error) {
       Logger.error("Failed to move address to active", error);
+      throw error; // Re-throw to allow caller to handle
     }
   }
 
-  subscribeToChannel(channel: string, callback: (message: string) => void): void {
+  subscribeToChannel(
+    channel: string,
+    callback: (message: string) => void
+  ): void {
     if (!this.client) {
       Logger.error("Redis client not available for subscription");
       return;
@@ -164,4 +177,3 @@ export class RedisService {
     }
   }
 }
-
