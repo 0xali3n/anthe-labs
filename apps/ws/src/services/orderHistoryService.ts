@@ -262,9 +262,24 @@ export class OrderHistoryService {
           orderData[key] = String(value);
         }
 
-        // Calculate and add percentage for order types 1,2,3,4
+        // Calculate and add percentage based on order type
         const orderType = order.order_type;
-        if (orderType >= 1 && orderType <= 4) {
+
+        // Order types 7,8 - set percentage to 100% directly (no calculation needed)
+        if (orderType === 7 || orderType === 8) {
+          orderData.percentage = "100.000000";
+
+          console.log("\n" + "=".repeat(80));
+          console.log("📊 PERCENTAGE SET (Order Types 7-8)");
+          console.log("=".repeat(80));
+          console.log(
+            `Order Type: ${orderType} (7-8, setting percentage to 100%)`
+          );
+          console.log(`Profile Address: ${order.address}`);
+          console.log(`Market ID: ${order.market_id}`);
+          console.log(`Percentage: 100.000000% (directly set, no calculation)`);
+          console.log("=".repeat(80) + "\n");
+        } else if (orderType >= 1 && orderType <= 4) {
           try {
             // Get wallet address from profile address
             // getProfileBalanceSnapshot requires WALLET address, not profile address
@@ -329,11 +344,91 @@ export class OrderHistoryService {
             );
             // Continue without percentage if calculation fails
           }
-        } else {
-          // Order types 5,6,7,8 - no percentage calculation
-          console.log(
-            `\n📋 Order Type: ${orderType} (5-8, skipping percentage calculation)\n`
-          );
+        } else if (orderType === 5 || orderType === 6) {
+          // Order types 5,6,7,8 - fetch positions and display
+          try {
+            // Get wallet address from profile address
+            const walletAddress = this.profileToWallet.get(order.address);
+
+            if (!walletAddress) {
+              Logger.warn(
+                `Wallet address not found for profile: ${order.address}, skipping positions fetch`
+              );
+            } else {
+              // Fetch positions from API using WALLET address
+              const positions = await this.getPositions(
+                walletAddress,
+                order.market_id
+              );
+
+              // Find position matching the order's market_id
+              const position = Array.isArray(positions)
+                ? positions.find((p: any) => p.market_id === order.market_id)
+                : null;
+
+              if (!position) {
+                Logger.warn(
+                  `Position not found for market ${order.market_id}, skipping percentage calculation`
+                );
+                console.log("\n" + "=".repeat(80));
+                console.log("📊 POSITIONS API RESPONSE (Order Types 5-8)");
+                console.log("=".repeat(80));
+                console.log(
+                  `Order Type: ${orderType} (5-8, fetching positions)`
+                );
+                console.log(`Wallet Address: ${walletAddress}`);
+                console.log(`Profile Address: ${order.address}`);
+                console.log(`Market ID: ${order.market_id}`);
+                console.log("\nPositions Response:");
+                console.log(JSON.stringify(positions, null, 2));
+                console.log("=".repeat(80) + "\n");
+              } else {
+                // Calculate percentage:
+                // total_size = ws_order.size + api_position.available_order_size
+                // percentage = ws_order.size / total_size
+                const wsOrderSize = parseFloat(String(order.size || "0"));
+                const availableOrderSize = parseFloat(
+                  String(position.available_order_size || "0")
+                );
+                const totalSize = wsOrderSize + availableOrderSize;
+                const percentage =
+                  totalSize > 0
+                    ? (wsOrderSize / totalSize) * 100 // Convert to percentage (0-100)
+                    : 0;
+
+                // Add percentage to order data
+                orderData.percentage = percentage.toFixed(6);
+
+                // Display calculations in console
+                console.log("\n" + "=".repeat(80));
+                console.log("📊 PERCENTAGE CALCULATION (Order Types 5-8)");
+                console.log("=".repeat(80));
+                console.log(
+                  `Order Type: ${orderType} (5-8, calculating percentage)`
+                );
+                console.log(`Wallet Address: ${walletAddress}`);
+                console.log(`Profile Address: ${order.address}`);
+                console.log(`Market ID: ${order.market_id}`);
+                console.log(`WS Order Size: ${wsOrderSize}`);
+                console.log(`API Available Order Size: ${availableOrderSize}`);
+                console.log(
+                  `Total Size = ${wsOrderSize} + ${availableOrderSize} = ${totalSize.toFixed(6)}`
+                );
+                console.log(
+                  `Percentage = ${wsOrderSize} / ${totalSize.toFixed(6)} = ${percentage.toFixed(6)}%`
+                );
+                console.log("\nPosition Details:");
+                console.log(JSON.stringify(position, null, 2));
+                console.log("=".repeat(80) + "\n");
+              }
+            }
+          } catch (error) {
+            Logger.error(
+              `Failed to fetch positions for order ${transactionVersion}`,
+              error
+            );
+            // Continue processing even if positions fetch fails
+          }
         }
 
         await redisService.addOrderToStream(orderData);
@@ -352,6 +447,56 @@ export class OrderHistoryService {
       console.log("=".repeat(80));
       console.log(JSON.stringify(order, null, 2));
       console.log("=".repeat(80) + "\n");
+    }
+  }
+
+  /**
+   * Fetch positions from Kana Labs API
+   * Note: This API requires WALLET address, not profile address
+   * @param walletAddress - The wallet address (not profile address)
+   * @param marketId - Optional market ID to filter positions
+   */
+  private async getPositions(
+    walletAddress: string,
+    marketId?: string
+  ): Promise<any> {
+    try {
+      let url = `${config.kanaRestUrl}/getPositions?userAddress=${walletAddress}`;
+      if (marketId) {
+        url += `&marketId=${marketId}`;
+      }
+
+      const response = await fetch(url, {
+        headers: {
+          "x-api-key": config.kanaApiKey,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `HTTP ${response.status}: ${response.statusText} - ${errorText}`
+        );
+      }
+
+      const data = (await response.json()) as {
+        success?: boolean;
+        data?: any;
+        message?: string;
+      };
+
+      if (data?.success) {
+        return data.data || [];
+      } else {
+        throw new Error(data?.message || "Invalid response format");
+      }
+    } catch (error) {
+      Logger.error(
+        `Failed to fetch positions for wallet ${walletAddress.substring(0, 10)}...`,
+        error
+      );
+      throw error;
     }
   }
 
