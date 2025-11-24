@@ -261,6 +261,81 @@ export class OrderHistoryService {
         for (const [key, value] of Object.entries(order)) {
           orderData[key] = String(value);
         }
+
+        // Calculate and add percentage for order types 1,2,3,4
+        const orderType = order.order_type;
+        if (orderType >= 1 && orderType <= 4) {
+          try {
+            // Get wallet address from profile address
+            // getProfileBalanceSnapshot requires WALLET address, not profile address
+            const walletAddress = this.profileToWallet.get(order.address);
+
+            if (!walletAddress) {
+              Logger.warn(
+                `Wallet address not found for profile: ${order.address}, skipping percentage calculation`
+              );
+            } else {
+              // Fetch balance from API using WALLET address (not profile address)
+              const userBalance = await this.getProfileBalance(walletAddress);
+
+              // Get order_value and leverage
+              const orderValue = parseFloat(
+                String(order.order_value || order.size || "0")
+              );
+              const leverage = parseFloat(String(order.leverage || "1"));
+
+              // Calculate percentage:
+              // 1. user_balance = api (balance from API)
+              // 2. user_trade = trade_value / leverage
+              // 3. user_real_balance = api + user_trade
+              // 4. percentage = user_trade / user_real_balance
+              const userTrade = orderValue / leverage;
+              const userRealBalance = userBalance + userTrade;
+              const percentage =
+                userRealBalance > 0
+                  ? (userTrade / userRealBalance) * 100 // Convert to percentage (0-100)
+                  : 0;
+
+              // Add percentage to order data
+              orderData.percentage = percentage.toFixed(6);
+
+              // Display calculations in console
+              console.log("\n" + "=".repeat(80));
+              console.log("📊 PERCENTAGE CALCULATION");
+              console.log("=".repeat(80));
+              console.log(
+                `Order Type: ${orderType} (1-4, calculating percentage)`
+              );
+              console.log(`Wallet Address: ${walletAddress}`);
+              console.log(`Profile Address: ${order.address}`);
+              console.log(`User Balance (from API): ${userBalance}`);
+              console.log(`Order Value: ${orderValue}`);
+              console.log(`Leverage: ${leverage}`);
+              console.log(
+                `User Trade = ${orderValue} / ${leverage} = ${userTrade.toFixed(6)}`
+              );
+              console.log(
+                `User Real Balance = ${userBalance} + ${userTrade.toFixed(6)} = ${userRealBalance.toFixed(6)}`
+              );
+              console.log(
+                `Percentage = ${userTrade.toFixed(6)} / ${userRealBalance.toFixed(6)} = ${percentage.toFixed(6)}%`
+              );
+              console.log("=".repeat(80) + "\n");
+            }
+          } catch (error) {
+            Logger.error(
+              `Failed to calculate percentage for order ${transactionVersion}`,
+              error
+            );
+            // Continue without percentage if calculation fails
+          }
+        } else {
+          // Order types 5,6,7,8 - no percentage calculation
+          console.log(
+            `\n📋 Order Type: ${orderType} (5-8, skipping percentage calculation)\n`
+          );
+        }
+
         await redisService.addOrderToStream(orderData);
       } catch (error) {
         Logger.error(`Failed to push order to Redis`, error);
@@ -277,6 +352,48 @@ export class OrderHistoryService {
       console.log("=".repeat(80));
       console.log(JSON.stringify(order, null, 2));
       console.log("=".repeat(80) + "\n");
+    }
+  }
+
+  /**
+   * Fetch profile balance from Kana Labs API
+   * Note: This API requires WALLET address, not profile address
+   * @param walletAddress - The wallet address (not profile address)
+   */
+  private async getProfileBalance(walletAddress: string): Promise<number> {
+    try {
+      const url = `${config.kanaRestUrl}/getProfileBalanceSnapshot?userAddress=${walletAddress}`;
+      const response = await fetch(url, {
+        headers: {
+          "x-api-key": config.kanaApiKey,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `HTTP ${response.status}: ${response.statusText} - ${errorText}`
+        );
+      }
+
+      const data = (await response.json()) as {
+        success?: boolean;
+        data?: number;
+        message?: string;
+      };
+
+      if (data?.success && typeof data.data === "number") {
+        return data.data;
+      } else {
+        throw new Error(data?.message || "Invalid response format");
+      }
+    } catch (error) {
+      Logger.error(
+        `Failed to fetch balance for wallet ${walletAddress.substring(0, 10)}...`,
+        error
+      );
+      throw error;
     }
   }
 
