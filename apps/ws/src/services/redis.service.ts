@@ -1,5 +1,6 @@
 import Redis from "ioredis";
 import { Logger } from "../utils/logger";
+import { config } from "../config";
 
 export class RedisService {
   private client: Redis | null = null;
@@ -13,8 +14,8 @@ export class RedisService {
   private connect(): void {
     try {
       this.client = new Redis({
-        host: process.env.REDIS_HOST || "localhost",
-        port: parseInt(process.env.REDIS_PORT || "6379"),
+        host: config.redisHost,
+        port: config.redisPort,
         retryStrategy: (times) => {
           const delay = Math.min(times * 50, 2000);
           return delay;
@@ -129,8 +130,8 @@ export class RedisService {
 
     // Create a separate connection for pub/sub
     this.subscriber = new Redis({
-      host: process.env.REDIS_HOST || "localhost",
-      port: parseInt(process.env.REDIS_PORT || "6379"),
+      host: config.redisHost,
+      port: config.redisPort,
       retryStrategy: (times) => {
         const delay = Math.min(times * 50, 2000);
         return delay;
@@ -171,8 +172,9 @@ export class RedisService {
     }
 
     try {
-      // Read all entries from the stream (use - and + to get all entries)
-      const entries = await this.client.xrange("orders:stream", "-", "+");
+      // Read recent entries from the stream (last 100 entries should be enough)
+      // Using XREVRANGE to get the most recent entries first
+      const entries = await this.client.xrevrange("orders:stream", "+", "-", "COUNT", 100);
 
       // Check if any entry has the same transaction_version
       for (const entry of entries) {

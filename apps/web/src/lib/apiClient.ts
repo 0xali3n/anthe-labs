@@ -1,5 +1,5 @@
 // API Client for communicating with NestJS backend
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001/api';
 
 export interface ApiError {
   message: string;

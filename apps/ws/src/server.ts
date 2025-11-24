@@ -84,48 +84,6 @@ function debouncedProcessNotSynced(): void {
   }, 100);
 }
 
-export async function syncAddressesFromRedis(): Promise<void> {
-  try {
-    const activeProfiles = await redisService.getActiveProfiles();
-    const newAddresses = new Set(activeProfiles);
-
-    // Find addresses to add
-    const toAdd = activeProfiles.filter((addr) => !currentAddresses.has(addr));
-    // Find addresses to remove
-    const toRemove = Array.from(currentAddresses).filter(
-      (addr) => !newAddresses.has(addr)
-    );
-
-    // Add new addresses
-    for (const address of toAdd) {
-      Logger.info(
-        `➕ Adding new address from Redis: ${address.substring(0, 10)}...`
-      );
-      await orderHistoryService.addWallet(address);
-    }
-
-    // Remove addresses that are no longer active
-    for (const address of toRemove) {
-      Logger.info(
-        `➖ Removing address from Redis: ${address.substring(0, 10)}...`
-      );
-      orderHistoryService.removeWallet(address);
-    }
-
-    // Update current addresses set
-    currentAddresses = newAddresses;
-
-    if (toAdd.length > 0 || toRemove.length > 0) {
-      Logger.info(
-        `📊 Active profiles: ${currentAddresses.size} (added: ${toAdd.length}, removed: ${toRemove.length})`
-      );
-    } else {
-      Logger.info(`📊 Active profiles: ${currentAddresses.size} (no changes)`);
-    }
-  } catch (error) {
-    Logger.error("Error syncing addresses from Redis", error);
-  }
-}
 
 async function initializeServices(): Promise<void> {
   try {

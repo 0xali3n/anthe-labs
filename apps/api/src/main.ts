@@ -22,7 +22,7 @@ async function bootstrap() {
   // CORS configuration (environment-based)
   const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',')
-    : ['http://localhost:3000'];
+    : ['http://localhost:4000'];
 
   app.enableCors({
     origin: allowedOrigins,
@@ -34,8 +34,8 @@ async function bootstrap() {
   // API prefix
   app.setGlobalPrefix('api');
 
-  const port = process.env.PORT ?? 3001;
-  await app.listen(port);
+  const port = process.env.PORT ?? 4001;
+  await app.listen(port, 'localhost');
   console.log(`🚀 API running on http://localhost:${port}/api`);
   console.log(`✅ CORS enabled for: ${allowedOrigins.join(', ')}`);
 }

@@ -430,6 +430,11 @@ export class CopyTradeBotsService {
         };
       }
 
+      // Sync to Redis before deletion if bot is running and has a trader
+      if (existingBot.status === 'running' && existingBot.trader_address) {
+        await this.syncStopBot(userAddress, existingBot.trader_address);
+      }
+
       await this.prisma.copyTradeBot.delete({
         where: { id },
       });

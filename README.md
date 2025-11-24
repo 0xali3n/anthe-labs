@@ -165,7 +165,7 @@ pnpm dlx prisma db pull
 pnpm run dev:web
 ```
 
-Runs on → [http://localhost:3000](http://localhost:3000)
+Runs on → [http://localhost:4000](http://localhost:4000)
 
 #### ⚙️ Backend (Nest.js API)
 
@@ -173,7 +173,7 @@ Runs on → [http://localhost:3000](http://localhost:3000)
 pnpm run dev:api
 ```
 
-Runs on → [http://localhost:3001/api](http://localhost:3001/api)
+Runs on → [http://localhost:4001/api](http://localhost:4001/api)
 
 ---
 

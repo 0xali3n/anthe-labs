@@ -10,15 +10,19 @@ export class OrderHistoryService {
   private reconnectAttempts: number = 0;
   private pingInterval: NodeJS.Timeout | null = null;
   private serviceStartTime: number = 0;
+  private isStopped: boolean = false;
 
   public isMonitoring: boolean = false;
   // Map: walletAddress -> profileAddress
   private walletToProfile: Map<string, string> = new Map();
   // Map: profileAddress -> walletAddress (reverse lookup)
   private profileToWallet: Map<string, string> = new Map();
+  // Track recently processed transaction versions (TTL: 5 minutes)
+  private processedTransactions: Map<string, number> = new Map();
 
   async startMonitoring(targetWalletAddresses: string[]): Promise<void> {
     try {
+      this.isStopped = false;
       this.serviceStartTime =
         Math.floor(Date.now() / 1000) - WEBSOCKET_CONFIG.SERVICE_START_BUFFER;
 
@@ -96,6 +100,7 @@ export class OrderHistoryService {
     return new Promise((resolve, reject) => {
       try {
         this.ws = new WebSocket(config.kanaWsUrl);
+        let isResolved = false;
 
         this.ws.on("open", () => {
           this.reconnectAttempts = 0;
@@ -104,7 +109,10 @@ export class OrderHistoryService {
           if (this.walletToProfile.size > 0) {
             this.subscribeToAllWallets();
           }
-          resolve();
+          if (!isResolved) {
+            isResolved = true;
+            resolve();
+          }
         });
 
         this.ws.on("message", (data: WebSocket.Data) => {
@@ -114,6 +122,7 @@ export class OrderHistoryService {
         this.ws.on("close", () => {
           this.stopPingInterval();
           if (
+            !this.isStopped &&
             this.reconnectAttempts < WEBSOCKET_CONFIG.MAX_RECONNECT_ATTEMPTS
           ) {
             this.scheduleReconnect();
@@ -122,11 +131,15 @@ export class OrderHistoryService {
 
         this.ws.on("error", (error: Error) => {
           Logger.error("WebSocket error", error);
-          reject(error);
+          // Only reject if connection hasn't been established yet
+          if (!isResolved) {
+            isResolved = true;
+            reject(error);
+          }
         });
 
         this.ws.on("pong", () => {
-          // Pong received
+          // Pong received - connection is alive
         });
       } catch (error) {
         reject(error);
@@ -186,28 +199,64 @@ export class OrderHistoryService {
     if (!orders.length) return;
 
     const processedInBatch = new Set<string>();
+    const validOrders: OrderData[] = [];
+    const now = Date.now();
+    const TTL_MS = 5 * 60 * 1000; // 5 minutes
 
+    // Clean up old entries from processedTransactions
+    for (const [txVersion, timestamp] of this.processedTransactions.entries()) {
+      if (now - timestamp > TTL_MS) {
+        this.processedTransactions.delete(txVersion);
+      }
+    }
+
+    // Filter and validate orders first
     for (const order of orders) {
       // Fast filters
       if (!this.profileToWallet.has(order.address)) continue;
       if (order.status !== "Open") continue;
 
-      const orderTimestamp = parseInt(order.timestamp, 10);
+      const orderTimestamp = parseInt(String(order.timestamp), 10);
       if (orderTimestamp < this.serviceStartTime) continue;
 
-      // Deduplicate within batch
+      // Deduplicate within batch and across recent messages
       const transactionVersion = String(
         order.transaction_version || order.order_id
       );
-      if (processedInBatch.has(transactionVersion)) continue;
-      processedInBatch.add(transactionVersion);
 
-      // Display in console (uses order object directly)
+      // Skip if already processed in this batch
+      if (processedInBatch.has(transactionVersion)) continue;
+
+      // Skip if recently processed (within last 5 minutes)
+      if (this.processedTransactions.has(transactionVersion)) {
+        Logger.debug(`Skipping duplicate order: ${transactionVersion}`);
+        continue;
+      }
+
+      processedInBatch.add(transactionVersion);
+      this.processedTransactions.set(transactionVersion, now);
+      validOrders.push(order);
+    }
+
+    // Process valid orders
+    for (const order of validOrders) {
+      // Display in console (only in dev mode)
       this.displayOrder(order);
 
-      // Push to Redis immediately after display (same order object, same technique)
+      // Push to Redis (with additional deduplication check)
       try {
-        // Same technique as console.log - use Object.entries(order) directly
+        // Check Redis for existing entry before adding
+        const transactionVersion = String(
+          order.transaction_version || order.order_id
+        );
+        const exists =
+          await redisService.transactionVersionExists(transactionVersion);
+
+        if (exists) {
+          Logger.debug(`Order already exists in Redis: ${transactionVersion}`);
+          continue;
+        }
+
         const orderData: Record<string, string> = {};
         for (const [key, value] of Object.entries(order)) {
           orderData[key] = String(value);
@@ -215,17 +264,20 @@ export class OrderHistoryService {
         await redisService.addOrderToStream(orderData);
       } catch (error) {
         Logger.error(`Failed to push order to Redis`, error);
+        // Continue processing other orders even if one fails
       }
     }
   }
 
   private displayOrder(order: OrderData): void {
-    console.log("\n" + "=".repeat(80));
-    console.log("🎯 NEW ORDER");
-    console.log("=".repeat(80));
-    console.log(JSON.stringify(order, null, 2));
-
-    console.log("=".repeat(80) + "\n");
+    // Only log in development mode to reduce production noise
+    if (process.env.NODE_ENV !== "production") {
+      console.log("\n" + "=".repeat(80));
+      console.log("🎯 NEW ORDER");
+      console.log("=".repeat(80));
+      console.log(JSON.stringify(order, null, 2));
+      console.log("=".repeat(80) + "\n");
+    }
   }
 
   private startPingInterval(): void {
@@ -255,12 +307,15 @@ export class OrderHistoryService {
   }
 
   stopMonitoring(): void {
+    this.isStopped = true;
     this.stopPingInterval();
     if (this.ws) {
+      this.ws.removeAllListeners();
       this.ws.close();
       this.ws = null;
     }
     this.isMonitoring = false;
+    this.reconnectAttempts = 0;
     this.walletToProfile.clear();
     this.profileToWallet.clear();
   }
@@ -268,9 +323,7 @@ export class OrderHistoryService {
   getStatus(): ServiceStatus {
     return {
       isMonitoring: this.isMonitoring,
-      targetProfileAddress:
-        Array.from(this.walletToProfile.values())[0] || null,
-      trackedOrdersCount: 0, // No longer tracking orders
+      monitoredWalletsCount: this.walletToProfile.size,
       reconnectAttempts: this.reconnectAttempts,
     };
   }

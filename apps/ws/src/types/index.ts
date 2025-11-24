@@ -12,17 +12,8 @@ export interface OrderData {
   [key: string]: any; // Allow additional fields from WebSocket
 }
 
-export interface OrderTypeInfo {
-  isBuy: boolean;
-  isSell: boolean;
-  isExit: boolean;
-  isLong: boolean;
-  isShort: boolean;
-}
-
 export interface ServiceStatus {
   isMonitoring: boolean;
-  targetProfileAddress: string | null;
-  trackedOrdersCount: number;
+  monitoredWalletsCount: number;
   reconnectAttempts: number;
 }
