@@ -63,7 +63,7 @@ export class TwitterController {
     @Res() res: Response,
   ) {
     try {
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4000';
 
       if (error) {
         return res.redirect(
@@ -109,7 +109,7 @@ export class TwitterController {
       );
     } catch (error: any) {
       console.error('Twitter callback error:', error);
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4000';
       res.redirect(
         `${frontendUrl}/twitter-callback?error=${encodeURIComponent(error.message || 'Failed to connect Twitter')}`,
       );

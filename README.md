@@ -134,11 +134,11 @@ pnpm install
 
 ### 3️⃣ Environment Setup
 
-#### Backend ( `apps/web/.env.local`):
+#### WebSocket Service (`apps/ws/.env`):
 
-#### Frontend ( `apps/api/.env`):
+#### Backend API (`apps/api/.env`):
 
----
+#### Frontend (`apps/web/.env.local`):
 
 ### 4️⃣ Database Setup (Supabase + Prisma)
 
@@ -151,23 +151,79 @@ pnpm dlx prisma generate
 
 ---
 
-### 5️⃣ Run the Apps
+### 5️⃣ Start Redis (Required Before Running Services)
 
-#### 🖥 Frontend (Next.js)
+**⚠️ Important:** Redis must be running before starting any services!
+
+#### Option 1: Using Docker (Recommended)
+
+**First Time Setup:**
+
+1. **Create and Run Redis Container:**
+
+```bash
+docker run -d --name redis-anthe -p 6379:6379 redis:latest
+```
+
+**After First Setup:**
+
+- **Start Redis:** Use Docker Desktop UI or run:
+
+```bash
+docker start redis-anthe
+```
+
+- **Stop Redis:**
+
+```bash
+docker stop redis-anthe
+```
+
+- **View Redis Logs:**
+
+Use RedisInsight Application
+
+---
+
+### 6️⃣ Run the Services
+
+#### 🚀 Run All Services Together
+
+```bash
+pnpm run dev:all
+```
+
+This will start all three services in parallel:
+
+- Web (Next.js) on port 4000
+- API (Nest.js) on port 4001
+- WebSocket Service on default port
+
+#### 🖥 Run Services Individually
+
+**Frontend (Next.js):**
 
 ```bash
 pnpm run dev:web
 ```
 
-Runs on → [http://localhost:3000](http://localhost:3000)
+Runs on → [http://localhost:4000](http://localhost:4000)
 
-#### ⚙️ Backend (Nest.js API)
+**Backend API (Nest.js):**
 
 ```bash
 pnpm run dev:api
 ```
 
-Runs on → [http://localhost:3001/api](http://localhost:3001/api)
+Runs on → [http://localhost:4001/api](http://localhost:4001/api)
+
+**WebSocket Service:**
+
+```bash
+pnpm run dev:ws
+```
+
+Monitors order history and pushes to Redis stream
 
 ---
 
@@ -187,17 +243,29 @@ anthe-labs/
 │   │   │       └── copyTradeBotsApi.ts  # Copy Trade API Client
 │   │   └── package.json
 │   │
-│   └── api/              # Nest.js Backend
+│   ├── api/              # Nest.js Backend
+│   │   ├── src/
+│   │   │   ├── users/    # User Management
+│   │   │   ├── wallets/  # Wallet Operations
+│   │   │   ├── traders/  # Trader Statistics (Leaderboard)
+│   │   │   ├── trader-registrations/  # Creator Registration
+│   │   │   ├── copy-trade-bots/  # Copy Trade Bot Management
+│   │   │   ├── redis/    # Redis Service & Integration
+│   │   │   ├── twitter/  # Twitter Integration
+│   │   │   └── avatars/  # Avatar Management
+│   │   ├── prisma/       # Database Schema
+│   │   └── package.json
+│   │
+│   └── ws/               # WebSocket Order History Monitor
 │       ├── src/
-│       │   ├── users/    # User Management
-│       │   ├── wallets/  # Wallet Operations
-│       │   ├── traders/  # Trader Statistics (Leaderboard)
-│       │   ├── trader-registrations/  # Creator Registration
-│       │   ├── copy-trade-bots/  # Copy Trade Bot Management
-│       │   ├── redis/    # Redis Service & Integration
-│       │   ├── twitter/  # Twitter Integration
-│       │   └── avatars/  # Avatar Management
-│       ├── prisma/       # Database Schema
+│       │   ├── services/  # Order processing & Redis integration
+│       │   │   ├── orderHistoryService.ts  # Main order monitoring service
+│       │   │   └── redis.service.ts  # Redis stream operations
+│       │   ├── config/    # Configuration management
+│       │   ├── constants/ # Application constants
+│       │   ├── types/     # TypeScript type definitions
+│       │   ├── utils/     # Logger and utilities
+│       │   └── server.ts  # Service entry point
 │       └── package.json
 │
 ├── packages/             # Shared Packages
@@ -223,7 +291,7 @@ anthe-labs/
 - **Database:** Supabase (PostgreSQL)
 - **Cache/Queue:** Redis (ioredis)
 - **Authentication:** JWT (Supabase)
-- **Encryption:** AES-256-GCM (for wallet keys)
+- **Encryption:** (for wallet keys)
 
 ### Infrastructure
 
@@ -236,7 +304,55 @@ anthe-labs/
 
 ## 📝 Recent Updates
 
-### Redis Integration & Bot Syncing ✨ (Current Branch)
+### WebSocket Service Optimization & Percentage Calculation ✨ (Latest)
+
+- ✅ **Order History Monitoring Service:**
+  - Real-time order monitoring via Kana Labs WebSocket
+  - Profile address resolution from wallet addresses
+  - Automatic reconnection with exponential backoff
+  - Deduplication to prevent duplicate orders in Redis
+  - In-memory transaction tracking (5-minute TTL)
+  - Redis stream-based order storage
+
+- ✅ **Percentage Calculation System:**
+  - **Order Types 1-4 (Open/Increase Positions):**
+    - Fetches user balance from `getProfileBalanceSnapshot` API
+    - Calculates: `percentage = (user_trade / user_real_balance) * 100`
+    - Where: `user_trade = order_value / leverage` and `user_real_balance = balance + user_trade`
+  - **Order Types 5-6 (Decrease Positions):**
+    - Fetches positions from `getPositions` API
+    - Calculates: `percentage = (ws_order_size / total_size) * 100`
+    - Where: `total_size = ws_order_size + available_order_size`
+  - **Order Types 7-8 (Close Positions):**
+    - Sets percentage to 100% directly (no calculation needed)
+  - All percentages stored in Redis stream with order data
+
+- ✅ **API Integrations:**
+  - `getProfileBalanceSnapshot` - Fetches user balance (requires wallet address)
+  - `getPositions` - Fetches open positions (requires wallet address)
+  - `getProfileAddress` - Resolves profile address from wallet address
+  - All APIs use mainnet endpoint: `https://perps-tradeapi.kana.trade`
+
+- ✅ **Code Optimizations:**
+  - Removed unused code (syncAddressesFromRedis, transactionVersionExists, unused constants)
+  - Improved error handling and state management
+  - Better WebSocket connection lifecycle management
+  - Optimized order processing with batch deduplication
+  - Enhanced logging with detailed calculation displays
+
+- ✅ **Port Configuration:**
+  - Web app: Port 4000 (changed from 3000)
+  - API: Port 4001 (changed from 3001)
+  - All services bind to localhost to avoid permission issues
+  - Updated CORS and API URLs throughout codebase
+
+- ✅ **Redis Integration:**
+  - Orders stored in Redis stream: `orders:stream`
+  - Transaction version deduplication (checks last 100 entries)
+  - Efficient stream operations with XADD and XREVRANGE
+  - Redis pub/sub for real-time communication between API and WS service
+
+### Redis Integration & Bot Syncing ✨
 
 - ✅ Redis service implementation with ioredis
 - ✅ Set operations (SADD, SREM, SCARD) for subscription tracking

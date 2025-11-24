@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsIn } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsNumber } from 'class-validator';
 
 export class UpdateCopyTradeBotDto {
   @IsString()
@@ -9,5 +9,9 @@ export class UpdateCopyTradeBotDto {
   @IsString()
   @IsOptional()
   traderAddress?: string; // Update target trader address
+
+  @IsNumber()
+  @IsOptional()
+  allocatedAmount?: number; // Update allocated amount
 }
 

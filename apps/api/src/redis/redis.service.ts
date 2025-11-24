@@ -1,4 +1,9 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from '@nestjs/common';
 import Redis from 'ioredis';
 
 @Injectable()
@@ -87,5 +92,40 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async scard(key: string): Promise<number> {
     return await this.client.scard(key);
   }
-}
 
+  async sismember(key: string, member: string): Promise<boolean> {
+    const result = await this.client.sismember(key, member);
+    return result === 1;
+  }
+
+  // Hash operations
+  async hset(key: string, field: string, value: string): Promise<number> {
+    return await this.client.hset(key, field, value);
+  }
+
+  async hget(key: string, field: string): Promise<string | null> {
+    return await this.client.hget(key, field);
+  }
+
+  async hdel(key: string, ...fields: string[]): Promise<number> {
+    return await this.client.hdel(key, ...fields);
+  }
+
+  async hlen(key: string): Promise<number> {
+    return await this.client.hlen(key);
+  }
+
+  async hgetall(key: string): Promise<Record<string, string>> {
+    return await this.client.hgetall(key);
+  }
+
+  async hexists(key: string, field: string): Promise<boolean> {
+    const result = await this.client.hexists(key, field);
+    return result === 1;
+  }
+
+  // Pub/Sub operations
+  async publish(channel: string, message: string): Promise<number> {
+    return await this.client.publish(channel, message);
+  }
+}

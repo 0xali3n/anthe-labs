@@ -15,7 +15,7 @@ export class TwitterService {
   constructor(private prisma: PrismaService) {
     this.clientId = process.env.TWITTER_CLIENT_ID || '';
     this.clientSecret = process.env.TWITTER_CLIENT_SECRET || '';
-    this.baseUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    this.baseUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
     this.redirectUri = `${this.baseUrl}/api/twitter/callback`;
 
     if (!this.clientId || !this.clientSecret) {
