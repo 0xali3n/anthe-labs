@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { Palanquin_Dark } from "next/font/google";
 import { useAuth } from "@/lib/useAuth";
 import { getCurrentUser } from "@/lib/usersApi";
 import { registerTrader, getMyTraderRegistration } from "@/lib/tradersApi";
@@ -17,6 +18,11 @@ import {
   Sparkles,
 } from "lucide-react";
 import WalletConnectModal from "@/components/WalletConnectModal";
+
+const palanquinDark = Palanquin_Dark({
+  weight: ["400", "500", "600", "700"],
+  subsets: ["latin"],
+});
 
 export default function TraderPage() {
   const router = useRouter();
@@ -249,68 +255,66 @@ export default function TraderPage() {
     <div className="min-h-screen relative">
       {/* Background is now handled globally in layout.tsx */}
 
-      <div className="max-w-5xl mx-auto py-8 sm:py-10 px-4 sm:px-6 lg:px-8 relative z-10">
+      <div className="max-w-5xl mx-auto pt-24 pb-10 sm:pt-28 sm:pb-12 px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Header */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full mb-4">
-            <Sparkles size={14} className="text-blue-400" />
-            <span className="text-xs font-medium text-blue-400 uppercase tracking-wider">
-              Creator Registration
-            </span>
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent mb-4 tracking-tight">
+          <h1 className={`${palanquinDark.className} text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tight`}>
             Become a Creator
           </h1>
           <p className="text-slate-400 text-base max-w-2xl mx-auto leading-relaxed">
             Join our elite community of creators and start earning from your
             trading strategies
           </p>
-        </div>
+        </div >
 
         {/* Success/Error Messages */}
-        {existingRegistration && (
-          <div
-            className={`mb-6 border rounded-lg p-4 ${
-              existingRegistration.status === "approved"
+        {
+          existingRegistration && (
+            <div
+              className={`mb-6 border rounded-lg p-4 ${existingRegistration.status === "approved"
                 ? "bg-green-900/20 border-green-500/50"
                 : existingRegistration.status === "rejected"
                   ? "bg-red-900/20 border-red-500/50"
                   : "bg-blue-900/20 border-blue-500/50"
-            }`}
-          >
-            <p
-              className={`text-sm ${
-                existingRegistration.status === "approved"
+                }`}
+            >
+              <p
+                className={`text-sm ${existingRegistration.status === "approved"
                   ? "text-green-400"
                   : existingRegistration.status === "rejected"
                     ? "text-red-400"
                     : "text-blue-400"
-              }`}
-            >
-              {existingRegistration.status === "approved"
-                ? "✅ Your creator registration has been approved!"
-                : existingRegistration.status === "rejected"
-                  ? "❌ Your creator registration was rejected. Please contact support."
-                  : "⏳ Your registration is pending approval. Please wait while we review your application."}
-            </p>
-          </div>
-        )}
+                  }`}
+              >
+                {existingRegistration.status === "approved"
+                  ? "✅ Your creator registration has been approved!"
+                  : existingRegistration.status === "rejected"
+                    ? "❌ Your creator registration was rejected. Please contact support."
+                    : "⏳ Your registration is pending approval. Please wait while we review your application."}
+              </p>
+            </div>
+          )
+        }
 
-        {success && !existingRegistration && (
-          <div className="mb-6 bg-green-900/20 border border-green-500/50 rounded-lg p-4">
-            <p className="text-green-400 text-sm">
-              {walletAddress
-                ? `Wallet connected successfully! ${connectedWalletName ? `(${connectedWalletName})` : ""}`
-                : "Registration successful! Your application is pending approval."}
-            </p>
-          </div>
-        )}
+        {
+          success && !existingRegistration && (
+            <div className="mb-6 bg-green-900/20 border border-green-500/50 rounded-lg p-4">
+              <p className="text-green-400 text-sm">
+                {walletAddress
+                  ? `Wallet connected successfully! ${connectedWalletName ? `(${connectedWalletName})` : ""}`
+                  : "Registration successful! Your application is pending approval."}
+              </p>
+            </div>
+          )
+        }
 
-        {error && (
-          <div className="mb-6 bg-red-900/20 border border-red-500/50 rounded-lg p-4">
-            <p className="text-red-400 text-sm">{error}</p>
-          </div>
-        )}
+        {
+          error && (
+            <div className="mb-6 bg-red-900/20 border border-red-500/50 rounded-lg p-4">
+              <p className="text-red-400 text-sm">{error}</p>
+            </div>
+          )
+        }
 
         {/* Steps Section */}
         <div className="mb-8">
@@ -318,11 +322,10 @@ export default function TraderPage() {
             {/* Step 1: Connect Wallet - Current when wallet is NOT connected */}
             <div className="flex items-center gap-2">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${
-                  !walletAddress
-                    ? "bg-blue-600 text-white"
-                    : "bg-green-600 text-white"
-                }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${!walletAddress
+                  ? "bg-blue-600 text-white"
+                  : "bg-green-600 text-white"
+                  }`}
               >
                 1
               </div>
@@ -334,13 +337,12 @@ export default function TraderPage() {
             {/* Step 2: Bot Name - Current when wallet IS connected but bot name is NOT filled */}
             <div className="flex items-center gap-2">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${
-                  walletAddress && !botName.trim()
-                    ? "bg-blue-600 text-white"
-                    : walletAddress && botName.trim()
-                      ? "bg-green-600 text-white"
-                      : "bg-slate-800 text-slate-500 border border-slate-700"
-                }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${walletAddress && !botName.trim()
+                  ? "bg-blue-600 text-white"
+                  : walletAddress && botName.trim()
+                    ? "bg-green-600 text-white"
+                    : "bg-slate-800 text-slate-500 border border-slate-700"
+                  }`}
               >
                 2
               </div>
@@ -352,13 +354,12 @@ export default function TraderPage() {
             {/* Step 3: Submit - Current when both wallet and bot name are filled but not submitted */}
             <div className="flex items-center gap-2">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${
-                  walletAddress && botName.trim() && !success
-                    ? "bg-blue-600 text-white"
-                    : success
-                      ? "bg-green-600 text-white"
-                      : "bg-slate-800 text-slate-500 border border-slate-700"
-                }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${walletAddress && botName.trim() && !success
+                  ? "bg-blue-600 text-white"
+                  : success
+                    ? "bg-green-600 text-white"
+                    : "bg-slate-800 text-slate-500 border border-slate-700"
+                  }`}
               >
                 3
               </div>
@@ -370,13 +371,12 @@ export default function TraderPage() {
             {/* Step 4: Approval - Current after successful submission or if existing registration */}
             <div className="flex items-center gap-2">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${
-                  existingRegistration || success
-                    ? existingRegistration?.status === "approved"
-                      ? "bg-green-600 text-white"
-                      : "bg-blue-600 text-white"
-                    : "bg-slate-800 text-slate-500 border border-slate-700"
-                }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${existingRegistration || success
+                  ? existingRegistration?.status === "approved"
+                    ? "bg-green-600 text-white"
+                    : "bg-blue-600 text-white"
+                  : "bg-slate-800 text-slate-500 border border-slate-700"
+                  }`}
               >
                 4
               </div>
@@ -398,7 +398,7 @@ export default function TraderPage() {
                 <FileText size={20} className="text-blue-400" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-white tracking-tight">
+                <h2 className={`${palanquinDark.className} text-xl font-semibold text-white tracking-tight`}>
                   Registration Details
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -418,11 +418,10 @@ export default function TraderPage() {
                     type="button"
                     onClick={handleConnectWallet}
                     disabled={!!walletAddress || !!existingRegistration}
-                    className={`w-full px-4 py-3.5 border rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 h-[52px] ${
-                      walletAddress || existingRegistration
-                        ? "bg-green-500/10 border-green-500/50 text-green-400 cursor-not-allowed"
-                        : "bg-slate-800/50 hover:bg-slate-800 border-slate-700 text-slate-200"
-                    }`}
+                    className={`w-full px-4 py-3.5 border rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 h-[52px] ${walletAddress || existingRegistration
+                      ? "bg-green-500/10 border-green-500/50 text-green-400 cursor-not-allowed"
+                      : "bg-slate-800/50 hover:bg-slate-800 border-slate-700 text-slate-200"
+                      }`}
                   >
                     {walletAddress ? (
                       <>
@@ -512,7 +511,7 @@ export default function TraderPage() {
                 <Award size={20} className="text-indigo-400" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-white tracking-tight">
+                <h2 className={`${palanquinDark.className} text-xl font-semibold text-white tracking-tight`}>
                   Creator Benefits
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -622,14 +621,15 @@ export default function TraderPage() {
             </div>
           </div>
         </div>
-      </div>
+      </div >
 
       {/* Wallet Connect Modal */}
-      <WalletConnectModal
+      < WalletConnectModal
         isOpen={isWalletModalOpen}
-        onClose={() => setIsWalletModalOpen(false)}
+        onClose={() => setIsWalletModalOpen(false)
+        }
         onConnect={handleWalletConnected}
       />
-    </div>
+    </div >
   );
 }

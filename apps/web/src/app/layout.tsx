@@ -106,35 +106,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="bg-[#0b0d14]" data-scroll-behavior="smooth">
-      <body className="min-h-screen flex flex-col text-slate-100 antialiased" style={{ background: "linear-gradient(180deg, #0f111a 0%, #0b0d14 100%)" }}>
-        {/* Full background that extends behind navbar */}
+    <html lang="en" className="bg-[#0a0c12]" data-scroll-behavior="smooth">
+      <body className="min-h-screen flex flex-col text-slate-100 antialiased" style={{ background: "#0a0c12" }}>
+        {/* Professional clean background */}
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-          {/* Base gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0f111a] via-[#0b0d14] to-[#0b0d14]" />
+          {/* Solid dark background */}
+          <div className="absolute inset-0 bg-[#0a0c12]" />
 
-          {/* Grid Pattern - Removed to eliminate horizontal lines */}
+          {/* Subtle radial gradient for depth */}
+          <div className="absolute inset-0 bg-gradient-radial from-slate-900/20 via-transparent to-transparent" style={{
+            backgroundImage: "radial-gradient(circle at 50% 0%, rgba(15, 23, 42, 0.4), transparent 50%)"
+          }} />
 
-          {/* Subtle Sparkle/Star Effect - Pure CSS, GPU Accelerated */}
-          <div className="absolute inset-0">
-            <div className="sparkle sparkle-1"></div>
-            <div className="sparkle sparkle-2"></div>
-            <div className="sparkle sparkle-3"></div>
-            <div className="sparkle sparkle-4"></div>
-            <div className="sparkle sparkle-5"></div>
-            <div className="sparkle sparkle-6"></div>
-            <div className="sparkle sparkle-7"></div>
-            <div className="sparkle sparkle-8"></div>
-            <div className="sparkle sparkle-9"></div>
-            <div className="sparkle sparkle-10"></div>
-            <div className="sparkle sparkle-11"></div>
-            <div className="sparkle sparkle-12"></div>
-            <div className="sparkle sparkle-13"></div>
-            <div className="sparkle sparkle-14"></div>
-            <div className="sparkle sparkle-15"></div>
-          </div>
-
-          {/* Trading Chart Lines - Removed per user request */}
+          {/* Very subtle grid pattern */}
+          <div className="absolute inset-0 opacity-[0.02]" style={{
+            backgroundImage: `linear-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(148, 163, 184, 0.1) 1px, transparent 1px)`,
+            backgroundSize: "64px 64px"
+          }} />
         </div>
 
         <Navbar />

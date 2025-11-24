@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { Palanquin_Dark, Outfit } from "next/font/google";
 import { useAuth } from "@/lib/useAuth";
 import { getCurrentUser, updateCurrentUser } from "@/lib/usersApi";
 import { AbortError } from "@/lib/apiClient";
@@ -17,6 +18,7 @@ import {
   Check,
   UserPlus,
 } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 
 interface UserData {
   id: string;
@@ -33,6 +35,16 @@ interface UserData {
   twitter_connected?: boolean;
   twitter_user_id?: string;
 }
+
+const palanquinDark = Palanquin_Dark({
+  weight: ["400", "700"],
+  subsets: ["latin"],
+});
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+});
 
 export default function Settings() {
   const router = useRouter();
@@ -488,10 +500,10 @@ export default function Settings() {
     : primaryAvatarUrl || fallbackAvatarUrl;
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
+    <div className="max-w-4xl mx-auto pt-24 pb-10 sm:pt-28 sm:pb-12 px-4">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-4xl sm:text-5xl font-bold text-white mb-3">
+        <h1 className={`${palanquinDark.className} text-4xl sm:text-5xl font-bold text-white mb-3`}>
           Settings
         </h1>
         <p className="text-slate-400 text-base sm:text-lg">
@@ -528,9 +540,9 @@ export default function Settings() {
               <button
                 onClick={() => setIsEditing(true)}
                 aria-label="Edit profile"
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-60 disabled:cursor-not-allowed"
+                className={`group flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-lg font-semibold transition-all duration-300 shadow-lg shadow-blue-500/20 ${outfit.className}`}
               >
-                <span className="text-sm font-semibold">Edit Profile</span>
+                <span className="text-lg font-semibold">Edit Profile</span>
               </button>
             ) : (
               <div className="flex items-center gap-3">
@@ -539,7 +551,7 @@ export default function Settings() {
                   onClick={handleSave}
                   disabled={saving || !hasChanges()}
                   aria-label="Save changes"
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  className={`group flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-lg font-semibold transition-all duration-300 shadow-lg shadow-blue-500/20 ${outfit.className}`}
                 >
                   {saving ? (
                     <svg
@@ -563,7 +575,7 @@ export default function Settings() {
                       ></path>
                     </svg>
                   ) : null}
-                  <span className="text-sm font-semibold">Save</span>
+                  <span className="text-lg font-semibold">Save</span>
                 </button>
 
                 <button
@@ -701,7 +713,7 @@ export default function Settings() {
                   <button
                     onClick={handleConnectTwitter}
                     disabled={connectingTwitter}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 text-slate-200 rounded-xl transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-slate-900/20 hover:shadow-slate-900/30"
+                    className={`group flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-lg font-semibold transition-all duration-300 shadow-lg shadow-blue-500/20 ${outfit.className}`}
                   >
                     {connectingTwitter ? (
                       <>
@@ -812,7 +824,7 @@ export default function Settings() {
               {/* Modal Header */}
               <div className="flex items-center justify-between p-6 border-b border-slate-800 bg-gradient-to-r from-slate-900 to-slate-900/50">
                 <div>
-                  <h3 className="text-xl font-bold text-white mb-1">
+                  <h3 className={`${palanquinDark.className} text-xl font-bold text-white mb-1`}>
                     Choose Profile Picture
                   </h3>
                   <p className="text-sm text-slate-400">
@@ -842,13 +854,12 @@ export default function Settings() {
                         onClick={() =>
                           handleAvatarSelect(user.avatar_url!, "google")
                         }
-                        className={`relative w-32 h-32 rounded-2xl overflow-hidden border-2 transition-all duration-200 group ${
-                          user.avatar_source === "google" ||
+                        className={`relative w-32 h-32 rounded-2xl overflow-hidden border-2 transition-all duration-200 group ${user.avatar_source === "google" ||
                           (!user.avatar_source &&
                             selectedAvatarUrl === user.avatar_url)
-                            ? "border-blue-500 ring-4 ring-blue-500/30 shadow-xl shadow-blue-500/30 scale-105"
-                            : "border-slate-700 hover:border-blue-400 hover:shadow-xl hover:scale-105"
-                        }`}
+                          ? "border-blue-500 ring-4 ring-blue-500/30 shadow-xl shadow-blue-500/30 scale-105"
+                          : "border-slate-700 hover:border-blue-400 hover:shadow-xl hover:scale-105"
+                          }`}
                       >
                         <img
                           src={user.avatar_url}
@@ -877,12 +888,12 @@ export default function Settings() {
                         {(user.avatar_source === "google" ||
                           (!user.avatar_source &&
                             selectedAvatarUrl === user.avatar_url)) && (
-                          <div className="absolute inset-0 bg-blue-500/30 flex items-center justify-center">
-                            <div className="bg-blue-500 rounded-full p-2.5 shadow-lg">
-                              <CheckCircle size={20} className="text-white" />
+                            <div className="absolute inset-0 bg-blue-500/30 flex items-center justify-center">
+                              <div className="bg-blue-500 rounded-full p-2.5 shadow-lg">
+                                <CheckCircle size={20} className="text-white" />
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
                         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 via-black/80 to-transparent p-3">
                           <p className="text-xs text-white font-bold text-center">
                             Google Photo
@@ -928,11 +939,10 @@ export default function Settings() {
                             onClick={() =>
                               handleAvatarSelect(avatar.url, "custom")
                             }
-                            className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all duration-200 group ${
-                              isSelected
-                                ? "border-blue-500 ring-4 ring-blue-500/30 shadow-xl shadow-blue-500/30 scale-105"
-                                : "border-slate-700 hover:border-blue-400 hover:shadow-xl hover:scale-105"
-                            }`}
+                            className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all duration-200 group ${isSelected
+                              ? "border-blue-500 ring-4 ring-blue-500/30 shadow-xl shadow-blue-500/30 scale-105"
+                              : "border-slate-700 hover:border-blue-400 hover:shadow-xl hover:scale-105"
+                              }`}
                           >
                             <img
                               src={avatar.url}
@@ -997,7 +1007,7 @@ export default function Settings() {
         <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 mb-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-bold text-white mb-1">
+              <h3 className={`${palanquinDark.className} text-lg font-bold text-white mb-1`}>
                 Become a Creator
               </h3>
               <p className="text-sm text-slate-400">
@@ -1007,7 +1017,7 @@ export default function Settings() {
             </div>
             <button
               onClick={() => router.push("/trader")}
-              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30"
+              className={`group flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-lg font-semibold transition-all duration-300 shadow-lg shadow-blue-500/20 ${outfit.className}`}
             >
               <UserPlus size={18} />
               <span>Become a Creator</span>
@@ -1020,7 +1030,7 @@ export default function Settings() {
           className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm"
           style={{ boxShadow: "0 6px 18px rgba(2,8,20,0.45)" }}
         >
-          <h2 className="text-xl font-semibold text-white mb-6">
+          <h2 className={`${palanquinDark.className} text-xl font-semibold text-white mb-6`}>
             Account Details
           </h2>
           <div className="space-y-3">
@@ -1095,7 +1105,7 @@ export default function Settings() {
           <button
             onClick={handleSignOutClick}
             disabled={signingOut}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 text-red-400 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+            className={`w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 text-red-400 rounded-lg text-lg font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${outfit.className}`}
           >
             {signingOut ? (
               <>
@@ -1132,7 +1142,7 @@ export default function Settings() {
       {showSignOutModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <h3 className="text-xl font-bold text-white mb-2">Sign Out</h3>
+            <h3 className={`${palanquinDark.className} text-xl font-bold text-white mb-2`}>Sign Out</h3>
             <p className="text-slate-400 mb-6">
               Are you sure you want to sign out? You'll need to sign in again to
               access your account.
