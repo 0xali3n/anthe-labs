@@ -7,6 +7,7 @@ import {
   Request,
   UseGuards,
   HttpException,
+  Body,
 } from '@nestjs/common';
 import { WalletsService } from './wallets.service';
 import { AuthGuard } from '../auth/auth.guard';
@@ -177,6 +178,60 @@ export class WalletsController {
       return result;
     } catch (error: any) {
       console.error('Error in checkDeposit:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        { success: false, error: error.message || 'Internal server error' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * Withdraw USDT from user's wallet to external address
+   * POST /api/wallets/withdraw
+   * 
+   * Security: Requires JWT authentication
+   * Body: { recipientAddress: string, amount: string }
+   * Returns: Transaction hash if successful
+   */
+  @Post('withdraw')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthGuard)
+  async withdrawUSDT(
+    @Request() req: any,
+    @Body() body: { recipientAddress: string; amount: string },
+  ) {
+    try {
+      // Get userId from authenticated JWT token
+      const userId = req.user?.id;
+
+      if (!userId) {
+        throw new HttpException(
+          { success: false, error: 'User ID is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Validate request body
+      if (!body.recipientAddress || !body.amount) {
+        throw new HttpException(
+          { success: false, error: 'recipientAddress and amount are required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Withdraw USDT
+      const result = await this.walletsService.withdrawUSDT(
+        userId,
+        body.recipientAddress,
+        body.amount,
+      );
+
+      return result;
+    } catch (error: any) {
+      console.error('Error in withdrawUSDT:', error);
       if (error instanceof HttpException) {
         throw error;
       }

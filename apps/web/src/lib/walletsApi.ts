@@ -179,6 +179,56 @@ export async function checkDepositAndAirdrop(): Promise<{
 }
 
 /**
+ * Withdraw USDT from user's wallet to external address
+ * Uses JWT token from Supabase session
+ */
+export async function withdrawUSDT(
+  recipientAddress: string,
+  amount: string,
+): Promise<{
+  success: boolean;
+  txHash?: string;
+  error?: string;
+}> {
+  try {
+    // Get JWT token from Supabase session
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.access_token) {
+      return {
+        success: false,
+        error: 'No session found. Please sign in.',
+      };
+    }
+
+    // Use authenticated request with JWT token
+    const response = await authenticatedRequest<{
+      success: boolean;
+      txHash?: string;
+      error?: string;
+    }>(
+      '/wallets/withdraw',
+      session.access_token,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          recipientAddress,
+          amount,
+        }),
+      }
+    );
+    
+    return response;
+  } catch (error: any) {
+    console.error('Error withdrawing USDT:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to withdraw USDT',
+    };
+  }
+}
+
+/**
  * Format wallet address for display (shortened version)
  */
 export function formatWalletAddress(address: string): string {

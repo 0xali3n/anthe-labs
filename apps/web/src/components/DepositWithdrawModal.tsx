@@ -186,42 +186,6 @@ export default function DepositWithdrawModal({
     }, 2000);
   };
 
-  const handleWithdraw = async () => {
-    if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) return;
-    if (!withdrawAddress || withdrawAddress.trim() === "") {
-      alert("Please enter a withdrawal address");
-      return;
-    }
-    if (parseFloat(withdrawAmount) > parseFloat(balance)) {
-      alert("Insufficient balance");
-      return;
-    }
-    setIsProcessing(true);
-    // TODO: Implement withdraw logic
-    // Clear previous timeout if exists
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    timeoutRef.current = setTimeout(async () => {
-      setIsProcessing(false);
-      setWithdrawAmount("");
-      setWithdrawAddress("");
-      // Refresh balance after withdrawal
-      if (onRefreshBalance && !isRefreshingRef.current) {
-        isRefreshingRef.current = true;
-        try {
-          await onRefreshBalance();
-        } catch (error) {
-          console.error("Error refreshing balance after withdrawal:", error);
-        } finally {
-          isRefreshingRef.current = false;
-        }
-      }
-      timeoutRef.current = null;
-    }, 2000);
-  };
-
-  const quickAmounts = ["10", "50", "100", "500"];
 
   if (!isOpen) return null;
 
@@ -511,6 +475,13 @@ export default function DepositWithdrawModal({
             </div>
           ) : (
             <div className="space-y-6">
+              {/* Coming Soon Notice */}
+              <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/30">
+                <p className="text-xs text-blue-400 text-center">
+                  Withdrawal soon
+                </p>
+              </div>
+
               {/* Withdraw Amount */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-2">
@@ -549,7 +520,7 @@ export default function DepositWithdrawModal({
 
                 {/* Quick Amount Buttons */}
                 <div className="flex gap-2 mt-3">
-                  {quickAmounts.map((amount) => {
+                  {["10", "50", "100", "500"].map((amount) => {
                     const numAmount = parseFloat(amount);
                     const numBalance = parseFloat(balance);
                     const isDisabled = numAmount > numBalance;
@@ -588,49 +559,13 @@ export default function DepositWithdrawModal({
                 </p>
               </div>
 
-              {/* Withdraw Button */}
+              {/* Withdraw Button - Disabled */}
               <button
-                onClick={handleWithdraw}
-                disabled={
-                  !withdrawAmount ||
-                  parseFloat(withdrawAmount) <= 0 ||
-                  parseFloat(withdrawAmount) > parseFloat(balance) ||
-                  !withdrawAddress ||
-                  withdrawAddress.trim() === "" ||
-                  isProcessing
-                }
-                className="w-full px-4 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 flex items-center justify-center gap-2"
+                disabled={true}
+                className="w-full px-4 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-slate-600 to-slate-700 cursor-not-allowed opacity-50 transition-all duration-200 flex items-center justify-center gap-2"
               >
-                {isProcessing ? (
-                  <>
-                    <svg
-                      className="animate-spin h-5 w-5 text-white"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <ArrowUp size={18} />
-                    Withdraw USDT
-                  </>
-                )}
+                <ArrowUp size={18} />
+                Withdraw USDT
               </button>
             </div>
           )}
