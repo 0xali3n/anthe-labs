@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Palanquin_Dark, Outfit } from "next/font/google";
 import {
   ArrowRight,
   TrendingUp,
@@ -14,11 +15,22 @@ import {
   MessageSquare,
   Lock,
   ExternalLink,
-  Heart,
-  MessageCircle,
-  Repeat2,
+  Globe,
+  Target,
+  Cpu,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+
+const palanquinDark = Palanquin_Dark({
+  weight: ["400", "700"],
+  subsets: ["latin"],
+});
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+});
+
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
@@ -112,10 +124,10 @@ export default function Home() {
   ];
 
   const stats = [
-    { value: `$${counters.volume}K+`, label: "Total Volume", icon: TrendingUp },
-    { value: `${counters.traders}+`, label: "Active Traders", icon: Users },
-    { value: `${counters.roi.toFixed(1)}%`, label: "Avg ROI", icon: BarChart3 },
-    { value: `${counters.uptime.toFixed(1)}%`, label: "Uptime", icon: Zap },
+    { value: `$${counters.volume}K+`, label: "Total Volume" },
+    { value: `${counters.traders}+`, label: "Active Traders" },
+    { value: `${counters.roi.toFixed(1)}%`, label: "Avg ROI" },
+    { value: `${counters.uptime.toFixed(1)}%`, label: "Uptime" },
   ];
 
   const testimonials = [
@@ -153,308 +165,394 @@ export default function Home() {
 
   return (
     <div className="min-h-screen relative">
-      {/* Background is now handled globally in layout.tsx */}
-      {/* Additional gradient circles for home page */}
+      {/* Cleaner Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl" />
+        {/* Subtle grid pattern */}
+        <div
+          className="absolute inset-0 opacity-[0.015]"
+          style={{
+            backgroundImage: `linear-gradient(rgba(148, 163, 184, 0.1) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(148, 163, 184, 0.1) 1px, transparent 1px)`,
+            backgroundSize: "50px 50px",
+          }}
+        />
+        {/* Subtle accent in top corner */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl" />
       </div>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden pt-32 pb-32 px-4 sm:px-6 lg:px-8">
-        {/* Subtle noise texture */}
-        <div
-          className="absolute inset-0 opacity-[0.02] pointer-events-none"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-          }}
-        />
+      <section className="relative overflow-hidden pt-72 pb-32 px-4 sm:px-6 lg:px-8">
+        {/* Cosmic Trading Curve Background */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none" style={{ background: 'linear-gradient(135deg, #060913 0%, #0A0F1F 100%)' }}>
 
-        {/* Floating Icons */}
-        <div className="absolute top-20 left-10 w-16 h-16 opacity-10 animate-float pointer-events-none z-0">
-          <div className="w-full h-full bg-blue-500 rounded-full blur-2xl" />
+          {/* Saturn Planet + Rotating Rings System */}
+          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 1400 900" preserveAspectRatio="xMidYMin slice">
+            <defs>
+              <radialGradient id="planetGradient" cx="50%" cy="50%">
+                <stop offset="0%" stopColor="rgba(120, 130, 150, 0.4)" />
+                <stop offset="60%" stopColor="rgba(90, 100, 120, 0.3)" />
+                <stop offset="100%" stopColor="rgba(60, 70, 90, 0.1)" />
+              </radialGradient>
+
+              <radialGradient id="planetGlow" cx="50%" cy="50%">
+                <stop offset="0%" stopColor="rgba(96, 165, 250, 0.15)" />
+                <stop offset="70%" stopColor="rgba(59, 130, 246, 0.05)" />
+                <stop offset="100%" stopColor="rgba(59, 130, 246, 0)" />
+              </radialGradient>
+
+              <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="rgba(100, 116, 139, 0.1)" />
+                <stop offset="20%" stopColor="rgba(96, 165, 250, 0.3)" />
+                <stop offset="50%" stopColor="rgba(125, 211, 252, 0.5)" />
+                <stop offset="80%" stopColor="rgba(96, 165, 250, 0.3)" />
+                <stop offset="100%" stopColor="rgba(100, 116, 139, 0.1)" />
+              </linearGradient>
+
+              <filter id="ringGlow">
+                <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+                <feMerge>
+                  <feMergeNode in="coloredBlur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+
+              <filter id="signalGlow">
+                <feGaussianBlur stdDeviation="1.5" result="coloredBlur" />
+                <feMerge>
+                  <feMergeNode in="coloredBlur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+
+            {/* Top-Middle Saturn Position: cx=700, cy=50 (lowered below navbar) */}
+
+            {/* Outer Glow */}
+            <ellipse cx="700" cy="50" rx="400" ry="200" fill="url(#planetGlow)" opacity="0.5" />
+
+            {/* Planet Body */}
+            <ellipse cx="700" cy="50" rx="180" ry="140" fill="url(#planetGradient)" opacity="0.8" />
+
+            {/* Surface Bands */}
+            <ellipse cx="700" cy="70" rx="170" ry="20" fill="rgba(110, 120, 140, 0.2)" opacity="0.5" />
+            <ellipse cx="700" cy="110" rx="160" ry="18" fill="rgba(80, 90, 110, 0.15)" opacity="0.4" />
+            <ellipse cx="700" cy="150" rx="150" ry="15" fill="rgba(60, 70, 90, 0.15)" opacity="0.3" />
+
+            {/* 14 Rings Surrounding Saturn */}
+
+            {/* Ring 1 (Inner) */}
+            <ellipse cx="700" cy="50" rx="240" ry="160" fill="none" stroke="rgba(96, 165, 250, 0.2)" strokeWidth="1" opacity="0.4">
+              <animateTransform attributeName="transform" type="rotate" from="0 700 50" to="360 700 50" dur="200s" repeatCount="indefinite" />
+            </ellipse>
+
+            {/* Ring 2 */}
+            <ellipse cx="700" cy="50" rx="280" ry="185" fill="none" stroke="rgba(125, 211, 252, 0.25)" strokeWidth="1.5" opacity="0.5">
+              <animateTransform attributeName="transform" type="rotate" from="0 700 50" to="360 700 50" dur="190s" repeatCount="indefinite" />
+            </ellipse>
+
+            {/* Ring 3 */}
+            <ellipse cx="700" cy="50" rx="320" ry="210" fill="none" stroke="rgba(96, 165, 250, 0.3)" strokeWidth="2" opacity="0.6">
+              <animateTransform attributeName="transform" type="rotate" from="0 700 50" to="360 700 50" dur="180s" repeatCount="indefinite" />
+            </ellipse>
+
+            {/* Ring 4 */}
+            <ellipse cx="700" cy="50" rx="360" ry="235" fill="none" stroke="url(#ringGradient)" strokeWidth="3" opacity="0.7" filter="url(#ringGlow)">
+              <animateTransform attributeName="transform" type="rotate" from="0 700 50" to="360 700 50" dur="170s" repeatCount="indefinite" />
+            </ellipse>
+
+            {/* Ring 5 */}
+            <ellipse cx="700" cy="50" rx="400" ry="260" fill="none" stroke="rgba(125, 211, 252, 0.35)" strokeWidth="2" opacity="0.6">
+              <animateTransform attributeName="transform" type="rotate" from="0 700 50" to="360 700 50" dur="160s" repeatCount="indefinite" />
+            </ellipse>
+
+            {/* Ring 6 */}
+            <ellipse cx="700" cy="50" rx="440" ry="285" fill="none" stroke="rgba(96, 165, 250, 0.3)" strokeWidth="1.5" opacity="0.5">
+              <animateTransform attributeName="transform" type="rotate" from="0 700 50" to="360 700 50" dur="150s" repeatCount="indefinite" />
+            </ellipse>
+
+            {/* Ring 7 - Cassini Division Gap Area */}
+            <ellipse cx="700" cy="50" rx="480" ry="310" fill="none" stroke="rgba(100, 116, 139, 0.1)" strokeWidth="1" opacity="0.3">
+              <animateTransform attributeName="transform" type="rotate" from="0 700 50" to="360 700 50" dur="145s" repeatCount="indefinite" />
+            </ellipse>
+
+            {/* Ring 8 */}
+            <ellipse cx="700" cy="50" rx="540" ry="350" fill="none" stroke="url(#ringGradient)" strokeWidth="4" opacity="0.6" filter="url(#ringGlow)">
+              <animateTransform attributeName="transform" type="rotate" from="0 700 50" to="360 700 50" dur="140s" repeatCount="indefinite" />
+            </ellipse>
+
+            {/* Ring 9 */}
+            <ellipse cx="700" cy="50" rx="600" ry="390" fill="none" stroke="rgba(125, 211, 252, 0.3)" strokeWidth="2.5" opacity="0.5">
+              <animateTransform attributeName="transform" type="rotate" from="0 700 50" to="360 700 50" dur="130s" repeatCount="indefinite" />
+            </ellipse>
+
+            {/* Ring 10 */}
+            <ellipse cx="700" cy="50" rx="660" ry="430" fill="none" stroke="rgba(96, 165, 250, 0.25)" strokeWidth="2" opacity="0.4">
+              <animateTransform attributeName="transform" type="rotate" from="0 700 50" to="360 700 50" dur="120s" repeatCount="indefinite" />
+            </ellipse>
+
+            {/* Ring 11 */}
+            <ellipse cx="700" cy="50" rx="740" ry="480" fill="none" stroke="rgba(100, 116, 139, 0.2)" strokeWidth="1.5" opacity="0.35">
+              <animateTransform attributeName="transform" type="rotate" from="0 700 50" to="360 700 50" dur="110s" repeatCount="indefinite" />
+            </ellipse>
+
+            {/* Ring 12 */}
+            <ellipse cx="700" cy="50" rx="820" ry="530" fill="none" stroke="rgba(96, 165, 250, 0.15)" strokeWidth="1" opacity="0.3">
+              <animateTransform attributeName="transform" type="rotate" from="0 700 50" to="360 700 50" dur="100s" repeatCount="indefinite" />
+            </ellipse>
+
+            {/* Ring 13 */}
+            <ellipse cx="700" cy="50" rx="920" ry="600" fill="none" stroke="rgba(125, 211, 252, 0.1)" strokeWidth="1" opacity="0.25">
+              <animateTransform attributeName="transform" type="rotate" from="0 700 50" to="360 700 50" dur="90s" repeatCount="indefinite" />
+            </ellipse>
+
+            {/* Ring 14 (Outermost) */}
+            <ellipse cx="700" cy="50" rx="1050" ry="680" fill="none" stroke="rgba(96, 165, 250, 0.05)" strokeWidth="0.5" opacity="0.2">
+              <animateTransform attributeName="transform" type="rotate" from="0 700 50" to="360 700 50" dur="80s" repeatCount="indefinite" />
+            </ellipse>
+
+            {/* Orbiting Particles */}
+
+            {/* Particle on Ring 1 (Inner) */}
+            <circle r="2" fill="#93c5fd" filter="url(#signalGlow)">
+              <animateMotion dur="200s" repeatCount="indefinite" begin="0s" path="M 940,50 A 240,160 0 1,1 460,50 A 240,160 0 1,1 940,50" />
+              <animate attributeName="opacity" values="0.2;0.6;0.2" dur="3s" repeatCount="indefinite" />
+            </circle>
+
+            {/* Particle on Ring 2 */}
+            <circle r="3" fill="#60a5fa" filter="url(#signalGlow)">
+              <animateMotion dur="190s" repeatCount="indefinite" begin="5s" path="M 980,50 A 280,185 0 1,1 420,50 A 280,185 0 1,1 980,50" />
+              <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4s" repeatCount="indefinite" />
+            </circle>
+
+            {/* Particle on Ring 3 */}
+            <circle r="2.5" fill="#3b82f6" filter="url(#signalGlow)">
+              <animateMotion dur="180s" repeatCount="indefinite" begin="12s" path="M 1020,50 A 320,210 0 1,1 380,50 A 320,210 0 1,1 1020,50" />
+              <animate attributeName="opacity" values="0.2;0.7;0.2" dur="4.5s" repeatCount="indefinite" />
+            </circle>
+
+            {/* Particle on Ring 4 */}
+            <circle r="4" fill="#60a5fa" filter="url(#signalGlow)">
+              <animateMotion dur="170s" repeatCount="indefinite" path="M 1060,50 A 360,235 0 1,1 340,50 A 360,235 0 1,1 1060,50" />
+              <animate attributeName="opacity" values="0.4;1;0.4" dur="4s" repeatCount="indefinite" />
+              <animate attributeName="r" values="3;5;3" dur="4s" repeatCount="indefinite" />
+            </circle>
+
+            {/* Particle on Ring 5 */}
+            <circle r="3" fill="#06b6d4" filter="url(#signalGlow)">
+              <animateMotion dur="160s" repeatCount="indefinite" begin="25s" path="M 1100,50 A 400,260 0 1,1 300,50 A 400,260 0 1,1 1100,50" />
+              <animate attributeName="opacity" values="0.3;0.8;0.3" dur="5s" repeatCount="indefinite" />
+            </circle>
+
+            {/* Particle on Ring 6 */}
+            <circle r="3.5" fill="#3b82f6" filter="url(#signalGlow)">
+              <animateMotion dur="150s" repeatCount="indefinite" begin="15s" path="M 1140,50 A 440,285 0 1,1 260,50 A 440,285 0 1,1 1140,50" />
+              <animate attributeName="opacity" values="0.2;0.7;0.2" dur="5s" repeatCount="indefinite" />
+            </circle>
+
+            {/* Particle on Ring 7 */}
+            <circle r="2" fill="#93c5fd" filter="url(#signalGlow)">
+              <animateMotion dur="145s" repeatCount="indefinite" begin="40s" path="M 1180,50 A 480,310 0 1,1 220,50 A 480,310 0 1,1 1180,50" />
+              <animate attributeName="opacity" values="0.1;0.5;0.1" dur="3s" repeatCount="indefinite" />
+            </circle>
+
+            {/* Particle on Ring 8 */}
+            <circle r="5" fill="#3b82f6" filter="url(#signalGlow)">
+              <animateMotion dur="140s" repeatCount="indefinite" begin="20s" path="M 1240,50 A 540,350 0 1,1 160,50 A 540,350 0 1,1 1240,50" />
+              <animate attributeName="opacity" values="0.3;1;0.3" dur="5s" repeatCount="indefinite" />
+              <animate attributeName="r" values="3.5;6;3.5" dur="5s" repeatCount="indefinite" />
+            </circle>
+
+            {/* Particle on Ring 9 */}
+            <circle r="3" fill="#06b6d4" filter="url(#signalGlow)">
+              <animateMotion dur="130s" repeatCount="indefinite" begin="35s" path="M 1300,50 A 600,390 0 1,1 100,50 A 600,390 0 1,1 1300,50" />
+              <animate attributeName="opacity" values="0.3;0.8;0.3" dur="4s" repeatCount="indefinite" />
+            </circle>
+
+            {/* Particle on Ring 10 */}
+            <circle r="3.5" fill="#06b6d4" filter="url(#signalGlow)">
+              <animateMotion dur="120s" repeatCount="indefinite" begin="50s" path="M 1360,50 A 660,430 0 1,1 40,50 A 660,430 0 1,1 1360,50" />
+              <animate attributeName="opacity" values="0.4;0.9;0.4" dur="4.5s" repeatCount="indefinite" />
+            </circle>
+
+            {/* Particle on Ring 11 */}
+            <circle r="2.5" fill="#60a5fa" filter="url(#signalGlow)">
+              <animateMotion dur="110s" repeatCount="indefinite" begin="8s" path="M 1440,50 A 740,480 0 1,1 -40,50 A 740,480 0 1,1 1440,50" />
+              <animate attributeName="opacity" values="0.2;0.6;0.2" dur="5s" repeatCount="indefinite" />
+            </circle>
+
+            {/* Particle on Ring 12 */}
+            <circle r="4" fill="#60a5fa" filter="url(#signalGlow)">
+              <animateMotion dur="100s" repeatCount="indefinite" begin="10s" path="M 1520,50 A 820,530 0 1,1 -120,50 A 820,530 0 1,1 1520,50" />
+              <animate attributeName="opacity" values="0.2;0.8;0.2" dur="6s" repeatCount="indefinite" />
+            </circle>
+
+            {/* Particle on Ring 13 */}
+            <circle r="3" fill="#93c5fd" filter="url(#signalGlow)">
+              <animateMotion dur="90s" repeatCount="indefinite" begin="45s" path="M 1620,50 A 920,600 0 1,1 -220,50 A 920,600 0 1,1 1620,50" />
+              <animate attributeName="opacity" values="0.1;0.6;0.1" dur="7s" repeatCount="indefinite" />
+            </circle>
+
+            {/* Particle on Ring 14 (Outermost) */}
+            <circle r="2" fill="#93c5fd" filter="url(#signalGlow)">
+              <animateMotion dur="80s" repeatCount="indefinite" begin="30s" path="M 1750,50 A 1050,680 0 1,1 -350,50 A 1050,680 0 1,1 1750,50" />
+              <animate attributeName="opacity" values="0.1;0.4;0.1" dur="8s" repeatCount="indefinite" />
+            </circle>
+
+          </svg>
+
+          {/* Very subtle tech grid overlay - extremely faint */}
+          <div
+            className="absolute inset-0 opacity-[0.015]"
+            style={{
+              backgroundImage: `linear-gradient(rgba(96, 165, 250, 0.15) 1px, transparent 1px),
+                                linear-gradient(90deg, rgba(96, 165, 250, 0.15) 1px, transparent 1px)`,
+              backgroundSize: "100px 100px",
+            }}
+          />
         </div>
-        <div className="absolute top-40 right-20 w-20 h-20 opacity-10 animate-float-delayed pointer-events-none z-0">
-          <div className="w-full h-full bg-indigo-500 rounded-full blur-2xl" />
-        </div>
 
-        <div className="relative max-w-7xl mx-auto z-10">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Left: Content */}
-            <div className="text-center lg:text-left">
-              {/* Headline */}
-              <h1
-                className={`text-5xl sm:text-6xl lg:text-7xl font-extrabold mb-6 leading-[1.1] tracking-tight transition-all duration-1000 ${
-                  mounted
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-10"
+        <div className="relative max-w-7xl mx-auto z-10 -mt-6">
+          {/* Centered Content */}
+          <div className="text-center max-w-4xl mx-auto">
+            {/* Headline */}
+            <h1
+              className={`${palanquinDark.className} text-5xl sm:text-6xl lg:text-7xl font-bold mb-6 leading-[1.1] tracking-tight transition-all duration-1000 ${mounted
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-10"
                 }`}
-              >
-                <span className="bg-gradient-to-r from-[#2F6BFF] via-[#7A4BFF] to-[#4BD1FF] bg-clip-text text-transparent">
-                  Copy Trade Like a Pro
-                </span>
-              </h1>
-
-              {/* Subhead - One sentence */}
-              <p
-                className={`text-lg sm:text-xl text-[#B0B7D0] mb-8 max-w-xl mx-auto lg:mx-0 transition-all duration-1000 delay-200 ${
-                  mounted
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-10"
-                }`}
-              >
-                Automatically mirror top traders, trading bots and social
-                strategies — secure, instant, and audited.
-              </p>
-
-              {/* CTAs */}
-              <div
-                className={`flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 mb-6 transition-all duration-1000 delay-300 ${
-                  mounted
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-10"
-                }`}
-              >
-                <Link
-                  href="/leaderboard"
-                  className="group flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#2F6BFF] to-[#7A4BFF] hover:from-[#2560E6] hover:to-[#6A40E6] text-white rounded-xl text-base font-bold transition-all duration-200 shadow-lg shadow-blue-500/30 hover:shadow-[0_0_20px_rgba(0,136,255,0.4)] hover:-translate-y-0.5 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                >
-                  Start Trading Now
-                  <ArrowRight
-                    size={18}
-                    className="group-hover:translate-x-1 transition-transform"
-                  />
-                </Link>
-                <Link
-                  href="/about"
-                  className="px-8 py-4 bg-transparent border-2 border-slate-700 hover:border-slate-600 text-white rounded-xl text-base font-semibold transition-all duration-200 hover:bg-slate-900/50 focus:outline-none focus:ring-2 focus:ring-slate-600"
-                >
-                  See Demo
-                </Link>
-              </div>
-
-              {/* Micro-trust line */}
-              <p
-                className={`text-sm text-slate-400 transition-all duration-1000 delay-400 ${
-                  mounted
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-10"
-                }`}
-              >
-                Trusted by 1,200+ traders • Audited • Built on Aptos
-              </p>
-            </div>
-
-            {/* Right: Product Mockup */}
-            <div
-              className={`relative transition-all duration-1000 delay-500 ${
-                mounted
-                  ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-10"
-              }`}
             >
-              <div className="relative bg-slate-900/60 backdrop-blur-xl border border-slate-800/60 rounded-2xl p-6 shadow-2xl">
-                {/* Mockup Content */}
-                <div className="bg-slate-950/80 rounded-xl p-6 border border-slate-800/50">
-                  {/* Header */}
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-blue-600/20 border border-blue-500/30" />
-                      <div>
-                        <div className="h-3 w-24 bg-slate-800 rounded mb-2" />
-                        <div className="h-2 w-16 bg-slate-800/50 rounded" />
-                      </div>
-                    </div>
-                    <div className="h-8 w-20 bg-blue-600/20 rounded-lg border border-blue-500/30" />
-                  </div>
+              <span className="text-white">
+                COPY TRADE LIKE A PRO
+              </span>
+            </h1>
 
-                  {/* Stats Grid */}
-                  <div className="grid grid-cols-3 gap-3 mb-6">
-                    {[1, 2, 3].map((i) => (
-                      <div
-                        key={i}
-                        className="bg-slate-900/50 border border-slate-800/50 rounded-lg p-3"
-                      >
-                        <div className="h-2 w-10 bg-slate-800 rounded mb-2" />
-                        <div className="h-5 w-16 bg-green-500/20 rounded mb-1" />
-                        <div className="h-1.5 w-12 bg-slate-800/50 rounded" />
-                      </div>
-                    ))}
-                  </div>
+            {/* Subhead */}
+            <p
+              className={`text-lg sm:text-xl text-slate-400 mb-8 max-w-2xl mx-auto leading-relaxed transition-all duration-1000 delay-200 ${mounted
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-10"
+                }`}
+            >
+              Automatically mirror top traders, trading bots and social strategies
+            </p>
+            <p
+              className={`text-lg sm:text-xl text-slate-400 mb-8 max-w-2xl mx-auto leading-relaxed -mt-8 font-bold transition-all duration-1000 delay-200 ${mounted
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-10"
+                }`}
+            >
+              Secure, Instant and Audited
+            </p>
 
-                  {/* Mini Chart - Animated */}
-                  <div className="relative h-24 bg-slate-900/50 border border-slate-800/50 rounded-lg overflow-hidden group/chart">
-                    <svg
-                      className="w-full h-full"
-                      viewBox="0 0 200 80"
-                      preserveAspectRatio="none"
-                    >
-                      <defs>
-                        <linearGradient
-                          id="chartGradient"
-                          x1="0%"
-                          y1="0%"
-                          x2="0%"
-                          y2="100%"
-                        >
-                          <stop
-                            offset="0%"
-                            stopColor="#2F6BFF"
-                            stopOpacity="0.3"
-                          />
-                          <stop
-                            offset="100%"
-                            stopColor="#2F6BFF"
-                            stopOpacity="0"
-                          />
-                        </linearGradient>
-                      </defs>
-                      <path
-                        d="M 0,60 Q 25,50 50,45 T 100,35 T 150,30 T 200,25"
-                        fill="url(#chartGradient)"
-                        className="animate-chart-line"
-                      />
-                      <path
-                        d="M 0,60 Q 25,50 50,45 T 100,35 T 150,30 T 200,25"
-                        stroke="#2F6BFF"
-                        strokeWidth="2"
-                        fill="none"
-                        className="animate-chart-wave group-hover/chart:stroke-[#4BD1FF] transition-colors duration-500"
-                      />
-                      {/* Animated dots */}
-                      <circle
-                        cx="50"
-                        cy="45"
-                        r="2"
-                        fill="#2F6BFF"
-                        className="animate-pulse"
-                      />
-                      <circle
-                        cx="100"
-                        cy="35"
-                        r="2"
-                        fill="#2F6BFF"
-                        className="animate-pulse"
-                        style={{ animationDelay: "0.5s" }}
-                      />
-                      <circle
-                        cx="150"
-                        cy="30"
-                        r="2"
-                        fill="#2F6BFF"
-                        className="animate-pulse"
-                        style={{ animationDelay: "1s" }}
-                      />
-                    </svg>
-                  </div>
-                </div>
-              </div>
+            {/* CTAs */}
+            <div
+              className={`flex flex-col sm:flex-row items-center justify-center gap-4 mb-8 transition-all duration-1000 delay-300 ${mounted
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-10"
+                }`}
+            >
+              <Link
+                href="/leaderboard"
+                className={`group flex items-center gap-2 px-8 py-4 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-lg font-semibold transition-all duration-300 shadow-lg shadow-blue-500/20 ${outfit.className}`}
+              >
+                Start Trading Now
+                {/* <ArrowRight
+                  size={18}
+                  className="group-hover:translate-x-1 transition-transform"
+                /> */}
+              </Link>
+              <Link
+                href="/about"
+                className={`px-8 py-4 bg-transparent border border-slate-700 hover:border-blue-500/50 text-white rounded-lg text-lg font-semibold transition-all duration-300 hover:bg-slate-900/30 ${outfit.className}`}
+              >
+                See Demo
+              </Link>
             </div>
+
+            {/* Micro-trust line */}
+            <p
+              className={`text-sm text-slate-500 transition-all duration-1000 delay-400 ${mounted
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-10"
+                }`}
+            >
+              Trusted by 1,200+ traders • Audited • Built on Aptos
+            </p>
           </div>
         </div>
       </section>
 
-      {/* Stats Strip */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 border-y border-slate-800/50 relative">
+      {/* Stats Strip - Simplified, no icons */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 border-y border-slate-800/50 bg-slate-900/20">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => {
-              const Icon = stat.icon;
               return (
                 <div
                   key={index}
-                  className="flex flex-col items-center text-center animate-fade-up group"
+                  className="flex flex-col items-center text-center group"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
-                  <div className="w-10 h-10 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center mb-3 group-hover:bg-blue-600/30 group-hover:shadow-[0_0_15px_rgba(47,107,255,0.3)] transition-all duration-300">
-                    <Icon size={20} className="text-blue-400" />
-                  </div>
-                  <div className="text-3xl font-bold text-white mb-1">
+                  <div className="text-4xl font-bold text-blue-400 mb-2">
                     {stat.value}
                   </div>
-                  <div className="text-xs text-slate-400 font-medium">
+                  <div className="text-sm text-slate-400 font-medium">
                     {stat.label}
                   </div>
                 </div>
               );
             })}
           </div>
-          <p className="text-center text-xs text-slate-500 mt-6">
-            Total volume • Active traders • Avg ROI • Uptime
-          </p>
         </div>
       </section>
 
-      {/* Features Grid - 6 Tiles */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 relative">
+      {/* Features Grid - Minimal */}
+      <section className="py-24 px-4 sm:px-6 lg:px-8 relative">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-20 animate-fade-up">
-            <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tight">
+          <div className="text-center mb-16">
+            <h2 className={`${palanquinDark.className} text-3xl sm:text-4xl font-bold text-white mb-4 tracking-tight`}>
               Platform Features
             </h2>
-            <p className="text-base text-[#B0B7D0] max-w-2xl mx-auto">
+            <p className="text-base text-slate-400 max-w-2xl mx-auto">
               Complete social trading ecosystem
             </p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((feature, index) => {
               const Icon = feature.icon;
               const isLive = feature.status === "live";
               return (
                 <div
                   key={index}
-                  className={`group relative bg-[#0b1220] border rounded-xl p-5 transition-all duration-300 hover:scale-[1.03] hover:-translate-y-1 animate-fade-up cursor-pointer ${
-                    isLive
-                      ? "border-blue-500/40 hover:border-blue-500/60 hover:shadow-xl hover:shadow-blue-500/20"
-                      : "border-slate-800 hover:border-slate-700"
-                  }`}
-                  style={{
-                    animationDelay: `${index * 80}ms`,
-                    boxShadow: "inset 0 1px 0 0 rgba(255,255,255,0.05)",
-                  }}
+                  className="group relative flex flex-col items-start p-6 rounded-2xl bg-slate-900/20 border border-slate-800/60 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 hover:border-slate-700/60 hover:bg-slate-900/40"
                 >
-                  {/* Gradient border on hover */}
-                  <div
-                    className={`absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
-                      isLive
-                        ? "bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-cyan-500/20"
-                        : ""
-                    }`}
-                    style={{
-                      background: isLive
-                        ? "linear-gradient(135deg, rgba(47,107,255,0.1), rgba(122,75,255,0.1))"
-                        : "transparent",
-                    }}
-                  />
-
-                  {/* Badge */}
-                  {isLive && (
-                    <div className="absolute top-4 right-4 px-2 py-1 rounded-full text-xs font-bold bg-blue-600/20 text-blue-400 border border-blue-500/30 z-10">
-                      Live
-                    </div>
-                  )}
-
-                  <div className="relative z-10">
+                  <div className="flex items-center justify-between w-full mb-4">
                     <div
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-all ${
-                        isLive
-                          ? "bg-blue-600/20 border border-blue-500/40 group-hover:bg-blue-600/30 group-hover:shadow-[0_0_20px_rgba(47,107,255,0.4)]"
-                          : "bg-slate-800/50 border border-slate-700/50"
-                      }`}
+                      className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all shadow-inner ${isLive
+                        ? "bg-blue-500/10 text-blue-400 ring-1 ring-blue-500/20"
+                        : "bg-slate-800/40 text-slate-500 ring-1 ring-slate-700/50"
+                        }`}
                     >
-                      <Icon
-                        size={24}
-                        className={isLive ? "text-blue-400" : "text-slate-500"}
-                      />
+                      <Icon size={24} />
                     </div>
-                    <h3 className="text-lg font-bold text-white mb-2">
-                      {feature.title}
-                    </h3>
-                    <p className="text-sm text-[#B0B7D0] leading-relaxed">
-                      {feature.description}
-                    </p>
+                    {/* Badges */}
+                    {isLive ? (
+                      <div className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-sm">
+                        Live
+                      </div>
+                    ) : (
+                      <div className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-slate-800/50 text-slate-500 border border-slate-700/50 shadow-sm">
+                        Coming Soon
+                      </div>
+                    )}
                   </div>
+
+                  <h3 className={`${palanquinDark.className} text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors`}>
+                    {feature.title}
+                  </h3>
+                  <p className="text-sm text-slate-400 leading-relaxed">
+                    {feature.description}
+                  </p>
                 </div>
               );
             })}
@@ -463,101 +561,109 @@ export default function Home() {
       </section>
 
       {/* Partner/Audit Trust Strip */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 border-y border-slate-800/50">
+      <section className="py-10 px-4 sm:px-6 lg:px-8 border-y border-slate-800/30 bg-slate-900/10">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center">
-            <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-8">
+          <div className="text-center mb-8">
+            <p className={`${palanquinDark.className} text-xl sm:text-2xl font-bold text-white tracking-tight`}>
               Trusted & Backed By
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-12 opacity-70 hover:opacity-100 transition-opacity">
-              <div className="flex flex-col items-center gap-3">
-                <span className="text-xs text-slate-400">Incubated by</span>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-12 sm:gap-24">
+            {/* Xyra Labs */}
+            <div className="flex flex-col items-center gap-3">
+              <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-2">Incubated by</span>
+              <img
+                src="/xyralabs.svg"
+                alt="Xyra Labs"
+                className="h-10 w-auto object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+            </div>
+
+            {/* Aptos */}
+            <div className="flex flex-col items-center gap-3">
+              <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Powered by</span>
+              <div className="flex items-center gap-2">
                 <img
-                  src="/xyralabs.svg"
-                  alt="Xyra Labs"
-                  className="h-10 sm:h-12 grayscale hover:grayscale-0 transition-all"
+                  src="/aptos.png"
+                  alt="Aptos"
+                  className="h-8 w-8 object-contain"
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = "none";
                   }}
                 />
+                <span className="text-lg font-bold text-slate-300">
+                  Aptos
+                </span>
               </div>
-              <div className="flex flex-col items-center gap-3">
-                <span className="text-xs text-slate-400">Powered by</span>
-                <div className="flex items-center gap-2">
-                  <img
-                    src="/aptos.png"
-                    alt="Aptos"
-                    className="h-8 w-8 grayscale hover:grayscale-0 transition-all"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                    }}
-                  />
-                  <span className="text-sm font-semibold text-slate-300">
-                    Aptos
-                  </span>
-                </div>
-              </div>
-              <div className="flex flex-col items-center gap-3">
-                <span className="text-xs text-slate-400">Security</span>
-                <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800/50 border border-green-500/30">
-                  <Shield size={16} className="text-green-400" />
-                  <span className="text-sm font-semibold text-slate-300">
-                    Secure
-                  </span>
-                </div>
+            </div>
+
+            {/* Security */}
+            <div className="flex flex-col items-center gap-3">
+              <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Security</span>
+              <div className="flex items-center gap-2">
+                <Shield size={18} className="text-blue-400" />
+                <span className="text-lg font-bold text-slate-300">
+                  Audited
+                </span>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* How It Works - 3 Steps */}
+      {/* How It Works - Minimal */}
       <section className="py-24 px-4 sm:px-6 lg:px-8 relative">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16 animate-fade-up">
-            <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tight">
+          <div className="text-center mb-16">
+            <h2 className={`${palanquinDark.className} text-3xl sm:text-4xl font-bold text-white mb-4 tracking-tight`}>
               How It Works
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+            {/* Connecting Line (Desktop) */}
+            <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-slate-800 via-blue-900/50 to-slate-800 z-0" />
+
             {[
               {
-                step: "01",
                 title: "Explore",
                 description: "Browse top traders and strategies.",
-                icon: Users,
+                icon: Globe,
               },
               {
-                step: "02",
                 title: "Choose",
                 description: "Select traders or bots to copy.",
-                icon: TrendingUp,
+                icon: Target,
               },
               {
-                step: "03",
                 title: "Automate",
                 description: "Trades execute automatically.",
-                icon: Zap,
+                icon: Cpu,
               },
             ].map((item, index) => {
               const Icon = item.icon;
               return (
                 <div
                   key={index}
-                  className="text-center animate-fade-up"
-                  style={{ animationDelay: `${index * 100}ms` }}
+                  className="relative z-10 flex flex-col items-center text-center"
                 >
-                  <div className="w-16 h-16 rounded-2xl bg-blue-600/20 border-2 border-blue-500/40 flex items-center justify-center mx-auto mb-4">
-                    <Icon size={32} className="text-blue-400" />
+                  <div className="w-24 h-24 rounded-full bg-slate-900 border-4 border-slate-900 flex items-center justify-center mb-6 shadow-xl relative group transition-all duration-500 ease-out hover:-translate-y-2 hover:scale-110 hover:rotate-3 hover:shadow-[0_0_30px_-5px_rgba(59,130,246,0.6)]">
+                    <div className="absolute inset-0 rounded-full bg-slate-800/50 group-hover:bg-blue-500/20 transition-colors duration-500" />
+                    <div className="w-16 h-16 rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center group-hover:border-cyan-400/50 transition-colors duration-500">
+                      <Icon size={32} className="text-slate-300 group-hover:text-cyan-400 group-hover:rotate-12 transition-all duration-500" />
+                    </div>
                   </div>
-                  <div className="text-4xl font-bold text-blue-600/30 mb-2">
-                    {item.step}
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">
+
+                  <h3 className={`${palanquinDark.className} text-xl font-bold text-white mb-2`}>
                     {item.title}
                   </h3>
-                  <p className="text-[#B0B7D0]">{item.description}</p>
+                  <p className="text-sm text-slate-400 max-w-[200px] leading-relaxed">
+                    {item.description}
+                  </p>
                 </div>
               );
             })}
@@ -566,63 +672,27 @@ export default function Home() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 relative">
-        {/* Subtle gradient highlight */}
-        <div
-          className="absolute inset-0 pointer-events-none opacity-30"
-          style={{
-            background:
-              "radial-gradient(circle at top left, rgba(255,255,255,0.03), transparent)",
-          }}
-        />
+      <section className="py-24 px-4 sm:px-6 lg:px-8 relative bg-slate-900/20">
         <div className="max-w-7xl mx-auto relative z-10">
-          <div className="text-center mb-16 animate-fade-up">
-            <h2 className="text-4xl sm:text-5xl font-extrabold text-white mb-4 tracking-wide">
-              <span className="bg-gradient-to-r from-white via-gray-100 to-gray-300 bg-clip-text text-transparent">
-                What Traders Say
-              </span>
+          <div className="text-center mb-16">
+            <h2 className={`${palanquinDark.className} text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tight`}>
+              What Traders Say
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {testimonials.map((testimonial, index) => (
               <a
                 key={index}
                 href={testimonial.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block bg-white rounded-2xl p-5 cursor-pointer group relative overflow-hidden"
+                className="block bg-white rounded-2xl p-6 cursor-pointer group relative overflow-hidden hover:shadow-2xl transition-all duration-300"
                 style={{
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(226, 232, 240, 0.8)",
                   boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-                  opacity: 0,
-                  transform: "translateY(20px)",
-                  animation: `fadeUp 0.4s ease ${index * 0.1}s forwards`,
-                  transition: "all 0.25s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform =
-                    "scale(1.01) translateY(-2px)";
-                  e.currentTarget.style.borderColor = "rgba(29,155,240,0.3)";
-                  e.currentTarget.style.boxShadow =
-                    "0 8px 30px rgba(0,0,0,0.12)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "scale(1) translateY(0)";
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
-                  e.currentTarget.style.boxShadow =
-                    "0 4px 20px rgba(0,0,0,0.08)";
                 }}
               >
-                {/* Subtle gradient highlight behind card */}
-                <div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                  style={{
-                    background:
-                      "radial-gradient(circle at top left, rgba(255,255,255,0.03), transparent)",
-                  }}
-                />
-
                 <div className="relative z-10">
                   {/* Header */}
                   <div className="flex items-start justify-between mb-3">
@@ -631,19 +701,19 @@ export default function Home() {
                         <img
                           src={testimonial.avatar}
                           alt={testimonial.name}
-                          className="w-[52px] h-[52px] rounded-full object-cover"
+                          className="w-12 h-12 rounded-full object-cover"
                         />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-0.5">
-                          <div className="font-bold text-gray-900 text-[15px] leading-tight truncate group-hover:text-[#1d9bf0] transition-colors">
+                          <div className="font-bold text-gray-900 text-sm leading-tight truncate">
                             {testimonial.name}
                           </div>
                           {testimonial.verified && (
                             <svg
                               viewBox="0 0 22 22"
                               aria-label="Verified account"
-                              className="w-4.5 h-4.5 text-[#1d9bf0] flex-shrink-0"
+                              className="w-4 h-4 text-[#1d9bf0] flex-shrink-0"
                               fill="currentColor"
                             >
                               <g>
@@ -653,27 +723,24 @@ export default function Home() {
                           )}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <div className="text-[15px] text-gray-500 truncate font-medium">
+                          <div className="text-sm text-gray-500 truncate">
                             {testimonial.role}
                           </div>
                           <span className="text-gray-400">·</span>
-                          <div className="text-[15px] text-gray-500">
+                          <div className="text-sm text-gray-500">
                             {testimonial.timestamp}
                           </div>
                         </div>
                       </div>
                     </div>
                     <ExternalLink
-                      size={13}
-                      className="text-gray-300 opacity-70 group-hover:opacity-100 group-hover:text-[#1d9bf0] transition-all flex-shrink-0 mt-1"
+                      size={14}
+                      className="text-gray-400 group-hover:text-gray-600 transition-colors flex-shrink-0 mt-1"
                     />
                   </div>
 
                   {/* Content */}
-                  <p
-                    className="text-[15px] text-gray-900 leading-relaxed whitespace-pre-wrap break-words font-normal mb-3"
-                    style={{ maxWidth: "85%" }}
-                  >
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
                     {testimonial.content
                       .split(
                         /(@\w+|https?:\/\/[^\s]+|xyra\.trade|➡️|⚡|💙|👋|•)/g
@@ -683,7 +750,7 @@ export default function Home() {
                           return (
                             <span
                               key={i}
-                              className="text-[#1d9bf0] hover:underline font-medium"
+                              className="text-[#1d9bf0] font-medium"
                             >
                               {part}
                             </span>
@@ -693,13 +760,12 @@ export default function Home() {
                           return (
                             <span
                               key={i}
-                              className="text-[#1d9bf0] hover:underline"
+                              className="text-[#1d9bf0]"
                             >
                               {part}
                             </span>
                           );
                         }
-                        // Preserve emojis and symbols as-is
                         if (
                           part === "➡️" ||
                           part === "⚡" ||
@@ -712,55 +778,30 @@ export default function Home() {
                         return <span key={i}>{part}</span>;
                       })}
                   </p>
-
-                  {/* Tweet Actions */}
-                  <div className="flex items-center gap-6 mt-3 pt-3 border-t border-gray-100">
-                    <div className="flex items-center gap-1.5 text-gray-400 hover:text-[#1d9bf0] transition-colors cursor-pointer">
-                      <MessageCircle size={16} />
-                    </div>
-                    <div className="flex items-center gap-1.5 text-gray-400 hover:text-green-500 transition-colors cursor-pointer">
-                      <Repeat2 size={16} />
-                    </div>
-                    <div className="flex items-center gap-1.5 text-gray-400 hover:text-red-500 transition-colors cursor-pointer">
-                      <Heart size={16} />
-                    </div>
-                  </div>
                 </div>
               </a>
             ))}
           </div>
         </div>
-
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `
-            @keyframes fadeUp {
-              to {
-                opacity: 1;
-                transform: translateY(0);
-              }
-            }
-          `,
-          }}
-        />
-      </section>
+      </section >
 
       {/* Final CTA */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 relative">
+      < section className="py-32 px-4 sm:px-6 lg:px-8 relative" >
         <div className="max-w-4xl mx-auto text-center">
-          <div className="bg-gradient-to-r from-[#2F6BFF]/10 via-[#7A4BFF]/10 to-[#4BD1FF]/10 border border-blue-500/20 rounded-2xl p-12 backdrop-blur-lg shadow-lg animate-fade-up relative overflow-hidden">
-            {/* Gradient glow effect */}
-            {/* <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-blue-500/10 opacity-50 blur-2xl" /> */}
+          <div className="bg-slate-900/40 border border-blue-500/20 rounded-2xl p-12 backdrop-blur-sm relative overflow-hidden">
+            {/* Subtle accent */}
+            <div className="absolute inset-0 bg-blue-500/5 pointer-events-none" />
+
             <div className="relative z-10">
-              <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6 tracking-tight">
+              <h2 className={`${palanquinDark.className} text-4xl sm:text-5xl font-bold text-white mb-6 tracking-tight`}>
                 Ready to Start Trading?
               </h2>
-              <p className="text-base text-[#B0B7D0] mb-8 max-w-2xl mx-auto">
+              <p className="text-lg text-slate-400 mb-8 max-w-2xl mx-auto">
                 Join thousands of traders maximizing returns.
               </p>
               <Link
                 href="/leaderboard"
-                className="inline-flex items-center gap-2 px-10 py-4 bg-gradient-to-r from-[#2F6BFF] to-[#7A4BFF] hover:from-[#2560E6] hover:to-[#6A40E6] text-white rounded-xl text-base font-bold transition-all duration-200 shadow-lg shadow-blue-500/30 hover:shadow-[0_0_20px_rgba(0,136,255,0.4)] hover:-translate-y-0.5 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                className="inline-flex items-center gap-2 px-10 py-4 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-base font-semibold transition-all duration-300 shadow-lg shadow-blue-500/ 20"
               >
                 Start Trading Now
                 <ArrowRight size={18} />
@@ -768,7 +809,7 @@ export default function Home() {
             </div>
           </div>
         </div>
-      </section>
-    </div>
+      </section >
+    </div >
   );
 }

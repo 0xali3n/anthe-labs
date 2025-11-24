@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { Palanquin_Dark, Outfit } from "next/font/google";
 import { UserData, getUserByUsername, getAllUsernames } from "@/lib/usersApi";
 import {
   Twitter,
@@ -17,6 +18,16 @@ import {
   Shield,
 } from "lucide-react";
 import { getTier, TierConfig, TIER_THRESHOLDS } from "@/lib/tiers";
+
+const palanquinDark = Palanquin_Dark({
+  weight: ["400", "700"],
+  subsets: ["latin"],
+});
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+});
 
 interface UserStats {
   Address: string;
@@ -105,7 +116,7 @@ function VerifiedBadge({ isVerified }: { isVerified: boolean }) {
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-2">
                   <Shield size={16} className="text-[#3B82F6]" />
-                  <h4 className="text-sm font-bold text-white">
+                  <h4 className={`${palanquinDark.className} text-sm font-bold text-white`}>
                     Verified Account
                   </h4>
                 </div>
@@ -163,7 +174,7 @@ function VerifiedBadge({ isVerified }: { isVerified: boolean }) {
             <div className="relative z-10">
               <div className="flex items-center gap-2 mb-2">
                 <Shield size={16} className="text-slate-400" />
-                <h4 className="text-sm font-bold text-white">Unverified</h4>
+                <h4 className={`${palanquinDark.className} text-sm font-bold text-white`}>Unverified</h4>
               </div>
               <p className="text-xs text-slate-300 leading-relaxed mb-2">
                 Connect your Twitter account for verification.
@@ -281,7 +292,7 @@ function VolumeTierBadge({ tier }: { tier: TierConfig }) {
                   className="w-2 h-2 rounded-full"
                   style={{ backgroundColor: tier.color }}
                 />
-                <h4 className="text-sm font-bold text-white">Volume Tiers</h4>
+                <h4 className={`${palanquinDark.className} text-sm font-bold text-white`}>Volume Tiers</h4>
               </div>
               <div className="space-y-2">
                 {allTiers.map((t) => {
@@ -294,11 +305,10 @@ function VolumeTierBadge({ tier }: { tier: TierConfig }) {
                   return (
                     <div
                       key={t.name}
-                      className={`p-3 rounded-xl border transition-all duration-200 ${
-                        isCurrentTier
-                          ? "ring-2 scale-[1.02]"
-                          : "hover:bg-white/5"
-                      }`}
+                      className={`p-3 rounded-xl border transition-all duration-200 ${isCurrentTier
+                        ? "ring-2 scale-[1.02]"
+                        : "hover:bg-white/5"
+                        }`}
                       style={{
                         backgroundColor: isCurrentTier
                           ? `${t.bgColor}80`
@@ -538,7 +548,7 @@ export default function ProfilePage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-2">User Not Found</h1>
+          <h1 className={`${palanquinDark.className} text-2xl font-bold text-white mb-2`}>User Not Found</h1>
           <p className="text-slate-400">
             The profile you're looking for doesn't exist.
           </p>
@@ -557,7 +567,7 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen">
       {/* Search Bar with Autocomplete */}
-      <section className="pt-16 sm:pt-20 pb-3 sm:pb-4 px-3 sm:px-4 lg:px-8">
+      <section className="pt-24 sm:pt-28 pb-3 sm:pb-4 px-3 sm:px-4 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-4 lg:mb-6">
             <div className="flex-1 max-w-md relative" ref={searchRef}>
@@ -674,7 +684,7 @@ export default function ProfilePage() {
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 sm:gap-2.5 mb-1.5 flex-wrap justify-center sm:justify-start">
-                        <h1 className="text-xl sm:text-2xl lg:text-2xl font-bold text-white text-center sm:text-left break-words">
+                        <h1 className={`${palanquinDark.className} text-xl sm:text-2xl lg:text-2xl font-bold text-white text-center sm:text-left break-words`}>
                           {displayName}
                         </h1>
                         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-center sm:justify-start">
@@ -710,7 +720,7 @@ export default function ProfilePage() {
                           router.push("/copytrade");
                         }
                       }}
-                      className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2 bg-gradient-to-r from-[#3B82F6] to-[#2563EB] hover:from-[#2563EB] hover:to-[#1D4ED8] text-white rounded-lg font-semibold transition-all duration-200 shadow-lg shadow-[#3B82F6]/20 hover:shadow-xl hover:shadow-[#3B82F6]/30 whitespace-nowrap text-xs sm:text-sm"
+                      className={`group w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-5 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-lg font-semibold transition-all duration-300 shadow-lg shadow-blue-500/20 whitespace-nowrap ${outfit.className}`}
                     >
                       <span className="hidden min-[475px]:inline">
                         Copy This Trader
@@ -755,7 +765,7 @@ export default function ProfilePage() {
       {/* Stats Section */}
       <section className="px-3 sm:px-4 lg:px-8 pb-8 sm:pb-12">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-3 sm:mb-4 lg:mb-6 px-1">
+          <h2 className={`${palanquinDark.className} text-lg sm:text-xl lg:text-2xl font-bold text-white mb-3 sm:mb-4 lg:mb-6 px-1`}>
             Statistics
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
@@ -859,13 +869,13 @@ export default function ProfilePage() {
             className="bg-[#0b1220] border border-white/5 rounded-xl p-4 sm:p-5 lg:p-6"
             style={{ boxShadow: "0px 3px 12px rgba(0,0,0,0.25)" }}
           >
-            <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">
+            <h3 className={`${palanquinDark.className} text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4`}>
               Share Profile
             </h3>
             <div className="flex flex-wrap gap-2 sm:gap-3">
               <button
                 onClick={shareOnTwitter}
-                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800 hover:border-[#3B82F6]/50 transition-all duration-200"
+                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800 hover:border-[#3B82F6]/50 transition-all duration-200 ${outfit.className}`}
               >
                 <Twitter size={16} className="text-[#3B82F6]" />
                 <span className="text-xs sm:text-sm text-white font-medium">
@@ -874,7 +884,7 @@ export default function ProfilePage() {
               </button>
               <button
                 onClick={shareOnTelegram}
-                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800 hover:border-[#3B82F6]/50 transition-all duration-200"
+                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800 hover:border-[#3B82F6]/50 transition-all duration-200 ${outfit.className}`}
               >
                 <Send size={16} className="text-[#3B82F6]" />
                 <span className="text-xs sm:text-sm text-white font-medium">
@@ -883,7 +893,7 @@ export default function ProfilePage() {
               </button>
               <button
                 onClick={copyProfileLink}
-                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800 hover:border-[#3B82F6]/50 transition-all duration-200"
+                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800 hover:border-[#3B82F6]/50 transition-all duration-200 ${outfit.className}`}
               >
                 {copied ? (
                   <>

@@ -12,16 +12,16 @@ export default function Footer() {
           <div className="col-span-1 md:col-span-2 lg:col-span-2">
             <Link href="/" className="flex items-center gap-2 mb-4 group">
               <img
-                src="/logo.png"
+                src="/anthe-logo.png"
                 alt="Anthé Labs"
-                className="h-8 w-8 transition-transform duration-200 group-hover:scale-110"
+                className="h-8 w-auto object-contain transition-transform duration-200 group-hover:scale-110"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = "none";
                 }}
               />
-              <span className="text-xl font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+              {/* <span className="text-xl font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
                 Anthé Labs
-              </span>
+              </span> */}
             </Link>
             <p className="text-slate-400 text-sm max-w-md mb-6 leading-relaxed">
               The complete social trading ecosystem on Aptos. Start with Copy

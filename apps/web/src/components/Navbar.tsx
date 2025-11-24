@@ -9,6 +9,7 @@ import DepositWithdrawModal from "./DepositWithdrawModal";
 import { getCurrentUser } from "@/lib/usersApi";
 import { getUSDTBalance } from "@/lib/walletsApi";
 import { Wallet, Menu, X } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 
 const navLinks = [
   { name: "Home", path: "/" },
@@ -39,7 +40,7 @@ export default function Navbar() {
     try {
       setIsRefreshingBalance(true);
       const result = await getUSDTBalance();
-      
+
       if (result.success && result.balance) {
         setBalance(result.balance);
       } else {
@@ -111,7 +112,7 @@ export default function Navbar() {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
-    
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
@@ -154,7 +155,7 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="sticky top-0 z-50 px-3 sm:px-4 lg:px-8 py-2 sm:py-3">
+    <nav className="fixed top-0 left-0 right-0 z-50 px-3 sm:px-4 lg:px-8 py-2 sm:py-3">
       <div className="max-w-7xl mx-auto">
         {/* Outer rounded pill container with glassmorphism */}
         <div
@@ -173,21 +174,16 @@ export default function Navbar() {
             <Link href="/" className="flex items-center gap-2 sm:gap-3 no-underline min-w-0">
               <div className="logo-pill flex items-center gap-1.5 sm:gap-2 lg:gap-3 px-2 sm:px-3 py-1 rounded-full">
                 {/* circular icon area */}
-                <div className="logo-circle flex items-center justify-center shrink-0">
+                <div className="flex items-center justify-center mt-1 shrink-0">
                   <img
-                    src="/logo.png"
+                    src="/anthe-logo.png"
                     alt="Anthé Labs"
-                    className="h-5 w-5 sm:h-6 sm:w-6"
+                    className="h-8 w-auto object-contain"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = "none";
                     }}
                   />
                 </div>
-
-                {/* company name with gradient */}
-                <span className="text-sm sm:text-base font-semibold bg-gradient-to-r from-blue-400 via-blue-500 to-indigo-500 bg-clip-text text-transparent tracking-tight">
-                  Anthé Labs
-                </span>
               </div>
             </Link>
 
@@ -199,11 +195,10 @@ export default function Navbar() {
                   <Link
                     key={link.path}
                     href={link.path}
-                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
-                      isActive
-                        ? "text-white bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border border-blue-500/20 shadow-active-link"
-                        : "text-slate-300 hover:text-white hover:bg-white/5"
-                    }`}
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${isActive
+                      ? "text-white bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border border-blue-500/20 shadow-active-link"
+                      : "text-slate-300 hover:text-white hover:bg-white/5"
+                      }`}
                   >
                     {link.name}
                   </Link>
@@ -329,11 +324,10 @@ export default function Navbar() {
                     key={link.path}
                     href={link.path}
                     onClick={() => setShowMobileMenu(false)}
-                    className={`block px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
-                      isActive
-                        ? "text-white bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border-l-2 border-blue-500"
-                        : "text-slate-300 hover:text-white hover:bg-white/5"
-                    }`}
+                    className={`block px-4 py-2.5 text-sm font-medium transition-all duration-200 ${isActive
+                      ? "text-white bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border-l-2 border-blue-500"
+                      : "text-slate-300 hover:text-white hover:bg-white/5"
+                      }`}
                   >
                     {link.name}
                   </Link>
