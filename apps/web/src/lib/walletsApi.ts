@@ -131,6 +131,54 @@ export async function getUSDTBalance(): Promise<{ success: boolean; balance?: st
 }
 
 /**
+ * Check deposit and trigger airdrop if it's the first deposit
+ * This checks the balance and automatically sends 0.05 APT airdrop on first deposit
+ * Uses JWT token from Supabase session
+ */
+export async function checkDepositAndAirdrop(): Promise<{
+  success: boolean;
+  balance?: string;
+  airdropped?: boolean;
+  airdropTxHash?: string;
+  error?: string;
+}> {
+  try {
+    // Get JWT token from Supabase session
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.access_token) {
+      return {
+        success: false,
+        error: 'No session found. Please sign in.',
+      };
+    }
+
+    // Use authenticated request with JWT token
+    const response = await authenticatedRequest<{
+      success: boolean;
+      balance?: string;
+      airdropped?: boolean;
+      airdropTxHash?: string;
+      error?: string;
+    }>(
+      '/wallets/check-deposit',
+      session.access_token,
+      {
+        method: 'POST',
+      }
+    );
+    
+    return response;
+  } catch (error: any) {
+    console.error('Error checking deposit:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to check deposit',
+    };
+  }
+}
+
+/**
  * Format wallet address for display (shortened version)
  */
 export function formatWalletAddress(address: string): string {

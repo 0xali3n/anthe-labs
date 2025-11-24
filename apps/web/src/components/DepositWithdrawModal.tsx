@@ -11,6 +11,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import { checkDepositAndAirdrop } from "@/lib/walletsApi";
 
 // Dynamically import QRCode to avoid SSR issues
 const QRCodeSVG = dynamic(
@@ -283,9 +284,9 @@ export default function DepositWithdrawModal({
                 </p>
               </div>
             </div>
-            {/* Refresh Button - Only calls API when clicked, no auto-refresh */}
+            {/* Refresh Button - Checks deposit and triggers airdrop if first deposit */}
             <button
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
 
@@ -307,23 +308,57 @@ export default function DepositWithdrawModal({
                   refreshTimeoutRef.current = null;
                 }
 
-                // Call the refresh function ONCE - parent handles async and state
-                // The sync effect will reset isRefreshingRef when parent finishes
                 try {
-                  const refreshPromise = onRefreshBalance();
-                  if (
-                    refreshPromise &&
-                    typeof refreshPromise.then === "function"
-                  ) {
-                    refreshPromise.catch((error: any) => {
-                      console.error("Error refreshing balance:", error);
-                    });
-                    // Don't reset here - let the sync effect handle it
+                  // Check deposit and trigger airdrop if needed
+                  const result = await checkDepositAndAirdrop();
+                  
+                  if (result.success) {
+                    // Show success message if airdrop was sent
+                    if (result.airdropped && result.airdropTxHash) {
+                      console.log(`✅ Airdrop sent! Transaction: ${result.airdropTxHash}`);
+                      // You can show a toast notification here if needed
+                    }
+                    
+                    // Refresh balance after checking deposit
+                    if (onRefreshBalance) {
+                      const refreshPromise = onRefreshBalance();
+                      if (
+                        refreshPromise &&
+                        typeof refreshPromise.then === "function"
+                      ) {
+                        refreshPromise.catch((error: any) => {
+                          console.error("Error refreshing balance:", error);
+                        });
+                      }
+                    }
+                  } else {
+                    console.error("Error checking deposit:", result.error);
+                    // Still try to refresh balance even if airdrop check failed
+                    if (onRefreshBalance) {
+                      const refreshPromise = onRefreshBalance();
+                      if (
+                        refreshPromise &&
+                        typeof refreshPromise.then === "function"
+                      ) {
+                        refreshPromise.catch((error: any) => {
+                          console.error("Error refreshing balance:", error);
+                        });
+                      }
+                    }
                   }
                 } catch (error: any) {
-                  console.error("Error calling refresh balance:", error);
+                  console.error("Error calling check deposit:", error);
                   // If it throws synchronously, reset immediately
                   isRefreshingRef.current = false;
+                  
+                  // Still try to refresh balance
+                  if (onRefreshBalance) {
+                    try {
+                      await onRefreshBalance();
+                    } catch (refreshError) {
+                      console.error("Error refreshing balance:", refreshError);
+                    }
+                  }
                 }
               }}
               disabled={isRefreshingBalance || isRefreshingRef.current}

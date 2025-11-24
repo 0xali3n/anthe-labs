@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EncryptionService } from '../encryption/encryption.service';
+import { AirdropService } from './airdrop.service';
 import { Account, Aptos, AptosConfig, Network } from '@aptos-labs/ts-sdk';
 
 /**
@@ -17,6 +18,7 @@ export class WalletsService {
   constructor(
     private prisma: PrismaService,
     private encryptionService: EncryptionService,
+    private airdropService: AirdropService,
   ) {
     console.log('✅ Wallets service initialized');
   }
@@ -213,6 +215,100 @@ export class WalletsService {
 
       // For other errors, return 0.00 as fallback
       return '0.00';
+    }
+  }
+
+  /**
+   * Check deposit and trigger airdrop if it's the first deposit
+   * This should be called when checking balance after a potential deposit
+   * 
+   * @param userId - User ID
+   * @returns Object with balance and airdrop status
+   */
+  async checkDepositAndAirdrop(userId: string): Promise<{
+    success: boolean;
+    balance: string;
+    airdropped?: boolean;
+    airdropTxHash?: string;
+    error?: string;
+  }> {
+    try {
+      // Get wallet address
+      const walletAddress = await this.getWalletAddress(userId);
+      if (!walletAddress) {
+        return {
+          success: false,
+          balance: '0.00',
+          error: 'Wallet not found',
+        };
+      }
+
+      // Get current USDT balance
+      const balance = await this.getUSDTBalance(walletAddress);
+      const hasBalance = parseFloat(balance) > 0;
+
+      // Get user record to check airdrop status
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          apt_airdropped: true,
+        },
+      });
+
+      if (!user) {
+        return {
+          success: false,
+          balance: '0.00',
+          error: 'User not found',
+        };
+      }
+
+      // If user has USDT balance and hasn't received airdrop yet, send it
+      if (hasBalance && !user.apt_airdropped) {
+        console.log(`🎁 First deposit detected for user ${userId}, sending airdrop...`);
+        
+        const airdropResult = await this.airdropService.sendAirdrop(walletAddress);
+
+        if (airdropResult.success) {
+          // Update user to mark airdrop as sent
+          await this.prisma.user.update({
+            where: { id: userId },
+            data: { apt_airdropped: true },
+          });
+
+          console.log(`✅ Airdrop sent successfully to ${walletAddress}, tx: ${airdropResult.txHash}`);
+          
+          return {
+            success: true,
+            balance,
+            airdropped: true,
+            airdropTxHash: airdropResult.txHash,
+          };
+        } else {
+          // Log error but don't fail the balance check
+          console.error(`⚠️ Airdrop failed for user ${userId}: ${airdropResult.error}`);
+          return {
+            success: true,
+            balance,
+            airdropped: false,
+            error: `Airdrop failed: ${airdropResult.error}`,
+          };
+        }
+      }
+
+      // Return balance with airdrop status
+      return {
+        success: true,
+        balance,
+        airdropped: user.apt_airdropped,
+      };
+    } catch (error: any) {
+      console.error(`Error in checkDepositAndAirdrop for user ${userId}:`, error);
+      return {
+        success: false,
+        balance: '0.00',
+        error: error.message || 'Failed to check deposit',
+      };
     }
   }
 }

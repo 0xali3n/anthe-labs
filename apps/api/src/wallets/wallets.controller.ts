@@ -149,4 +149,41 @@ export class WalletsController {
       );
     }
   }
+
+  /**
+   * Check deposit and trigger airdrop if it's the first deposit
+   * POST /api/wallets/check-deposit
+   * 
+   * Security: Requires JWT authentication
+   * Returns: Balance and airdrop status
+   */
+  @Post('check-deposit')
+  @UseGuards(AuthGuard)
+  async checkDeposit(@Request() req: any) {
+    try {
+      // Get userId from authenticated JWT token
+      const userId = req.user?.id;
+
+      if (!userId) {
+        throw new HttpException(
+          { success: false, error: 'User ID is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Check deposit and trigger airdrop if needed
+      const result = await this.walletsService.checkDepositAndAirdrop(userId);
+
+      return result;
+    } catch (error: any) {
+      console.error('Error in checkDeposit:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        { success: false, error: error.message || 'Internal server error' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }
