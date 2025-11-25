@@ -247,4 +247,81 @@ export class WalletsController {
       );
     }
   }
+
+  /**
+   * Get trading balance from Kana trading account
+   * GET /api/wallets/trading-balance
+   * 
+   * Security: Requires JWT authentication
+   * Returns: Trading balance in USDT
+   */
+  @Get('trading-balance')
+  @UseGuards(AuthGuard)
+  async getTradingBalance(@Request() req: any) {
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        throw new HttpException(
+          { success: false, error: 'User ID is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const result = await this.walletsService.getTradingBalance(userId);
+      return result;
+    } catch (error: any) {
+      console.error('Error in getTradingBalance:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        { success: false, error: error.message || 'Internal server error' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * Withdraw USDT from Kana trading account to user's wallet
+   * POST /api/wallets/withdraw-from-kana
+   * 
+   * Security: Requires JWT authentication
+   * Body: { amount?: number, marketId?: string } (optional, if not provided, withdraws all available balance)
+   * Returns: Transaction hash if successful
+   */
+  @Post('withdraw-from-kana')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthGuard)
+  async withdrawFromKana(
+    @Request() req: any,
+    @Body() body: { amount?: number; marketId?: string },
+  ) {
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        throw new HttpException(
+          { success: false, error: 'User ID is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const result = await this.walletsService.withdrawFromKana(
+        userId,
+        body.amount,
+        body.marketId,
+      );
+      return result;
+    } catch (error: any) {
+      console.error('Error in withdrawFromKana:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        { success: false, error: error.message || 'Internal server error' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }

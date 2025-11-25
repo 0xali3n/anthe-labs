@@ -309,12 +309,38 @@ export default function Copytrade() {
 
       if (botToRestart) {
         // Restart existing bot
+        console.group("🔄 Restarting Copy Trade Bot");
+        console.log("📋 Request details:", {
+          botId: botToRestart.id,
+          traderAddress: traderAddress.trim() || "None",
+          allocatedAmount: botToRestart.allocatedAmount,
+        });
+
         const result = await updateCopyTradeBot(botToRestart.id, {
           status: "running",
           traderAddress: traderAddress.trim() || undefined,
         });
 
+        // Display logs in browser console if available
+        if (result.logs && Array.isArray(result.logs)) {
+          console.group("📝 Deposit Process Logs (Restart)");
+          result.logs.forEach((log) => {
+            if (log.includes("ERROR") || log.includes("❌")) {
+              console.error(log);
+            } else if (log.includes("WARNING") || log.includes("⚠️")) {
+              console.warn(log);
+            } else if (log.includes("SUCCESS") || log.includes("✅")) {
+              console.log("%c" + log, "color: green; font-weight: bold");
+            } else {
+              console.log(log);
+            }
+          });
+          console.groupEnd();
+        }
+
         if (result.success && result.data) {
+          console.log("%c✅ Bot restarted successfully!", "color: green; font-weight: bold");
+          console.groupEnd();
           setSuccess(true);
           setTraderAddress("");
           setAllocation(0);
@@ -327,6 +353,8 @@ export default function Copytrade() {
           setTimeout(() => setSuccess(false), 3000);
         } else {
           const errorMsg = result.error || "Failed to restart copy trade bot";
+          console.error("❌ Error:", errorMsg);
+          console.groupEnd();
           setError(errorMsg);
           setTimeout(() => setError(""), 5000);
         }
@@ -396,18 +424,54 @@ export default function Copytrade() {
 
   const handleStopBot = async (botId: string) => {
     try {
+      // Find the bot to get its allocated amount
+      const bot = [...runningBots, ...stoppedBots].find((b) => b.id === botId);
+      
+      console.group("🛑 Stopping Copy Trade Bot");
+      console.log("📋 Request details:", {
+        botId: botId,
+        allocatedAmount: bot?.allocatedAmount || "Unknown",
+      });
+
       const result = await updateCopyTradeBot(botId, {
         status: "stopped",
       });
 
+      // Display logs in browser console if available
+      if (result.logs && Array.isArray(result.logs)) {
+        console.group("📝 Withdrawal Process Logs (Stop)");
+        result.logs.forEach((log) => {
+          if (log.includes("ERROR") || log.includes("❌")) {
+            console.error(log);
+          } else if (log.includes("WARNING") || log.includes("⚠️")) {
+            console.warn(log);
+          } else if (log.includes("SUCCESS") || log.includes("✅")) {
+            console.log("%c" + log, "color: green; font-weight: bold");
+          } else {
+            console.log(log);
+          }
+        });
+        console.groupEnd();
+      }
+
       if (result.success) {
+        console.log("%c✅ Bot stopped successfully!", "color: green; font-weight: bold");
+        console.groupEnd();
         // Refresh bots list
         await fetchBots();
       } else {
-        setError(result.error || "Failed to stop bot");
+        const errorMsg = result.error || "Failed to stop bot";
+        console.error("❌ Error:", errorMsg);
+        console.groupEnd();
+        setError(errorMsg);
+        setTimeout(() => setError(""), 5000);
       }
     } catch (err: any) {
-      setError(err.message || "Failed to stop bot");
+      const errorMsg = err.message || "Failed to stop bot";
+      console.error("❌ Error:", errorMsg);
+      console.groupEnd();
+      setError(errorMsg);
+      setTimeout(() => setError(""), 5000);
     }
   };
 

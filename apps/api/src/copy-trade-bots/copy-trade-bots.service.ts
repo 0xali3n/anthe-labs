@@ -384,7 +384,23 @@ export class CopyTradeBotsService {
     userAddress: string,
     updateDto: UpdateCopyTradeBotDto,
   ) {
+    const allLogs: string[] = [];
     try {
+      // Get userId from wallet address (needed for deposit/withdraw)
+      const wallet = await this.prisma.wallet.findUnique({
+        where: { address: userAddress },
+        select: { user_id: true },
+      });
+
+      if (!wallet) {
+        return {
+          success: false,
+          error: 'Wallet not found for user address',
+        };
+      }
+
+      const userId = wallet.user_id;
+
       // Verify bot exists and belongs to user
       const existingBot = await this.prisma.copyTradeBot.findFirst({
         where: {
@@ -431,12 +447,7 @@ export class CopyTradeBotsService {
         updateData.allocated_amount = updateDto.allocatedAmount;
       }
 
-      const bot = await this.prisma.copyTradeBot.update({
-        where: { id },
-        data: updateData,
-      });
-
-      // Sync to Redis after successful Postgres update
+      // Calculate new values before updating database
       const newStatus = updateData.status || oldStatus;
       const newTraderAddress =
         updateData.trader_address !== undefined
@@ -447,7 +458,118 @@ export class CopyTradeBotsService {
           ? updateData.allocated_amount
           : oldAllocatedAmount;
 
-      // Handle status changes
+      // Handle status changes BEFORE updating database (so if deposit/withdraw fails, status doesn't change)
+      if (
+        newStatus === 'stopped' &&
+        oldStatus === 'running' &&
+        oldTraderAddress
+      ) {
+        // Bot stopped: withdraw from Kana trading account
+        // First check the actual trading balance, then withdraw that amount
+        this.logger.log(
+          `Bot stopped - checking trading balance before withdrawal...`,
+        );
+
+        // Step 1: Get actual trading balance
+        const balanceResult =
+          await this.walletsService.getTradingBalance(userId);
+
+        if (balanceResult.logs) {
+          allLogs.push(...balanceResult.logs);
+        }
+
+        if (!balanceResult.success || balanceResult.balance === undefined) {
+          this.logger.error(
+            `Failed to get trading balance: ${balanceResult.error}`,
+          );
+          return {
+            success: false,
+            error: `Failed to get trading balance: ${balanceResult.error}`,
+            logs: allLogs,
+          };
+        }
+
+        const tradingBalance = balanceResult.balance;
+        this.logger.log(`Trading balance: $${tradingBalance.toFixed(6)} USDT`);
+
+        // Step 2: If there's a balance, withdraw it using market ID 14 (APT-USD)
+        if (tradingBalance <= 0) {
+          this.logger.log(
+            `No balance to withdraw (balance: $${tradingBalance.toFixed(6)} USDT)`,
+          );
+          // No error - just log that there's nothing to withdraw
+        } else {
+          this.logger.log(
+            `Withdrawing $${tradingBalance.toFixed(6)} USDT from Kana trading account...`,
+          );
+          this.logger.log(`Using market ID 14 (APT-USD) for withdrawal...`);
+
+          const withdrawResult = await this.walletsService.withdrawFromKana(
+            userId,
+            undefined, // Withdraw all available balance (don't specify amount)
+            '14', // Market ID 14 (APT-USD)
+          );
+
+          if (withdrawResult.logs) {
+            allLogs.push(...withdrawResult.logs);
+          }
+
+          if (!withdrawResult.success) {
+            this.logger.error(
+              `Failed to withdraw from Kana: ${withdrawResult.error}`,
+            );
+            return {
+              success: false,
+              error: `Failed to withdraw from Kana trading account: ${withdrawResult.error}`,
+              logs: allLogs,
+            };
+          }
+
+          this.logger.log(
+            `✅ Withdrawal successful! Transaction: ${withdrawResult.txHash}`,
+          );
+        }
+      } else if (
+        newStatus === 'running' &&
+        oldStatus === 'stopped' &&
+        newTraderAddress
+      ) {
+        // Bot restarted: deposit to Kana trading account
+        this.logger.log(
+          `Depositing ${newAllocatedAmount} USDT to Kana for user ${userId} (restarting bot)...`,
+        );
+        const depositResult = await this.walletsService.depositToKana(
+          userId,
+          Number(newAllocatedAmount),
+        );
+
+        if (depositResult.logs) {
+          allLogs.push(...depositResult.logs);
+        }
+
+        if (!depositResult.success) {
+          this.logger.error(
+            `Failed to deposit to Kana: ${depositResult.error}`,
+          );
+          return {
+            success: false,
+            error: `Failed to deposit to Kana trading account: ${depositResult.error}`,
+            logs: allLogs,
+          };
+        }
+
+        this.logger.log(
+          `✅ Deposit successful! Transaction: ${depositResult.txHash}`,
+        );
+      }
+
+      // Update database after successful deposit/withdraw
+      const bot = await this.prisma.copyTradeBot.update({
+        where: { id },
+        data: updateData,
+      });
+
+      // Sync to Redis after successful Postgres update
       if (
         newStatus === 'stopped' &&
         oldStatus === 'running' &&
@@ -505,11 +627,13 @@ export class CopyTradeBotsService {
       return {
         success: true,
         data: this.mapBotToResponse(bot),
+        logs: allLogs.length > 0 ? allLogs : undefined,
       };
     } catch (error: any) {
       return {
         success: false,
         error: error.message || 'Failed to update copy trade bot',
+        logs: allLogs.length > 0 ? allLogs : undefined,
       };
     }
   }

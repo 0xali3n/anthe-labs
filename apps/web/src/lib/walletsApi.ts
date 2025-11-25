@@ -237,6 +237,106 @@ export async function withdrawUSDT(
 }
 
 /**
+ * Get trading balance from Kana trading account
+ * Uses JWT token from Supabase session
+ */
+export async function getTradingBalance(): Promise<{
+  success: boolean;
+  balance?: number;
+  error?: string;
+  logs?: string[];
+}> {
+  try {
+    // Get JWT token from Supabase session
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.access_token) {
+      return {
+        success: false,
+        error: 'No session found. Please sign in.',
+      };
+    }
+
+    // Use authenticated request with JWT token
+    const response = await authenticatedRequest<{
+      success: boolean;
+      balance?: number;
+      error?: string;
+      logs?: string[];
+    }>(
+      '/wallets/trading-balance',
+      session.access_token,
+      {
+        method: 'GET',
+      }
+    );
+    
+    return response;
+  } catch (error: any) {
+    console.error('Error fetching trading balance:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to fetch trading balance',
+    };
+  }
+}
+
+/**
+ * Withdraw USDT from Kana trading account to user's wallet
+ * Uses JWT token from Supabase session
+ * @param amount - Optional amount to withdraw. If not provided, withdraws all available balance.
+ * @param marketId - Optional market ID for the withdrawal (might be required by Kana API)
+ */
+export async function withdrawFromKana(
+  amount?: number,
+  marketId?: string
+): Promise<{
+  success: boolean;
+  txHash?: string;
+  error?: string;
+  logs?: string[];
+  payload?: any;
+}> {
+  try {
+    // Get JWT token from Supabase session
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.access_token) {
+      return {
+        success: false,
+        error: 'No session found. Please sign in.',
+      };
+    }
+
+    // Use authenticated request with JWT token
+    const response = await authenticatedRequest<{
+      success: boolean;
+      txHash?: string;
+      error?: string;
+      logs?: string[];
+    }>(
+      '/wallets/withdraw-from-kana',
+      session.access_token,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          amount,
+          marketId,
+        }),
+      }
+    );
+    
+    return response;
+  } catch (error: any) {
+    console.error('Error withdrawing from Kana:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to withdraw from Kana',
+    };
+  }
+}
+
+/**
  * Format wallet address for display (shortened version)
  */
 export function formatWalletAddress(address: string): string {
