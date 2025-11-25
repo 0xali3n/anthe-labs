@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   X,
   Wallet,
@@ -11,6 +11,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import { getWalletAccountBalance, checkWalletAndDeposit } from "@/lib/walletsApi";
 
 // Dynamically import QRCode to avoid SSR issues
 const QRCodeSVG = dynamic(
@@ -41,11 +42,121 @@ export default function DepositWithdrawModal({
   const [withdrawAddress, setWithdrawAddress] = useState("");
   const [copied, setCopied] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<string>("0.00");
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const isRefreshingRef = useRef(false); // Prevent infinite loops
   const timeoutRef = useRef<NodeJS.Timeout | null>(null); // Cleanup timeouts
   const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Cleanup copy timeout
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Cleanup refresh timeout
+
+  const isFetchingRef = useRef(false); // Prevent multiple simultaneous calls
+
+  // Function to fetch wallet account balance and auto-deposit if balance > 1 USDT
+  const fetchWalletBalance = useCallback(async () => {
+    if (!walletAddress || isFetchingRef.current) return;
+
+    try {
+      isFetchingRef.current = true;
+      setIsLoadingBalance(true);
+      console.log(`📊 Calling getWalletAccountBalance API for address: ${walletAddress}`);
+      
+      const result = await getWalletAccountBalance();
+      
+      if (result.success && result.balance !== undefined) {
+        const balance = parseFloat(result.balance).toFixed(2);
+        const balanceNum = parseFloat(result.balance);
+        setWalletBalance(balance);
+        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        console.log("✅ Wallet Account Balance Fetched Successfully");
+        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        console.log(`💰 Wallet Address: ${walletAddress}`);
+        console.log(`💵 Balance: ${balance} USDT`);
+        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+        // Auto-deposit if balance is greater than 1 USDT
+        if (balanceNum > 1) {
+          console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+          console.log("🔄 AUTO-DEPOSIT PROCESS STARTING");
+          console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+          console.log(`📊 Step 1: Balance Check`);
+          console.log(`   Wallet Address: ${walletAddress}`);
+          console.log(`   Current Balance: ${balance} USDT`);
+          console.log(`   Threshold: 1 USDT`);
+          console.log(`   Status: Balance (${balance} USDT) > 1 USDT ✅`);
+          console.log("");
+          console.log(`📤 Step 2: Initiating Deposit to Trading Account...`);
+          console.log(`   From Wallet: ${walletAddress}`);
+          console.log(`   To: Trading Account (Kana Labs)`);
+          console.log(`   Amount: ${balance} USDT`);
+          
+          const depositResult = await checkWalletAndDeposit();
+          
+          console.log("");
+          console.log(`📋 Step 3: Deposit Result Received`);
+          console.log(`   Success: ${depositResult.success}`);
+          
+          if (depositResult.success) {
+            if (depositResult.deposited && depositResult.txHash) {
+              console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+              console.log("✅ AUTO-DEPOSIT SUCCESSFUL");
+              console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+              console.log(`📊 Transaction Details:`);
+              console.log(`   From Wallet: ${walletAddress}`);
+              console.log(`   To: Trading Account`);
+              console.log(`   Amount Deposited: ${depositResult.walletBalance || balance} USDT`);
+              console.log(`   Transaction Hash: ${depositResult.txHash}`);
+              console.log(`   Updated Trading Balance: ${depositResult.tradingBalance || "0.00"} USDT`);
+              console.log(`   View on Aptoscan: https://aptoscan.com/txn/${depositResult.txHash}`);
+              console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+              
+              // Update wallet balance to 0 after successful deposit
+              setWalletBalance("0.00");
+              
+              // Refresh trading balance in navbar
+              if (onRefreshBalance) {
+                onRefreshBalance();
+              }
+            } else {
+              console.log(`⚠️ Step 3: Deposit Not Completed`);
+              console.log(`   Reason: ${depositResult.error || "Unknown reason"}`);
+              console.log(`   Wallet Balance: ${depositResult.walletBalance || balance} USDT`);
+              console.log(`   Trading Balance: ${depositResult.tradingBalance || "0.00"} USDT`);
+            }
+          } else {
+            console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            console.log("❌ AUTO-DEPOSIT FAILED");
+            console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            console.log(`   Error: ${depositResult.error || "Unknown error"}`);
+            console.log(`   Wallet Address: ${walletAddress}`);
+            console.log(`   Attempted Amount: ${balance} USDT`);
+            console.log(`   Wallet Balance: ${depositResult.walletBalance || balance} USDT`);
+            console.log(`   Trading Balance: ${depositResult.tradingBalance || "0.00"} USDT`);
+            console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+          }
+        } else {
+          console.log(`ℹ️ Balance (${balance} USDT) is less than or equal to 1 USDT - No auto-deposit`);
+        }
+      } else {
+        console.error("❌ Failed to fetch wallet balance:", result.error);
+        setWalletBalance("0.00");
+      }
+    } catch (error: any) {
+      console.error("❌ Error fetching wallet balance:", error);
+      setWalletBalance("0.00");
+    } finally {
+      setIsLoadingBalance(false);
+      isFetchingRef.current = false;
+    }
+  }, [walletAddress]);
+
+  // Fetch wallet account balance when modal opens (only once)
+  useEffect(() => {
+    if (isOpen && walletAddress && !isFetchingRef.current) {
+      console.log("🔄 Modal opened - Fetching wallet account balance...");
+      fetchWalletBalance();
+    }
+  }, [isOpen, walletAddress, fetchWalletBalance]);
 
   // Close modal on Escape key
   useEffect(() => {
@@ -268,7 +379,7 @@ export default function DepositWithdrawModal({
         <div className="px-6 py-3 bg-slate-900/30 border-b border-slate-800/50">
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1">
-              <p className="text-xs text-slate-400 mb-1">Available Balance</p>
+              <p className="text-xs text-slate-400 mb-1">Wallet Account Balance</p>
               <div className="flex items-center gap-2">
                 <img
                   src="/aptos.png"
@@ -279,64 +390,47 @@ export default function DepositWithdrawModal({
                   }}
                 />
                 <p className="text-2xl font-bold text-white">
-                  {parseFloat(balance || "0").toFixed(2)} USDT
+                  {isLoadingBalance ? "..." : parseFloat(walletBalance || "0").toFixed(2)} USDT
                 </p>
               </div>
             </div>
-            {/* Refresh Button - Only calls API when clicked, no auto-refresh */}
+            {/* Refresh Button - Fetches wallet account balance */}
             <button
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
 
                 // Prevent multiple simultaneous calls - strict guard
-                if (
-                  !onRefreshBalance ||
-                  isRefreshingBalance ||
-                  isRefreshingRef.current
-                ) {
+                if (isLoadingBalance || isRefreshingRef.current || isFetchingRef.current) {
                   return;
                 }
 
                 // Set flag immediately to prevent re-entry
                 isRefreshingRef.current = true;
 
-                // Clear any existing refresh timeout
-                if (refreshTimeoutRef.current) {
-                  clearTimeout(refreshTimeoutRef.current);
-                  refreshTimeoutRef.current = null;
-                }
-
-                // Call the refresh function ONCE - parent handles async and state
-                // The sync effect will reset isRefreshingRef when parent finishes
                 try {
-                  const refreshPromise = onRefreshBalance();
-                  if (
-                    refreshPromise &&
-                    typeof refreshPromise.then === "function"
-                  ) {
-                    refreshPromise.catch((error: any) => {
-                      console.error("Error refreshing balance:", error);
-                    });
-                    // Don't reset here - let the sync effect handle it
-                  }
+                  console.log("🔄 Refresh button clicked - Fetching wallet account balance...");
+                  await fetchWalletBalance();
                 } catch (error: any) {
-                  console.error("Error calling refresh balance:", error);
-                  // If it throws synchronously, reset immediately
-                  isRefreshingRef.current = false;
+                  console.error("❌ Error refreshing wallet balance:", error);
+                } finally {
+                  // Reset flag after a short delay
+                  setTimeout(() => {
+                    isRefreshingRef.current = false;
+                  }, 500);
                 }
               }}
-              disabled={isRefreshingBalance || isRefreshingRef.current}
+              disabled={isLoadingBalance || isRefreshingRef.current}
               className="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 hover:border-blue-500/50 text-blue-400 hover:text-blue-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-500/10 whitespace-nowrap"
               type="button"
             >
-              {isRefreshingBalance || isRefreshingRef.current ? (
+              {isLoadingBalance || isRefreshingRef.current ? (
                 <span className="flex items-center gap-1.5">
                   <RefreshCw size={14} className="animate-spin" />
                   Checking...
                 </span>
               ) : (
-                "Check Deposit"
+                "Refresh"
               )}
             </button>
           </div>

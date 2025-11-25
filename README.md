@@ -26,6 +26,15 @@ A modern **Next.js + Nest.js (Turborepo)** project powered by **Supabase** and *
   - Premium card design with gradients and hover effects
   - Direct copy trade integration from leaderboard
   - "Create Your Own Bot" card
+- ✅ **Deposit/Withdraw Modal:**
+  - Deposit tab with QR code and wallet address
+  - Real-time wallet balance checking
+  - Auto-deposit when balance > 1 USDT
+  - Trading account balance display
+  - Withdraw tab for trading account withdrawals
+  - Refresh balance functionality
+  - Detailed console logging for debugging
+  - Manual deposit amount input
 - ✅ Copy Trade Management (`/copytrade`):
   - Premium modal popup for bot creation
   - Aptos wallet address validation
@@ -59,18 +68,36 @@ A modern **Next.js + Nest.js (Turborepo)** project powered by **Supabase** and *
 - ✅ Settings page for user preferences
 - ✅ Responsive navigation bar with mobile support:
   - Creator registration link
-  - Balance display with refresh on tab focus
+  - Trading balance display with refresh on tab focus
+  - Deposit button with auto-deposit functionality
   - Optimized authentication state management
 - ✅ Footer with links and social media
 - ✅ Global background effects:
   - Animated sparkles
   - Subtle grid pattern
   - Consistent gradient across all pages
+- ✅ Wallet Debug Page (`/wallet-debug`):
+  - Test deposit functionality
+  - Balance checking (wallet and trading account)
+  - Manual deposit amount testing
+  - Private key export (encrypted)
+  - Comprehensive logging for debugging
 
 **Backend API:**
 
 - ✅ User CRUD operations
 - ✅ Wallet management with encryption
+- ✅ **Wallet & Deposit Management:**
+  - Encrypted private key storage (AES-256-GCM)
+  - USDT balance fetching from blockchain
+  - Kana Labs API integration for trading account deposits
+  - Auto-deposit functionality (triggers when balance > 1 USDT)
+  - Trading account balance tracking
+  - Wallet account balance checking
+  - Deposit to Kana trading account with gas optimization
+  - Withdrawal from Kana trading account
+  - APT airdrop on first deposit (0.05 APT)
+  - Gas wallet management for airdrops
 - ✅ Trader statistics and leaderboard
 - ✅ Trader registration management (separate from leaderboard)
 - ✅ Copy Trade Bots management:
@@ -80,6 +107,8 @@ A modern **Next.js + Nest.js (Turborepo)** project powered by **Supabase** and *
   - PNL and trade statistics
   - User-specific bot queries
   - Redis syncing for active subscriptions
+  - Auto-deposit on bot start/restart
+  - Auto-withdrawal on bot stop
 - ✅ Redis integration:
   - Redis service with connection management
   - Set operations (SADD, SREM, SCARD)
@@ -304,7 +333,49 @@ anthe-labs/
 
 ## 📝 Recent Updates
 
-### WebSocket Service Optimization & Percentage Calculation ✨ (Latest)
+### Wallet & Deposit Management System ✨ (Latest)
+
+- ✅ **Kana Labs API Integration:**
+  - Deposit to trading account functionality
+  - Withdrawal from trading account (all markets support)
+  - Trading balance fetching (`getProfileBalanceSnapshot`)
+  - Wallet account balance checking (`getWalletAccountBalance`)
+  - Gas-optimized transactions (maxGasAmount: 15000, gasUnitPrice: 100)
+
+- ✅ **Auto-Deposit Feature:**
+  - Automatic deposit when wallet balance > 1 USDT
+  - Triggers on deposit modal open
+  - Checks both Kana API and blockchain balances
+  - Uses minimum balance to prevent insufficient funds errors
+  - Detailed step-by-step logging in browser console
+
+- ✅ **Deposit/Withdraw Modal:**
+  - Deposit tab with QR code and wallet address display
+  - Real-time balance fetching and display
+  - Auto-deposit threshold: 1 USDT
+  - Withdraw tab for trading account withdrawals
+  - Refresh balance button
+  - Trading balance display in navbar
+
+- ✅ **Bot Lifecycle Integration:**
+  - Auto-deposit on bot start/restart
+  - Auto-withdrawal on bot stop (withdraws all available balance)
+  - Market ID 14 (APT-USD) for withdrawals
+  - Balance verification before transactions
+
+- ✅ **APT Airdrop System:**
+  - 0.05 APT airdrop on first deposit
+  - Gas wallet management
+  - Automatic detection of first deposit
+  - Private key parsing (supports multiple formats)
+
+- ✅ **Security & Encryption:**
+  - AES-256-GCM encryption for private keys
+  - Secure private key storage in database
+  - Server-side transaction signing
+  - No private key exposure to frontend
+
+### WebSocket Service Optimization & Percentage Calculation ✨
 
 - ✅ **Order History Monitoring Service:**
   - Real-time order monitoring via Kana Labs WebSocket

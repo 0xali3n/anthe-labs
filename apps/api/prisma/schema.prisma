@@ -1,6 +1,6 @@
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL") // 6543 pooled
+  // URL is now passed to PrismaClient constructor (Prisma 7)
 }
 
 generator client {
@@ -27,6 +27,9 @@ model User {
   twitter_username  String?
   twitter_connected Boolean @default(false)
   twitter_user_id   String?
+
+  // Airdrop tracking
+  apt_airdropped Boolean @default(false) // Track if 0.05 APT airdrop has been sent
 
   // Timestamps
   created_at DateTime  @default(now())

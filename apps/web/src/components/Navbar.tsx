@@ -7,7 +7,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import UserButton from "./UserButton";
 import DepositWithdrawModal from "./DepositWithdrawModal";
 import { getCurrentUser } from "@/lib/usersApi";
-import { getUSDTBalance } from "@/lib/walletsApi";
+import { getTradingBalance } from "@/lib/walletsApi";
 import { Wallet, Menu, X } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -31,6 +31,7 @@ export default function Navbar() {
   const balanceFetchedRef = useRef(false);
 
   // Fetch balance function - memoized to avoid unnecessary re-renders
+  // Now fetches trading account balance instead of wallet balance
   const fetchBalance = useCallback(async () => {
     if (!isSignedIn || !walletAddress) {
       setBalance("0.00");
@@ -39,7 +40,7 @@ export default function Navbar() {
 
     try {
       setIsRefreshingBalance(true);
-      const result = await getUSDTBalance();
+      const result = await getTradingBalance();
 
       if (result.success && result.balance) {
         setBalance(result.balance);
@@ -47,7 +48,7 @@ export default function Navbar() {
         setBalance("0.00");
       }
     } catch (error) {
-      console.error("Failed to fetch balance:", error);
+      console.error("Failed to fetch trading balance:", error);
       setBalance("0.00");
     } finally {
       setIsRefreshingBalance(false);

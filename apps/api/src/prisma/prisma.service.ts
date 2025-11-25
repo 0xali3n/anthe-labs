@@ -1,11 +1,24 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
 
 @Injectable()
 export class PrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
+  private pgPool: Pool;
+
+  // Expose PrismaClient accessors for TypeScript inference
+  get wallet() {
+    return super.wallet;
+  }
+
+  get user() {
+    return super.user;
+  }
+
   constructor() {
     // Ensure DATABASE_URL has pgbouncer=true for Supabase connection pooling
     // This disables prepared statements which are incompatible with PgBouncer
@@ -18,15 +31,20 @@ export class PrismaService
         ? `${databaseUrl}&pgbouncer=true`
         : `${databaseUrl}?pgbouncer=true`;
 
+    // Prisma 7: Use PostgreSQL adapter with Pool
+    // Create a pg Pool and wrap it in PrismaPg adapter
+    // Must create before calling super() since we can't use 'this' before super()
+    const pgPool = new Pool({ connectionString: connectionUrl });
+    const adapter = new PrismaPg(pgPool);
+
     super({
+      adapter,
       log: ['error', 'warn'],
       errorFormat: 'pretty',
-      datasources: {
-        db: {
-          url: connectionUrl,
-        },
-      },
     });
+
+    // Now we can assign to this.pgPool after super() is called
+    this.pgPool = pgPool;
   }
 
   async onModuleInit() {
@@ -41,6 +59,7 @@ export class PrismaService
 
   async onModuleDestroy() {
     await this.$disconnect();
+    await this.pgPool.end();
     console.log('✅ Database disconnected');
   }
 }
