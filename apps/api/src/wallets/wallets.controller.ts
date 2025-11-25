@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Body,
   HttpCode,
   HttpStatus,
   Request,
@@ -411,6 +412,122 @@ export class WalletsController {
       };
     } catch (error: any) {
       console.error('Error in checkAndDeposit:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        { success: false, error: error.message || 'Internal server error' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * Withdraw from Kana trading account
+   * POST /api/wallets/withdraw
+   *
+   * Security: Requires JWT authentication
+   * Body: { amount: number, marketId: string }
+   * Returns: Withdrawal result with transaction hash
+   */
+  @Post('withdraw')
+  @UseGuards(AuthGuard)
+  async withdrawFromKana(
+    @Request() req: any,
+    @Body('amount') amount: number,
+    @Body('marketId') marketId: string,
+  ) {
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        throw new HttpException(
+          { success: false, error: 'User ID is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (!amount || typeof amount !== 'number' || amount <= 0) {
+        throw new HttpException(
+          { success: false, error: 'Valid amount is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (!marketId || typeof marketId !== 'string') {
+        throw new HttpException(
+          { success: false, error: 'Market ID is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const result = await this.walletsService.withdrawFromKana(
+        userId,
+        amount,
+        marketId,
+      );
+
+      return result;
+    } catch (error: any) {
+      console.error('Error in withdrawFromKana:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        { success: false, error: error.message || 'Internal server error' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * Transfer USDT from user's wallet to a destination address
+   * POST /api/wallets/transfer
+   *
+   * Security: Requires JWT authentication
+   * Body: { recipientAddress: string, amount: number }
+   * Returns: Transfer result with transaction hash
+   */
+  @Post('transfer')
+  @UseGuards(AuthGuard)
+  async transferUSDT(
+    @Request() req: any,
+    @Body('recipientAddress') recipientAddress: string,
+    @Body('amount') amount: number,
+  ) {
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        throw new HttpException(
+          { success: false, error: 'User ID is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (!recipientAddress || typeof recipientAddress !== 'string') {
+        throw new HttpException(
+          { success: false, error: 'Recipient address is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (!amount || typeof amount !== 'number' || amount <= 0) {
+        throw new HttpException(
+          { success: false, error: 'Valid amount is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const result = await this.walletsService.transferUSDTToAddress(
+        userId,
+        recipientAddress,
+        amount,
+      );
+
+      return result;
+    } catch (error: any) {
+      console.error('Error in transferUSDT:', error);
       if (error instanceof HttpException) {
         throw error;
       }

@@ -870,4 +870,433 @@ export class WalletsService {
       };
     }
   }
+
+  /**
+   * Withdraw from Kana trading account to wallet
+   * Withdraws USDT from trading account back to user's wallet
+   *
+   * @param userId - User ID
+   * @param amount - Amount to withdraw in USDT (not smallest units)
+   * @param marketId - Market ID (e.g., "14" for APT-USD)
+   * @returns Transaction hash if successful
+   */
+  async withdrawFromKana(
+    userId: string,
+    amount: number,
+    marketId: string,
+  ): Promise<{ success: boolean; txHash?: string; error?: string }> {
+    try {
+      // Get wallet address
+      const walletAddress = await this.getWalletAddress(userId);
+      if (!walletAddress) {
+        return {
+          success: false,
+          error: 'Wallet not found',
+        };
+      }
+
+      // Get private key for signing
+      const privateKey = await this.getPrivateKeyForSigning(userId);
+      if (!privateKey) {
+        return {
+          success: false,
+          error: 'Private key not found',
+        };
+      }
+
+      // Create account from private key
+      const account = Account.fromPrivateKey({
+        privateKey: new Ed25519PrivateKey(privateKey),
+      });
+
+      // Initialize Aptos client
+      const aptos = new Aptos(
+        new AptosConfig({ network: 'mainnet' as Network }),
+      );
+
+      // Get Kana API config
+      const kanaApiKey = process.env.KANA_API_KEY;
+      const kanaRest =
+        process.env.KANA_REST || 'https://perps-tradeapi.kana.trade';
+
+      if (!kanaApiKey) {
+        return {
+          success: false,
+          error: 'Kana API key not configured',
+        };
+      }
+
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('📋 WITHDRAWAL PROCESS - STEP BY STEP');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log(`📍 Step 1: Initialization`);
+      console.log(`   User ID: ${userId}`);
+      console.log(`   Wallet Address: ${walletAddress}`);
+      console.log(`   Withdrawal Amount: ${amount} USDT`);
+      console.log(`   Market ID: ${marketId}`);
+      console.log('');
+
+      // Check trading balance
+      console.log(`🔍 Step 2: Balance Verification`);
+      console.log(`   Checking trading account balance...`);
+      const tradingBalance = await this.getTradingBalance(walletAddress);
+      console.log(`   Trading Balance: ${tradingBalance} USDT`);
+      console.log(`   Requested Amount: ${amount} USDT`);
+
+      if (amount > tradingBalance) {
+        console.error(`   ❌ ERROR: Insufficient trading balance!`);
+        return {
+          success: false,
+          error: `Insufficient balance. Trying to withdraw ${amount} USDT but only ${tradingBalance} USDT available.`,
+        };
+      }
+      console.log(`   ✅ Balance verification passed`);
+      console.log('');
+
+      // Check APT balance for gas fees
+      console.log(`⛽ Step 3: APT Balance Check (for gas fees)`);
+      console.log(`   Checking APT balance for transaction fees...`);
+      try {
+        const aptBalance = await aptos.getAccountAPTAmount({
+          accountAddress: account.accountAddress,
+        });
+        const aptBalanceInAPT = Number(aptBalance) / 100000000;
+        console.log(`   APT Balance: ${aptBalanceInAPT.toFixed(8)} APT`);
+        console.log(`   Required: 0.001 APT (minimum)`);
+
+        if (aptBalanceInAPT < 0.001) {
+          console.error(`   ❌ ERROR: Insufficient APT for gas fees!`);
+          return {
+            success: false,
+            error: `Insufficient APT for gas fees. Required: 0.001 APT, Available: ${aptBalanceInAPT.toFixed(8)} APT.`,
+          };
+        }
+        console.log(`   ✅ APT balance sufficient for gas fees`);
+      } catch (error: any) {
+        console.error(`   ⚠️ Error checking APT balance: ${error.message}`);
+      }
+      console.log('');
+
+      // Step 4: Get withdrawal payload from Kana API
+      // Kana API expects amount in USDT directly (not smallest units)
+      console.log(`🔗 Step 4: Calling Kana Labs Withdrawal API`);
+      console.log(`   API Endpoint: ${kanaRest}/withdrawSpecifiMarket`);
+      console.log(`   Method: GET`);
+      console.log(`   Parameters:`);
+      console.log(`     - userAddress: ${walletAddress}`);
+      console.log(`     - marketId: ${marketId}`);
+      console.log(
+        `     - amount: ${amount} USDT (sent directly, API expects USDT)`,
+      );
+
+      const response = await axios.get(`${kanaRest}/withdrawSpecifiMarket`, {
+        params: {
+          userAddress: walletAddress,
+          marketId: marketId,
+          amount: amount, // Send USDT amount directly
+        },
+        headers: {
+          'x-api-key': kanaApiKey,
+        },
+      });
+
+      console.log(`   ✅ Kana API Response received`);
+      console.log(`   Response Status: ${response.status}`);
+      console.log(`   Response Data:`, JSON.stringify(response.data, null, 2));
+
+      if (!response.data.success) {
+        console.error(
+          `   ❌ Kana API error: ${response.data.message || 'Failed to get withdrawal payload'}`,
+        );
+        return {
+          success: false,
+          error: response.data.message || 'Failed to get withdrawal payload',
+        };
+      }
+
+      const payloadData = response.data.data;
+
+      if (!payloadData) {
+        console.error(`   ❌ No payload data in response`);
+        return {
+          success: false,
+          error: 'No payload data received from Kana API',
+        };
+      }
+
+      console.log(`   ✅ Withdrawal payload extracted successfully`);
+      console.log(
+        `   Payload Structure:`,
+        JSON.stringify(payloadData, null, 2),
+      );
+      console.log('');
+
+      // Step 5: Build transaction with gas optimization
+      console.log(`🔨 Step 5: Building Aptos Transaction`);
+      console.log(`   Sender: ${account.accountAddress.toString()}`);
+      console.log(`   Gas Settings:`);
+      console.log(`     - maxGasAmount: 15000`);
+      console.log(`     - gasUnitPrice: 100 octas`);
+      console.log(`   Using payloadData directly from Kana API`);
+
+      const transactionPayload = await aptos.transaction.build.simple({
+        sender: account.accountAddress,
+        data: payloadData,
+        options: {
+          maxGasAmount: 15000,
+          gasUnitPrice: 100,
+        },
+      });
+      console.log(`   ✅ Transaction built successfully`);
+      console.log('');
+
+      // Step 6: Sign and submit transaction
+      console.log(`✍️ Step 6: Signing Transaction`);
+      console.log(`   Signer: ${account.accountAddress.toString()}`);
+      const committedTxn = await aptos.transaction.signAndSubmitTransaction({
+        transaction: transactionPayload,
+        signer: account,
+      });
+      console.log(`   ✅ Transaction signed and submitted`);
+      console.log(`   Transaction Hash: ${committedTxn.hash}`);
+      console.log('');
+
+      // Step 7: Wait for transaction confirmation
+      console.log(`⏳ Step 7: Waiting for Transaction Confirmation`);
+      console.log(`   Transaction Hash: ${committedTxn.hash}`);
+      const executedTxn = await aptos.waitForTransaction({
+        transactionHash: committedTxn.hash,
+      });
+
+      if (executedTxn.success) {
+        console.log(`   ✅ Transaction confirmed successfully!`);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('✅ WITHDRAWAL COMPLETED SUCCESSFULLY');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log(`   From: Trading Account`);
+        console.log(`   To: Wallet Account (${walletAddress})`);
+        console.log(`   Amount: ${amount} USDT`);
+        console.log(`   Market ID: ${marketId}`);
+        console.log(`   Transaction Hash: ${committedTxn.hash}`);
+        console.log(
+          `   View on Aptoscan: https://aptoscan.com/txn/${committedTxn.hash}`,
+        );
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      } else {
+        console.error(`   ❌ Transaction failed on blockchain!`);
+        return {
+          success: false,
+          error: 'Transaction failed on blockchain',
+        };
+      }
+
+      return {
+        success: true,
+        txHash: committedTxn.hash,
+      };
+    } catch (error: any) {
+      console.error(
+        `❌ Error withdrawing from Kana trading account for user ${userId}:`,
+        error,
+      );
+      return {
+        success: false,
+        error: error.message || 'Failed to withdraw from trading account',
+      };
+    }
+  }
+
+  /**
+   * Transfer USDT from user's wallet to a destination address
+   * Uses the wallet account balance (from Kana API)
+   *
+   * @param userId - User ID
+   * @param recipientAddress - Destination wallet address
+   * @param amount - Amount to transfer in USDT
+   * @returns Transaction hash if successful
+   */
+  async transferUSDTToAddress(
+    userId: string,
+    recipientAddress: string,
+    amount: number,
+  ): Promise<{ success: boolean; txHash?: string; error?: string }> {
+    try {
+      // Get wallet address
+      const walletAddress = await this.getWalletAddress(userId);
+      if (!walletAddress) {
+        return {
+          success: false,
+          error: 'Wallet not found',
+        };
+      }
+
+      // Get private key for signing
+      const privateKey = await this.getPrivateKeyForSigning(userId);
+      if (!privateKey) {
+        return {
+          success: false,
+          error: 'Private key not found',
+        };
+      }
+
+      // Create account from private key
+      const account = Account.fromPrivateKey({
+        privateKey: new Ed25519PrivateKey(privateKey),
+      });
+
+      // Initialize Aptos client
+      const aptos = new Aptos(
+        new AptosConfig({ network: 'mainnet' as Network }),
+      );
+
+      // USDT metadata address on Aptos mainnet
+      const USDT_METADATA_ADDRESS =
+        '0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b';
+
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('📋 USDT TRANSFER PROCESS - STEP BY STEP');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log(`📍 Step 1: Initialization`);
+      console.log(`   User ID: ${userId}`);
+      console.log(`   Sender Address: ${walletAddress}`);
+      console.log(`   Recipient Address: ${recipientAddress}`);
+      console.log(`   Transfer Amount: ${amount} USDT`);
+      console.log('');
+
+      // Validate recipient address
+      if (!recipientAddress || !recipientAddress.startsWith('0x')) {
+        console.error(`   ❌ ERROR: Invalid recipient address format`);
+        return {
+          success: false,
+          error: 'Invalid recipient address format. Must start with 0x',
+        };
+      }
+
+      // Check wallet account balance from Kana API
+      console.log(`🔍 Step 2: Balance Verification`);
+      console.log(`   Checking wallet account balance (Kana API)...`);
+      const walletBalance = await this.getWalletAccountBalance(walletAddress);
+      console.log(`   Wallet Account Balance: ${walletBalance} USDT`);
+      console.log(`   Requested Amount: ${amount} USDT`);
+
+      if (amount > walletBalance) {
+        console.error(`   ❌ ERROR: Insufficient balance!`);
+        return {
+          success: false,
+          error: `Insufficient balance. Trying to transfer ${amount} USDT but only ${walletBalance} USDT available.`,
+        };
+      }
+      console.log(`   ✅ Balance verification passed`);
+      console.log('');
+
+      // Check APT balance for gas fees
+      console.log(`⛽ Step 3: APT Balance Check (for gas fees)`);
+      console.log(`   Checking APT balance for transaction fees...`);
+      try {
+        const aptBalance = await aptos.getAccountAPTAmount({
+          accountAddress: account.accountAddress,
+        });
+        const aptBalanceInAPT = Number(aptBalance) / 100000000;
+        console.log(`   APT Balance: ${aptBalanceInAPT.toFixed(8)} APT`);
+        console.log(`   Required: 0.001 APT (minimum)`);
+
+        if (aptBalanceInAPT < 0.001) {
+          console.error(`   ❌ ERROR: Insufficient APT for gas fees!`);
+          return {
+            success: false,
+            error: `Insufficient APT for gas fees. Required: 0.001 APT, Available: ${aptBalanceInAPT.toFixed(8)} APT.`,
+          };
+        }
+        console.log(`   ✅ APT balance sufficient for gas fees`);
+      } catch (error: any) {
+        console.error(`   ⚠️ Error checking APT balance: ${error.message}`);
+      }
+      console.log('');
+
+      // Step 4: Convert amount to smallest units
+      console.log(`🔢 Step 4: Amount Conversion`);
+      console.log(`   Amount in USDT: ${amount}`);
+      const amountUnits = BigInt(Math.round(amount * 1e6));
+      console.log(
+        `   Amount in smallest units: ${amountUnits.toString()} (${amount} * 1e6)`,
+      );
+      console.log('');
+
+      // Step 5: Build transfer transaction
+      console.log(`🔨 Step 5: Building Transfer Transaction`);
+      console.log(`   Sender: ${account.accountAddress.toString()}`);
+      console.log(`   Recipient: ${recipientAddress}`);
+      console.log(`   USDT Metadata Address: ${USDT_METADATA_ADDRESS}`);
+      console.log(
+        `   Amount: ${amountUnits.toString()} smallest units (${amount} USDT)`,
+      );
+      console.log(`   Gas Settings:`);
+      console.log(`     - maxGasAmount: 5000`);
+      console.log(`     - gasUnitPrice: 100 octas`);
+
+      const rawTx = await aptos.transferFungibleAsset({
+        sender: account,
+        fungibleAssetMetadataAddress: USDT_METADATA_ADDRESS,
+        recipient: recipientAddress,
+        amount: amountUnits,
+        options: {
+          maxGasAmount: 5000,
+          gasUnitPrice: 100,
+        },
+      });
+
+      console.log(`   ✅ Transaction built successfully`);
+      console.log('');
+
+      // Step 6: Sign and submit transaction
+      console.log(`✍️ Step 6: Signing and Submitting Transaction`);
+      console.log(`   Signer: ${account.accountAddress.toString()}`);
+      const pending = await aptos.signAndSubmitTransaction({
+        signer: account,
+        transaction: rawTx,
+      });
+      console.log(`   ✅ Transaction signed and submitted`);
+      console.log(`   Transaction Hash: ${pending.hash}`);
+      console.log('');
+
+      // Step 7: Wait for transaction confirmation
+      console.log(`⏳ Step 7: Waiting for Transaction Confirmation`);
+      console.log(`   Transaction Hash: ${pending.hash}`);
+      const result = await aptos.waitForTransaction({
+        transactionHash: pending.hash,
+      });
+
+      if (result.success) {
+        console.log(`   ✅ Transaction confirmed successfully!`);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('✅ USDT TRANSFER COMPLETED SUCCESSFULLY');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log(`   From: ${walletAddress}`);
+        console.log(`   To: ${recipientAddress}`);
+        console.log(`   Amount: ${amount} USDT`);
+        console.log(`   Transaction Hash: ${pending.hash}`);
+        console.log(
+          `   View on Aptoscan: https://aptoscan.com/txn/${pending.hash}`,
+        );
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      } else {
+        console.error(`   ❌ Transaction failed on blockchain!`);
+        return {
+          success: false,
+          error: 'Transaction failed on blockchain',
+        };
+      }
+
+      return {
+        success: true,
+        txHash: pending.hash,
+      };
+    } catch (error: any) {
+      console.error(`❌ Error transferring USDT for user ${userId}:`, error);
+      return {
+        success: false,
+        error: error.message || 'Failed to transfer USDT',
+      };
+    }
+  }
 }
