@@ -1,9 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Account, Aptos, AptosConfig, Network, Ed25519PrivateKey } from '@aptos-labs/ts-sdk';
+import {
+  Account,
+  Aptos,
+  AptosConfig,
+  Network,
+  Ed25519PrivateKey,
+} from '@aptos-labs/ts-sdk';
 
 /**
  * Airdrop Service
- * 
+ *
  * Handles sending 0.05 APT to users on their first deposit
  * Uses gas wallet private key from environment variable
  */
@@ -21,28 +27,42 @@ export class AirdropService {
 
     // Initialize gas wallet from environment variable
     const gasWalletPrivateKey = process.env.GAS_WALLET_PRIVATE_KEY;
-    
+
     if (!gasWalletPrivateKey) {
-      this.logger.warn('GAS_WALLET_PRIVATE_KEY not found in environment variables');
+      this.logger.warn(
+        'GAS_WALLET_PRIVATE_KEY not found in environment variables',
+      );
       return;
     }
 
     try {
       // Create account from private key
-      // Private key should be in hex format (64 characters) or with 0x prefix
+      // Private key can be in formats:
+      // - ed25519-priv-0x... (Aptos format)
+      // - 0x... (hex with prefix)
+      // - ... (hex without prefix)
       let privateKeyHex = gasWalletPrivateKey.trim();
+
+      // Remove 'ed25519-priv-' prefix if present
+      if (privateKeyHex.startsWith('ed25519-priv-')) {
+        privateKeyHex = privateKeyHex.replace('ed25519-priv-', '');
+      }
+
+      // Ensure 0x prefix for hex string
       if (!privateKeyHex.startsWith('0x')) {
         privateKeyHex = '0x' + privateKeyHex;
       }
 
       // Convert hex string to Ed25519PrivateKey
       const privateKey = new Ed25519PrivateKey(privateKeyHex);
-      
+
       // Create account from private key
       this.gasWallet = Account.fromPrivateKey({ privateKey });
-      
+
       if (this.gasWallet) {
-        this.logger.log(`✅ Gas wallet initialized: ${this.gasWallet.accountAddress.toString()}`);
+        this.logger.log(
+          `✅ Gas wallet initialized: ${this.gasWallet.accountAddress.toString()}`,
+        );
       }
     } catch (error: any) {
       this.logger.error('Failed to initialize gas wallet:', error.message);
@@ -55,11 +75,14 @@ export class AirdropService {
    * @param recipientAddress - User's wallet address to receive APT
    * @returns Transaction hash if successful
    */
-  async sendAirdrop(recipientAddress: string): Promise<{ success: boolean; txHash?: string; error?: string }> {
+  async sendAirdrop(
+    recipientAddress: string,
+  ): Promise<{ success: boolean; txHash?: string; error?: string }> {
     if (!this.gasWallet) {
       return {
         success: false,
-        error: 'Gas wallet not initialized. Please set GAS_WALLET_PRIVATE_KEY in environment variables.',
+        error:
+          'Gas wallet not initialized. Please set GAS_WALLET_PRIVATE_KEY in environment variables.',
       };
     }
 
@@ -103,7 +126,9 @@ export class AirdropService {
       });
 
       if (executedTxn.success) {
-        this.logger.log(`✅ Airdrop successful! Transaction: ${pendingTxn.hash}`);
+        this.logger.log(
+          `✅ Airdrop successful! Transaction: ${pendingTxn.hash}`,
+        );
         return {
           success: true,
           txHash: pendingTxn.hash,
@@ -116,7 +141,10 @@ export class AirdropService {
         };
       }
     } catch (error: any) {
-      this.logger.error(`❌ Error sending airdrop to ${recipientAddress}:`, error.message);
+      this.logger.error(
+        `❌ Error sending airdrop to ${recipientAddress}:`,
+        error.message,
+      );
       return {
         success: false,
         error: error.message || 'Failed to send airdrop',
@@ -128,7 +156,10 @@ export class AirdropService {
    * Check if gas wallet has sufficient balance for airdrop
    * @returns true if balance >= 0.1 APT (safety margin)
    */
-  async checkGasWalletBalance(): Promise<{ hasBalance: boolean; balance?: string }> {
+  async checkGasWalletBalance(): Promise<{
+    hasBalance: boolean;
+    balance?: string;
+  }> {
     if (!this.gasWallet) {
       return { hasBalance: false };
     }
@@ -140,7 +171,7 @@ export class AirdropService {
 
       // Convert from octas to APT (8 decimals)
       const balanceInAPT = Number(balance) / 100000000;
-      
+
       // Check if balance is at least 0.1 APT (safety margin)
       const hasBalance = balanceInAPT >= 0.1;
 
@@ -154,4 +185,3 @@ export class AirdropService {
     }
   }
 }
-
