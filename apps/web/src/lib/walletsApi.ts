@@ -79,11 +79,16 @@ export async function getWalletAddress(userId: string): Promise<WalletData> {
 }
 
 /**
- * Get USDT balance for authenticated user's wallet
+ * Get USDT and APT balance for authenticated user's wallet
  * Fetches real-time balance from Aptos blockchain via backend
  * Uses JWT token from Supabase session
  */
-export async function getUSDTBalance(): Promise<{ success: boolean; balance?: string; error?: string }> {
+export async function getUSDTBalance(): Promise<{ 
+  success: boolean; 
+  balance?: string; 
+  aptBalance?: string;
+  error?: string; 
+}> {
   try {
     // Get JWT token from Supabase session
     const { data: { session } } = await supabase.auth.getSession();
@@ -99,6 +104,7 @@ export async function getUSDTBalance(): Promise<{ success: boolean; balance?: st
     const response = await authenticatedRequest<{
       success: boolean;
       balance?: string;
+      aptBalance?: string;
       address?: string;
       error?: string;
     }>(
@@ -119,6 +125,7 @@ export async function getUSDTBalance(): Promise<{ success: boolean; balance?: st
     return {
       success: true,
       balance: response.balance || '0.00',
+      aptBalance: response.aptBalance || '0.00000000',
     };
   } catch (error: any) {
     console.error('Error fetching balance:', error);
@@ -126,6 +133,7 @@ export async function getUSDTBalance(): Promise<{ success: boolean; balance?: st
       success: false,
       error: error.message || 'Failed to fetch balance',
       balance: '0.00', // Return 0.00 as fallback
+      aptBalance: '0.00000000',
     };
   }
 }

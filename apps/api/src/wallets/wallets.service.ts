@@ -163,6 +163,56 @@ export class WalletsService {
   }
 
   /**
+   * Get APT balance for a wallet address
+   * Fetches real-time balance from Aptos blockchain using view function
+   * APT is the native coin, uses coin::balance view function
+   *
+   * @param walletAddress - Aptos wallet address
+   * @returns APT balance as string (formatted with 8 decimals)
+   */
+  async getAPTBalance(walletAddress: string): Promise<string> {
+    try {
+      // Hardcoded to mainnet
+      const network = 'mainnet' as Network;
+      const config = new AptosConfig({ network });
+      const aptos = new Aptos(config);
+
+      // Use view function to get APT coin balance (same approach as USDT)
+      // APT coin type: 0x1::aptos_coin::AptosCoin
+      const [balanceStr] = await aptos.view<[string]>({
+        payload: {
+          function: '0x1::coin::balance',
+          typeArguments: ['0x1::aptos_coin::AptosCoin'],
+          functionArguments: [walletAddress],
+        },
+      });
+
+      const balance = balanceStr || '0';
+
+      // Convert from octas to APT (8 decimals)
+      const balanceInAPT = Number(balance) / 100000000;
+      return balanceInAPT.toFixed(8);
+    } catch (error: any) {
+      console.error(
+        `Error fetching APT balance for ${walletAddress}:`,
+        error.message,
+      );
+      
+      // If balance is 0 or resource doesn't exist, return "0.00000000"
+      if (
+        error.message?.includes('RESOURCE_NOT_FOUND') ||
+        error.message?.includes('not found') ||
+        error.statusCode === 404
+      ) {
+        return '0.00000000';
+      }
+      
+      // Return 0.00 if error
+      return '0.00000000';
+    }
+  }
+
+  /**
    * Get USDT balance for a wallet address
    * Fetches real-time balance from Aptos blockchain using view function
    *
@@ -329,13 +379,9 @@ export class WalletsService {
     txHash?: string;
     error?: string;
   }> {
-    console.log(`\n🔵 [WITHDRAWAL START] User: ${userId}, Amount: ${amount} USDT, To: ${recipientAddress}`);
-    
     try {
       // Validate inputs
-      console.log(`📋 [STEP 1] Validating inputs...`);
       if (!recipientAddress || !recipientAddress.startsWith('0x')) {
-        console.error(`❌ [STEP 1 FAILED] Invalid recipient address format: ${recipientAddress}`);
         return {
           success: false,
           error: 'Invalid recipient address format',
@@ -344,16 +390,13 @@ export class WalletsService {
 
       const amountNum = parseFloat(amount);
       if (isNaN(amountNum) || amountNum <= 0) {
-        console.error(`❌ [STEP 1 FAILED] Invalid amount: ${amount}`);
         return {
           success: false,
           error: 'Invalid amount. Must be a positive number.',
         };
       }
-      console.log(`✅ [STEP 1] Inputs validated - Amount: ${amountNum} USDT, Recipient: ${recipientAddress}`);
 
       // Get user's wallet
-      console.log(`📋 [STEP 2] Fetching wallet from database...`);
       const wallet = await this.prisma.wallet.findUnique({
         where: { user_id: userId },
         select: {
@@ -363,172 +406,129 @@ export class WalletsService {
       });
 
       if (!wallet) {
-        console.error(`❌ [STEP 2 FAILED] Wallet not found for user: ${userId}`);
         return {
           success: false,
           error: 'Wallet not found',
         };
       }
-      console.log(`✅ [STEP 2] Wallet found - Address: ${wallet.address}, Encrypted key length: ${wallet.key.length}`);
 
       // Check balance before withdrawal
-      console.log(`📋 [STEP 3] Checking USDT balance...`);
       const balance = await this.getUSDTBalance(wallet.address);
       const balanceNum = parseFloat(balance);
-      console.log(`📊 [STEP 3] Balance check - Available: ${balance} USDT, Requested: ${amountNum} USDT`);
       
       if (balanceNum < amountNum) {
-        console.error(`❌ [STEP 3 FAILED] Insufficient balance`);
         return {
           success: false,
           error: `Insufficient balance. Available: ${balance} USDT, Requested: ${amount} USDT`,
         };
       }
-      console.log(`✅ [STEP 3] Balance sufficient`);
 
-      // Decrypt private key using the existing method
-      console.log(`📋 [STEP 4] Decrypting private key...`);
+      // Decrypt private key
       let privateKeyHex: string;
       try {
         privateKeyHex = await this.getPrivateKeyForSigning(userId);
-        console.log(`✅ [STEP 4] Private key decrypted - Length: ${privateKeyHex.length}, First 10 chars: ${privateKeyHex.substring(0, 10)}...`);
       } catch (decryptError: any) {
-        console.error(`❌ [STEP 4 FAILED] Decryption error:`, decryptError.message);
-        console.error(`❌ [STEP 4 FAILED] Stack:`, decryptError.stack);
         return {
           success: false,
           error: `Failed to decrypt private key: ${decryptError.message}`,
         };
       }
       
-      // Clean and format private key: remove any non-hex characters and ensure proper format
-      console.log(`📝 [STEP 4] Raw decrypted key - Length: ${privateKeyHex.length}, First 20 chars: "${privateKeyHex.substring(0, 20)}", Last 20 chars: "${privateKeyHex.substring(Math.max(0, privateKeyHex.length - 20))}"`);
-      
-      // Remove all whitespace and non-printable characters
+      // Clean and format private key
       let privateKey = privateKeyHex.replace(/[\s\n\r\t]/g, '').trim();
       
-      // Remove 0x prefix if present to work with hex string
-      const hadPrefix = privateKey.toLowerCase().startsWith('0x');
-      if (hadPrefix) {
+      if (privateKey.toLowerCase().startsWith('0x')) {
         privateKey = privateKey.substring(2);
-        console.log(`📝 [STEP 4] Removed 0x prefix for processing`);
       }
       
-      // Extract only hex characters (0-9, a-f, A-F)
       privateKey = privateKey.replace(/[^0-9a-fA-F]/g, '');
-      console.log(`📝 [STEP 4] After cleaning non-hex chars - Length: ${privateKey.length}`);
       
-      // Check if we have any hex characters left
       if (privateKey.length === 0) {
-        console.error(`❌ [STEP 4 FAILED] No valid hex characters found in decrypted private key`);
-        console.error(`   Original length: ${privateKeyHex.length}`);
-        console.error(`   Original value (first 50): ${privateKeyHex.substring(0, 50)}`);
         return {
           success: false,
-          error: 'Invalid private key format after decryption - no hex characters found',
+          error: 'Invalid private key format after decryption',
         };
       }
       
-      // Ensure hex string has even number of characters (pad with leading zero if needed)
       if (privateKey.length % 2 !== 0) {
         privateKey = '0' + privateKey;
-        console.log(`📝 [STEP 4] Padded private key with leading zero (was odd length: ${privateKey.length - 1}, now: ${privateKey.length})`);
       }
       
-      // Validate expected length (should be 64 hex chars for 32 bytes)
       if (privateKey.length < 64) {
-        console.warn(`⚠️ [STEP 4] Private key is shorter than expected (${privateKey.length} chars, expected 64)`);
+        return {
+          success: false,
+          error: 'Invalid private key length',
+        };
       } else if (privateKey.length > 64) {
-        // If longer, take the last 64 characters (in case there's extra data)
-        console.warn(`⚠️ [STEP 4] Private key is longer than expected (${privateKey.length} chars, expected 64), taking last 64`);
         privateKey = privateKey.substring(privateKey.length - 64);
       }
       
-      // Add 0x prefix back
       privateKey = '0x' + privateKey;
-      console.log(`✅ [STEP 4] Private key formatted - Final length: ${privateKey.length}, Hex chars: ${privateKey.length - 2}`);
       
-      // Final validation - should be 0x followed by 64 hex characters
       if (!/^0x[0-9a-fA-F]{64}$/.test(privateKey)) {
-        console.error(`❌ [STEP 4 FAILED] Invalid hex format in private key`);
-        console.error(`   Final value: ${privateKey}`);
-        console.error(`   Length: ${privateKey.length}`);
-        console.error(`   Hex part length: ${privateKey.length - 2}`);
         return {
           success: false,
-          error: `Invalid private key format after decryption - expected 64 hex chars, got ${privateKey.length - 2}`,
+          error: 'Invalid private key format',
         };
       }
 
-      // Create account from private key
-      console.log(`📋 [STEP 5] Creating account from private key...`);
-      let ed25519PrivateKey: Ed25519PrivateKey;
+      // Create Account object from private key (required by Aptos SDK for signing)
       let userAccount: Account;
       try {
-        ed25519PrivateKey = new Ed25519PrivateKey(privateKey);
-        console.log(`✅ [STEP 5] Ed25519PrivateKey created successfully`);
-        
+        const ed25519PrivateKey = new Ed25519PrivateKey(privateKey);
         userAccount = Account.fromPrivateKey({ privateKey: ed25519PrivateKey });
-        console.log(`✅ [STEP 5] Account created - Address: ${userAccount.accountAddress.toString()}`);
+        
+        // Verify the account address matches the wallet address
+        if (userAccount.accountAddress.toString() !== wallet.address) {
+          return {
+            success: false,
+            error: 'Private key does not match wallet address',
+          };
+        }
       } catch (accountError: any) {
-        console.error(`❌ [STEP 5 FAILED] Account creation error:`, accountError.message);
-        console.error(`❌ [STEP 5 FAILED] Stack:`, accountError.stack);
         return {
           success: false,
           error: `Failed to create account from private key: ${accountError.message}`,
         };
       }
-      
-      // Verify the account address matches the wallet address
-      console.log(`📋 [STEP 6] Verifying account address matches wallet...`);
-      const accountAddress = userAccount.accountAddress.toString();
-      if (accountAddress !== wallet.address) {
-        console.error(`❌ [STEP 6 FAILED] Address mismatch!`);
-        console.error(`   Wallet address: ${wallet.address}`);
-        console.error(`   Account address: ${accountAddress}`);
-        return {
-          success: false,
-          error: 'Private key does not match wallet address',
-        };
-      }
-      console.log(`✅ [STEP 6] Account address verified: ${accountAddress}`);
 
       // Initialize Aptos client
-      console.log(`📋 [STEP 7] Initializing Aptos client...`);
       const network = 'mainnet' as Network;
       const config = new AptosConfig({ network });
       const aptos = new Aptos(config);
-      console.log(`✅ [STEP 7] Aptos client initialized for ${network}`);
 
-      // Check APT balance for gas fees (REQUIRED - don't proceed without APT)
-      console.log(`📋 [STEP 7.5] Checking APT balance for gas fees...`);
+      // Check APT balance for gas fees
       let aptBalanceInAPT = 0;
+      let accountSequenceNumber = 0;
       try {
-        const aptBalance = await aptos.getAccountAPTAmount({
+        const accountInfo = await aptos.getAccountInfo({
           accountAddress: userAccount.accountAddress,
         });
-        aptBalanceInAPT = Number(aptBalance) / 100000000; // Convert from octas
-        console.log(`📊 [STEP 7.5] APT Balance: ${aptBalanceInAPT.toFixed(8)} APT`);
+        accountSequenceNumber = Number(accountInfo.sequence_number || 0);
+        
+        const [balanceStr] = await aptos.view<[string]>({
+          payload: {
+            function: '0x1::coin::balance',
+            typeArguments: ['0x1::aptos_coin::AptosCoin'],
+            functionArguments: [userAccount.accountAddress.toString()],
+          },
+        });
+        const balance = balanceStr || '0';
+        aptBalanceInAPT = Number(balance) / 100000000;
       } catch (aptBalanceError: any) {
-        console.error(`❌ [STEP 7.5 FAILED] Could not check APT balance: ${aptBalanceError.message}`);
         return {
           success: false,
-          error: `Could not check APT balance. Please ensure your wallet is set up correctly. Error: ${aptBalanceError.message}`,
+          error: `Could not check APT balance: ${aptBalanceError.message}`,
         };
       }
       
-      // Minimum required: ~0.0001 APT for transaction fee (very minimal)
-      // Typical Aptos transaction fees are around 0.00001-0.0001 APT
-      if (aptBalanceInAPT < 0.0001) {
-        console.error(`❌ [STEP 7.5 FAILED] Insufficient APT for gas fees`);
-        console.error(`   Required: 0.0001 APT minimum`);
-        console.error(`   Available: ${aptBalanceInAPT.toFixed(8)} APT`);
+      const minRequiredAPT = accountSequenceNumber === 0 ? 0.01 : 0.001;
+      if (aptBalanceInAPT < minRequiredAPT) {
         return {
           success: false,
-          error: `Insufficient APT balance for transaction fees. You need at least 0.0001 APT for gas, but you have ${aptBalanceInAPT.toFixed(8)} APT. Please check your deposit to receive the 0.05 APT airdrop first.`,
+          error: `Insufficient APT balance for transaction fees. You need at least ${minRequiredAPT} APT for gas, but you have ${aptBalanceInAPT.toFixed(8)} APT.`,
         };
       }
-      console.log(`✅ [STEP 7.5] APT balance sufficient for gas fees (${aptBalanceInAPT.toFixed(8)} APT available)`);
 
       // USDT Fungible Asset Metadata Address on Aptos Mainnet
       const usdtMetadataAddress =
@@ -536,19 +536,8 @@ export class WalletsService {
 
       // Convert amount to smallest unit (USDT has 6 decimals)
       const amountInSmallestUnit = BigInt(Math.floor(amountNum * 1000000));
-      console.log(`📋 [STEP 8] Amount conversion - ${amountNum} USDT = ${amountInSmallestUnit.toString()} smallest units`);
 
-      console.log(`📋 [STEP 9] Building transaction (optimized for low fees)...`);
-      console.log(`   Function: 0x1::primary_fungible_store::transfer`);
-      console.log(`   Sender: ${accountAddress}`);
-      console.log(`   Recipient: ${recipientAddress}`);
-      console.log(`   USDT Metadata: ${usdtMetadataAddress}`);
-      console.log(`   Amount: ${amountInSmallestUnit.toString()}`);
-
-      // Transfer fungible asset (USDT)
-      // Using primary_fungible_store::transfer function
-      // Function signature: transfer<F: ObjectCore>(store: &mut PrimaryFungibleStore, to: address, amount: u64)
-      // Using simple transaction builder - Aptos will auto-calculate minimal gas
+      // Build transaction
       let transaction: any;
       try {
         transaction = await aptos.transaction.build.simple({
@@ -557,17 +546,13 @@ export class WalletsService {
             function: '0x1::primary_fungible_store::transfer',
             typeArguments: ['0x1::object::ObjectCore'],
             functionArguments: [
-              usdtMetadataAddress, // fungible_metadata (store)
-              recipientAddress,    // to
-              amountInSmallestUnit.toString(), // amount
+              usdtMetadataAddress,
+              recipientAddress,
+              amountInSmallestUnit.toString(),
             ],
-          },
+          } as any,
         });
-        console.log(`✅ [STEP 9] Transaction built successfully`);
-        console.log(`   Transaction type: ${transaction.constructor.name}`);
       } catch (buildError: any) {
-        console.error(`❌ [STEP 9 FAILED] Transaction build error:`, buildError.message);
-        console.error(`❌ [STEP 9 FAILED] Stack:`, buildError.stack);
         return {
           success: false,
           error: `Failed to build transaction: ${buildError.message}`,
@@ -575,17 +560,13 @@ export class WalletsService {
       }
 
       // Sign transaction
-      console.log(`📋 [STEP 10] Signing transaction...`);
       let senderAuthenticator: any;
       try {
         senderAuthenticator = aptos.transaction.sign({
           signer: userAccount,
           transaction,
         });
-        console.log(`✅ [STEP 10] Transaction signed successfully`);
       } catch (signError: any) {
-        console.error(`❌ [STEP 10 FAILED] Signing error:`, signError.message);
-        console.error(`❌ [STEP 10 FAILED] Stack:`, signError.stack);
         return {
           success: false,
           error: `Failed to sign transaction: ${signError.message}`,
@@ -593,66 +574,328 @@ export class WalletsService {
       }
 
       // Submit transaction
-      console.log(`📋 [STEP 11] Submitting transaction to blockchain...`);
       let pendingTxn: any;
       try {
         pendingTxn = await aptos.transaction.submit.simple({
           transaction,
           senderAuthenticator,
         });
-        console.log(`✅ [STEP 11] Transaction submitted - Hash: ${pendingTxn.hash}`);
       } catch (submitError: any) {
-        console.error(`❌ [STEP 11 FAILED] Submission error:`, submitError.message);
-        console.error(`❌ [STEP 11 FAILED] Stack:`, submitError.stack);
         return {
           success: false,
           error: `Failed to submit transaction: ${submitError.message}`,
         };
       }
 
-      // Wait for transaction to be confirmed
-      console.log(`📋 [STEP 12] Waiting for transaction confirmation...`);
-      let executedTxn: any;
+      // Wait for transaction confirmation
       try {
-        executedTxn = await aptos.waitForTransaction({
+        const executedTxn = await aptos.waitForTransaction({
           transactionHash: pendingTxn.hash,
         });
-        console.log(`✅ [STEP 12] Transaction confirmed - Success: ${executedTxn.success}`);
-      } catch (waitError: any) {
-        console.error(`❌ [STEP 12 FAILED] Wait error:`, waitError.message);
-        console.error(`❌ [STEP 12 FAILED] Stack:`, waitError.stack);
-        // Transaction might still be pending, return the hash anyway
-        console.log(`⚠️ [STEP 12] Returning transaction hash despite wait error: ${pendingTxn.hash}`);
-        return {
-          success: true,
-          txHash: pendingTxn.hash,
-        };
-      }
 
-      if (executedTxn.success) {
-        console.log(`✅ [WITHDRAWAL SUCCESS] Transaction: ${pendingTxn.hash}`);
-        console.log(`\n`);
+        if (executedTxn.success) {
+          return {
+            success: true,
+            txHash: pendingTxn.hash,
+          };
+        } else {
+          return {
+            success: false,
+            error: `Transaction failed on blockchain: ${executedTxn.vm_status || 'Unknown error'}`,
+          };
+        }
+      } catch (waitError: any) {
+        // Transaction might still be pending, return the hash anyway
         return {
           success: true,
           txHash: pendingTxn.hash,
-        };
-      } else {
-        console.error(`❌ [WITHDRAWAL FAILED] Transaction failed on blockchain: ${pendingTxn.hash}`);
-        console.error(`   VM Status: ${executedTxn.vm_status || 'Unknown'}`);
-        console.log(`\n`);
-        return {
-          success: false,
-          error: `Transaction failed on blockchain: ${executedTxn.vm_status || 'Unknown error'}`,
         };
       }
     } catch (error: any) {
-      console.error(`\n❌ [WITHDRAWAL ERROR] Unexpected error for user ${userId}:`);
-      console.error(`   Message: ${error.message}`);
-      console.error(`   Stack: ${error.stack}`);
-      console.log(`\n`);
       return {
         success: false,
         error: error.message || 'Failed to withdraw USDT',
+      };
+    }
+  }
+
+  /**
+   * Deposit USDT to Kana trading account
+   * This transfers USDT from user's wallet to their Kana trading profile
+   * 
+   * @param userId - User ID
+   * @param amount - Amount in USDT to deposit
+   * @returns Transaction hash if successful
+   */
+  async depositToKana(
+    userId: string,
+    amount: number,
+  ): Promise<{
+    success: boolean;
+    txHash?: string;
+    error?: string;
+    logs?: string[];
+  }> {
+    const logs: string[] = [];
+    const addLog = (message: string) => {
+      const timestamp = new Date().toISOString();
+      const logMessage = `[${timestamp}] ${message}`;
+      logs.push(logMessage);
+      console.log(logMessage);
+    };
+
+    try {
+      addLog(`🚀 [START] Kana Deposit Process`);
+      addLog(`User ID: ${userId}`);
+      addLog(`Amount: ${amount} USDT`);
+      // Validate amount
+      if (isNaN(amount) || amount <= 0) {
+        return {
+          success: false,
+          error: 'Invalid amount. Must be a positive number.',
+        };
+      }
+
+      // Get user's wallet
+      const wallet = await this.prisma.wallet.findUnique({
+        where: { user_id: userId },
+        select: {
+          address: true,
+          key: true,
+        },
+      });
+
+      if (!wallet) {
+        return {
+          success: false,
+          error: 'Wallet not found',
+        };
+      }
+
+      // Decrypt private key
+      let privateKeyHex: string;
+      try {
+        privateKeyHex = await this.getPrivateKeyForSigning(userId);
+      } catch (decryptError: any) {
+        return {
+          success: false,
+          error: `Failed to decrypt private key: ${decryptError.message}`,
+        };
+      }
+
+      // Clean and format private key
+      let privateKey = privateKeyHex.replace(/[\s\n\r\t]/g, '').trim();
+      
+      if (privateKey.toLowerCase().startsWith('0x')) {
+        privateKey = privateKey.substring(2);
+      }
+      
+      privateKey = privateKey.replace(/[^0-9a-fA-F]/g, '');
+      
+      if (privateKey.length === 0) {
+        return {
+          success: false,
+          error: 'Invalid private key format after decryption',
+        };
+      }
+      
+      if (privateKey.length % 2 !== 0) {
+        privateKey = '0' + privateKey;
+      }
+      
+      if (privateKey.length < 64) {
+        return {
+          success: false,
+          error: 'Invalid private key length',
+        };
+      } else if (privateKey.length > 64) {
+        privateKey = privateKey.substring(privateKey.length - 64);
+      }
+      
+      privateKey = '0x' + privateKey;
+      
+      if (!/^0x[0-9a-fA-F]{64}$/.test(privateKey)) {
+        return {
+          success: false,
+          error: 'Invalid private key format',
+        };
+      }
+
+      // Create Account object from private key
+      let userAccount: Account;
+      try {
+        const ed25519PrivateKey = new Ed25519PrivateKey(privateKey);
+        userAccount = Account.fromPrivateKey({ privateKey: ed25519PrivateKey });
+        
+        // Verify the account address matches the wallet address
+        if (userAccount.accountAddress.toString() !== wallet.address) {
+          return {
+            success: false,
+            error: 'Private key does not match wallet address',
+          };
+        }
+      } catch (accountError: any) {
+        return {
+          success: false,
+          error: `Failed to create account from private key: ${accountError.message}`,
+        };
+      }
+
+      // Initialize Aptos client
+      const network = 'mainnet' as Network;
+      const config = new AptosConfig({ network });
+      const aptos = new Aptos(config);
+
+      // Get Kana API configuration
+      const kanaApiKey = process.env.KANA_API_KEY || '';
+      const kanaRestUrl = process.env.KANA_REST || 'https://perps-tradeapi.kana.trade';
+
+      addLog(`📋 [STEP 1] Checking Kana API configuration...`);
+      addLog(`Kana API Key present: ${kanaApiKey ? 'Yes (length: ' + kanaApiKey.length + ')' : 'No'}`);
+      addLog(`Kana REST URL: ${kanaRestUrl}`);
+
+      if (!kanaApiKey) {
+        addLog(`❌ [ERROR] Kana API key not configured in environment variables`);
+        addLog(`Please ensure KANA_API_KEY is set in your .env file and restart the server`);
+        return {
+          success: false,
+          error: 'Kana API key not configured. Please check server logs.',
+          logs,
+        };
+      }
+
+      addLog(`✅ [STEP 1] Kana API configuration verified`);
+      addLog(`📋 [STEP 2] Starting deposit of $${amount.toFixed(2)} USDT for user ${userId}...`);
+
+      // Step 3: Get deposit payload from Kana API
+      const depositUrl = `${kanaRestUrl}/deposit?userAddress=${userAccount.accountAddress.toString()}&amount=${amount}`;
+      addLog(`📋 [STEP 3] Calling Kana API to get deposit payload...`);
+      addLog(`API URL: ${depositUrl}`);
+      addLog(`User Address: ${userAccount.accountAddress.toString()}`);
+      addLog(`Amount: ${amount} USDT`);
+      
+      let payloadData: any;
+      try {
+        addLog(`Sending request to Kana API...`);
+        const response = await fetch(depositUrl, {
+          headers: {
+            'x-api-key': kanaApiKey,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        addLog(`Response status: ${response.status} ${response.statusText}`);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          addLog(`❌ [ERROR] Kana API returned error: ${response.status} ${response.statusText}`);
+          addLog(`Error details: ${errorText}`);
+          return {
+            success: false,
+            error: `Kana API error: ${response.status} ${response.statusText} - ${errorText}`,
+            logs,
+          };
+        }
+
+        payloadData = await response.json();
+        addLog(`Response received: ${JSON.stringify(payloadData).substring(0, 200)}...`);
+
+        if (!payloadData.success) {
+          addLog(`❌ [ERROR] Kana API returned success: false`);
+          addLog(`Error message: ${payloadData.message || 'Unknown error'}`);
+          return {
+            success: false,
+            error: payloadData.message || 'Failed to get deposit payload from Kana API',
+            logs,
+          };
+        }
+      } catch (apiError: any) {
+        addLog(`❌ [ERROR] Failed to call Kana API`);
+        addLog(`Error: ${apiError.message}`);
+        addLog(`Stack: ${apiError.stack}`);
+        return {
+          success: false,
+          error: `Failed to call Kana API: ${apiError.message}`,
+          logs,
+        };
+      }
+
+      addLog(`✅ [STEP 3] Deposit payload received successfully`);
+
+      // Step 4: Build transaction with gas optimization
+      addLog(`📋 [STEP 4] Building Aptos transaction...`);
+      let transaction: any;
+      try {
+        transaction = await aptos.transaction.build.simple({
+          sender: userAccount.accountAddress,
+          data: payloadData.data,
+          options: {
+            maxGasAmount: 15000, // Limit max gas instead of auto-estimation
+            gasUnitPrice: 100, // Use lower gas price (100 octas)
+          },
+        });
+        addLog(`✅ [STEP 4] Transaction built successfully`);
+      } catch (buildError: any) {
+        addLog(`❌ [ERROR] Failed to build transaction`);
+        addLog(`Error: ${buildError.message}`);
+        return {
+          success: false,
+          error: `Failed to build transaction: ${buildError.message}`,
+          logs,
+        };
+      }
+
+      // Step 5: Sign and submit transaction
+      addLog(`📋 [STEP 5] Signing and submitting transaction...`);
+      let committedTxn: any;
+      try {
+        committedTxn = await aptos.transaction.signAndSubmitTransaction({
+          transaction,
+          signer: userAccount,
+        });
+        addLog(`✅ [STEP 5] Transaction signed and submitted`);
+        addLog(`Transaction hash: ${committedTxn.hash}`);
+      } catch (signError: any) {
+        addLog(`❌ [ERROR] Failed to sign/submit transaction`);
+        addLog(`Error: ${signError.message}`);
+        return {
+          success: false,
+          error: `Failed to sign/submit transaction: ${signError.message}`,
+          logs,
+        };
+      }
+
+      // Step 6: Wait for transaction confirmation
+      addLog(`📋 [STEP 6] Waiting for transaction confirmation...`);
+      try {
+        await aptos.waitForTransaction({
+          transactionHash: committedTxn.hash,
+        });
+        addLog(`✅ [STEP 6] Transaction confirmed on blockchain`);
+        addLog(`🎉 [SUCCESS] Deposit completed successfully!`);
+        addLog(`Transaction hash: ${committedTxn.hash}`);
+        addLog(`View on Aptoscan: https://aptoscan.com/txn/${committedTxn.hash}`);
+      } catch (waitError: any) {
+        // Transaction might still be pending, return the hash anyway
+        addLog(`⚠️ [WARNING] Transaction submitted but confirmation pending`);
+        addLog(`Transaction hash: ${committedTxn.hash}`);
+        addLog(`This is normal - transaction may still be processing`);
+      }
+
+      return {
+        success: true,
+        txHash: committedTxn.hash,
+        logs,
+      };
+    } catch (error: any) {
+      addLog(`❌ [FATAL ERROR] Unexpected error during deposit`);
+      addLog(`Error: ${error.message}`);
+      addLog(`Stack: ${error.stack}`);
+      console.error('[Kana] Deposit error:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to deposit to Kana',
+        logs,
       };
     }
   }

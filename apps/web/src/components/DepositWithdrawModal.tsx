@@ -11,7 +11,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import dynamic from "next/dynamic";
-import { checkDepositAndAirdrop } from "@/lib/walletsApi";
+import { checkDepositAndAirdrop, withdrawUSDT, getUSDTBalance } from "@/lib/walletsApi";
 
 // Dynamically import QRCode to avoid SSR issues
 const QRCodeSVG = dynamic(
@@ -42,6 +42,7 @@ export default function DepositWithdrawModal({
   const [withdrawAddress, setWithdrawAddress] = useState("");
   const [copied, setCopied] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [aptBalance, setAptBalance] = useState<string>("0.00000000");
   const modalRef = useRef<HTMLDivElement>(null);
   const isRefreshingRef = useRef(false); // Prevent infinite loops
   const timeoutRef = useRef<NodeJS.Timeout | null>(null); // Cleanup timeouts
@@ -99,6 +100,24 @@ export default function DepositWithdrawModal({
     }
   }, [isRefreshingBalance]);
 
+  // Fetch APT balance when modal opens or balance refreshes
+  useEffect(() => {
+    if (isOpen && walletAddress) {
+      const fetchBalances = async () => {
+        try {
+          const result = await getUSDTBalance();
+          if (result.success && result.aptBalance) {
+            setAptBalance(result.aptBalance);
+            console.log(`[MODAL] APT Balance: ${result.aptBalance} APT`);
+          }
+        } catch (error) {
+          console.error("Error fetching APT balance:", error);
+        }
+      };
+      fetchBalances();
+    }
+  }, [isOpen, walletAddress, balance]);
+
   // Reset form state when modal closes
   useEffect(() => {
     if (!isOpen) {
@@ -109,6 +128,7 @@ export default function DepositWithdrawModal({
       setWithdrawAddress("");
       setCopied(false);
       setIsProcessing(false);
+      setAptBalance("0.00000000");
       isRefreshingRef.current = false;
 
       // Clear any pending timeouts
@@ -186,6 +206,81 @@ export default function DepositWithdrawModal({
     }, 2000);
   };
 
+  const handleWithdraw = async () => {
+    // Validate inputs
+    if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) {
+      alert("Please enter a valid amount to withdraw");
+      return;
+    }
+
+    if (!withdrawAddress || !withdrawAddress.trim()) {
+      alert("Please enter a recipient address");
+      return;
+    }
+
+    // Validate address format (should start with 0x)
+    if (!withdrawAddress.trim().startsWith("0x")) {
+      alert("Invalid Aptos address format. Address must start with 0x");
+      return;
+    }
+
+    // Validate amount doesn't exceed balance
+    const amountNum = parseFloat(withdrawAmount);
+    const balanceNum = parseFloat(balance);
+    if (amountNum > balanceNum) {
+      alert(`Insufficient balance. Available: ${balanceNum.toFixed(2)} USDT`);
+      return;
+    }
+
+    // Check APT balance for gas fees BEFORE withdrawal
+    const balanceResult = await getUSDTBalance();
+    const currentAptBalance = parseFloat(balanceResult.aptBalance || "0");
+    const minRequiredApt = 0.0001;
+    
+    if (currentAptBalance < minRequiredApt) {
+      alert(
+        `Insufficient APT for transaction fees!\n\n` +
+        `You need at least ${minRequiredApt} APT to pay for gas fees, but you have ${currentAptBalance.toFixed(8)} APT.\n\n` +
+        `Please deposit some APT or use the "Check Deposit" button to receive the 0.05 APT airdrop if this is your first deposit.`
+      );
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      const result = await withdrawUSDT(
+        withdrawAddress.trim(),
+        withdrawAmount
+      );
+
+      if (result.success) {
+        alert(`Withdrawal successful! Transaction: ${result.txHash}`);
+        // Reset form
+        setWithdrawAmount("");
+        setWithdrawAddress("");
+        // Refresh balance
+        if (onRefreshBalance && !isRefreshingRef.current) {
+          isRefreshingRef.current = true;
+          try {
+            await onRefreshBalance();
+          } catch (error) {
+            console.error("Error refreshing balance after withdrawal:", error);
+          } finally {
+            isRefreshingRef.current = false;
+          }
+        }
+      } else {
+        alert(`Withdrawal failed: ${result.error || "Unknown error"}`);
+      }
+    } catch (error: any) {
+      console.error("[FRONTEND] Error during withdrawal:", error);
+      alert(`Error: ${error.message || "Failed to process withdrawal"}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
 
   if (!isOpen) return null;
 
@@ -234,7 +329,7 @@ export default function DepositWithdrawModal({
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1">
               <p className="text-xs text-slate-400 mb-1">Available Balance</p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mb-2">
                 <img
                   src="/aptos.png"
                   alt="Aptos"
@@ -245,6 +340,16 @@ export default function DepositWithdrawModal({
                 />
                 <p className="text-2xl font-bold text-white">
                   {parseFloat(balance || "0").toFixed(2)} USDT
+                </p>
+              </div>
+              {/* APT Balance Display */}
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-blue-500"></div>
+                <p className="text-sm text-slate-300">
+                  APT: {parseFloat(aptBalance || "0").toFixed(8)} APT
+                  {parseFloat(aptBalance || "0") < 0.0001 && (
+                    <span className="ml-2 text-xs text-yellow-400">⚠️ Low gas balance</span>
+                  )}
                 </p>
               </div>
             </div>
@@ -475,13 +580,6 @@ export default function DepositWithdrawModal({
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Coming Soon Notice */}
-              <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/30">
-                <p className="text-xs text-blue-400 text-center">
-                  Withdrawal soon
-                </p>
-              </div>
-
               {/* Withdraw Amount */}
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-2">
@@ -559,13 +657,29 @@ export default function DepositWithdrawModal({
                 </p>
               </div>
 
-              {/* Withdraw Button - Disabled */}
+              {/* Withdraw Button */}
               <button
-                disabled={true}
-                className="w-full px-4 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-slate-600 to-slate-700 cursor-not-allowed opacity-50 transition-all duration-200 flex items-center justify-center gap-2"
+                onClick={handleWithdraw}
+                disabled={
+                  isProcessing ||
+                  !withdrawAmount ||
+                  !withdrawAddress ||
+                  parseFloat(withdrawAmount) <= 0 ||
+                  parseFloat(withdrawAmount) > parseFloat(balance)
+                }
+                className="w-full px-4 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 disabled:from-slate-600 disabled:to-slate-700 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 flex items-center justify-center gap-2"
               >
-                <ArrowUp size={18} />
-                Withdraw USDT
+                {isProcessing ? (
+                  <>
+                    <RefreshCw size={18} className="animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <ArrowUp size={18} />
+                    Withdraw USDT
+                  </>
+                )}
               </button>
             </div>
           )}

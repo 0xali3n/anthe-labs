@@ -332,6 +332,14 @@ export default function Copytrade() {
         }
       } else {
         // Create new bot
+        console.group("🚀 Starting Copy Trade Bot");
+        console.log("📋 Request details:", {
+          traderAddress: traderAddress.trim() || "None",
+          allocatedAmount: roundedAmount,
+          allocationPercent: allocation,
+          mode: tradingMode,
+        });
+
         const result = await createCopyTradeBot({
           traderAddress: traderAddress.trim() || undefined,
           allocatedAmount: roundedAmount,
@@ -339,7 +347,26 @@ export default function Copytrade() {
           mode: tradingMode,
         });
 
+        // Display logs in browser console if available
+        if (result.logs && Array.isArray(result.logs)) {
+          console.group("📝 Deposit Process Logs");
+          result.logs.forEach((log) => {
+            if (log.includes("ERROR") || log.includes("❌")) {
+              console.error(log);
+            } else if (log.includes("WARNING") || log.includes("⚠️")) {
+              console.warn(log);
+            } else if (log.includes("SUCCESS") || log.includes("✅")) {
+              console.log("%c" + log, "color: green; font-weight: bold");
+            } else {
+              console.log(log);
+            }
+          });
+          console.groupEnd();
+        }
+
         if (result.success && result.data) {
+          console.log("%c✅ Bot created successfully!", "color: green; font-weight: bold");
+          console.groupEnd();
           setSuccess(true);
           setTraderAddress("");
           setAllocation(0);
@@ -351,6 +378,8 @@ export default function Copytrade() {
           setTimeout(() => setSuccess(false), 3000);
         } else {
           const errorMsg = result.error || "Failed to start copy trade";
+          console.error("❌ Error:", errorMsg);
+          console.groupEnd();
           setError(errorMsg);
           setTimeout(() => setError(""), 5000);
         }

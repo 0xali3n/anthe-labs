@@ -101,11 +101,11 @@ export class WalletsController {
   }
 
   /**
-   * Get USDT balance for authenticated user's wallet
+   * Get USDT and APT balance for authenticated user's wallet
    * GET /api/wallets/balance
    *
    * Security: Requires JWT authentication
-   * Returns: USDT balance as string
+   * Returns: USDT balance and APT balance
    */
   @Get('balance')
   @UseGuards(AuthGuard)
@@ -131,12 +131,18 @@ export class WalletsController {
         );
       }
 
-      // Fetch USDT balance from Aptos blockchain
-      const balance = await this.walletsService.getUSDTBalance(walletAddress);
+      // Fetch both USDT and APT balances from Aptos blockchain
+      const [usdtBalance, aptBalance] = await Promise.all([
+        this.walletsService.getUSDTBalance(walletAddress),
+        this.walletsService.getAPTBalance(walletAddress),
+      ]);
+
+      console.log(`📊 Balance check - USDT: ${usdtBalance}, APT: ${aptBalance}`);
 
       return {
         success: true,
-        balance: balance,
+        balance: usdtBalance,
+        aptBalance: aptBalance,
         address: walletAddress,
       };
     } catch (error: any) {
