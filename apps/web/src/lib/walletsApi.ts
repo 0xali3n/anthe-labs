@@ -179,6 +179,204 @@ export async function checkDepositAndAirdrop(): Promise<{
 }
 
 /**
+ * Get wallet account balance (raw USDT in wallet) from Kana API
+ * Uses JWT token from Supabase session
+ */
+export async function getWalletAccountBalance(): Promise<{
+  success: boolean;
+  balance?: string;
+  error?: string;
+}> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      return {
+        success: false,
+        error: 'No session found. Please sign in.',
+      };
+    }
+
+    const response = await authenticatedRequest<{
+      success: boolean;
+      balance?: string;
+      error?: string;
+    }>('/wallets/wallet-balance', session.access_token, {
+      method: 'GET',
+    });
+
+    return response;
+  } catch (error: any) {
+    console.error('Error fetching wallet account balance:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to fetch wallet balance',
+      balance: '0.00',
+    };
+  }
+}
+
+/**
+ * Get trading account balance from Kana API
+ * Uses JWT token from Supabase session
+ */
+export async function getTradingBalance(): Promise<{
+  success: boolean;
+  balance?: string;
+  error?: string;
+}> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      return {
+        success: false,
+        error: 'No session found. Please sign in.',
+      };
+    }
+
+    const response = await authenticatedRequest<{
+      success: boolean;
+      balance?: string;
+      error?: string;
+    }>('/wallets/trading-balance', session.access_token, {
+      method: 'GET',
+    });
+
+    return response;
+  } catch (error: any) {
+    console.error('Error fetching trading balance:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to fetch trading balance',
+      balance: '0.00',
+    };
+  }
+}
+
+/**
+ * Check wallet balance and auto-deposit to trading account
+ * Uses JWT token from Supabase session
+ */
+export async function checkWalletAndDeposit(): Promise<{
+  success: boolean;
+  walletBalance?: string;
+  tradingBalance?: string;
+  deposited?: boolean;
+  txHash?: string;
+  error?: string;
+}> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      return {
+        success: false,
+        error: 'No session found. Please sign in.',
+      };
+    }
+
+    const response = await authenticatedRequest<{
+      success: boolean;
+      walletBalance?: string;
+      tradingBalance?: string;
+      deposited?: boolean;
+      txHash?: string;
+      error?: string;
+    }>('/wallets/check-and-deposit', session.access_token, {
+      method: 'POST',
+    });
+
+    return response;
+  } catch (error: any) {
+    console.error('Error checking wallet and depositing:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to check wallet and deposit',
+    };
+  }
+}
+
+/**
+ * Get debug info including encrypted private key (for debugging only)
+ * Uses JWT token from Supabase session
+ */
+export async function getDebugInfo(): Promise<{
+  success: boolean;
+  walletAddress?: string;
+  encryptedPrivateKey?: string;
+  note?: string;
+  error?: string;
+}> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      return {
+        success: false,
+        error: 'No session found. Please sign in.',
+      };
+    }
+
+    const response = await authenticatedRequest<{
+      success: boolean;
+      walletAddress?: string;
+      encryptedPrivateKey?: string;
+      note?: string;
+      error?: string;
+    }>('/wallets/debug/info', session.access_token, {
+      method: 'GET',
+    });
+
+    return response;
+  } catch (error: any) {
+    console.error('Error fetching debug info:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to fetch debug info',
+    };
+  }
+}
+
+/**
+ * Test deposit with specific amount (for debugging)
+ * Uses JWT token from Supabase session
+ */
+export async function testDeposit(amount: number): Promise<{
+  success: boolean;
+  txHash?: string;
+  error?: string;
+}> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      return {
+        success: false,
+        error: 'No session found. Please sign in.',
+      };
+    }
+
+    const response = await authenticatedRequest<{
+      success: boolean;
+      txHash?: string;
+      error?: string;
+    }>('/wallets/debug/deposit', session.access_token, {
+      method: 'POST',
+      body: JSON.stringify({ amount }),
+    });
+
+    return response;
+  } catch (error: any) {
+    console.error('Error testing deposit:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to test deposit',
+    };
+  }
+}
+
+/**
  * Format wallet address for display (shortened version)
  */
 export function formatWalletAddress(address: string): string {
