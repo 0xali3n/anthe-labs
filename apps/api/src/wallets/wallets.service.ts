@@ -26,9 +26,7 @@ export class WalletsService {
     private prisma: PrismaService,
     private encryptionService: EncryptionService,
     private airdropService: AirdropService,
-  ) {
-    console.log('✅ Wallets service initialized');
-  }
+  ) {}
 
   /**
    * Create or get Aptos wallet for a user
@@ -59,9 +57,6 @@ export class WalletsService {
 
       if (existingWallet) {
         // Wallet exists, return address only (no private key)
-        console.log(
-          `✅ Wallet found for user ${userId}: ${existingWallet.address}`,
-        );
         return {
           address: existingWallet.address,
           isNew: false,
@@ -81,10 +76,6 @@ export class WalletsService {
         throw new Error('Encryption failed - invalid format');
       }
 
-      console.log(
-        `🔐 Encrypted private key for user ${userId} (length: ${encryptedPrivateKey.length})`,
-      );
-
       // Store wallet in database
       const wallet = await this.prisma.wallet.create({
         data: {
@@ -99,9 +90,6 @@ export class WalletsService {
         throw new Error('Failed to store encrypted private key');
       }
 
-      console.log(`✅ Created Aptos wallet for user ${userId}: ${address}`);
-      console.log(`✅ Encrypted private key stored in database (verified)`);
-
       // Return address only (private key is NEVER returned)
       return {
         address: address,
@@ -113,17 +101,11 @@ export class WalletsService {
       if (error.code === 'P2002') {
         // Unique constraint violation (race condition)
         // Wallet was created by another request, fetch it
-        console.log(
-          `⚠️ Race condition detected for user ${userId}, fetching existing wallet...`,
-        );
         const wallet = await this.prisma.wallet.findUnique({
           where: { user_id: userId },
           select: { address: true },
         });
         if (wallet) {
-          console.log(
-            `✅ Found wallet after race condition: ${wallet.address}`,
-          );
           return {
             address: wallet.address,
             isNew: false,
@@ -307,10 +289,6 @@ export class WalletsService {
 
       // If user has USDT balance and hasn't received airdrop yet, send it
       if (hasBalance && !user.apt_airdropped) {
-        console.log(
-          `🎁 First deposit detected for user ${userId}, sending airdrop...`,
-        );
-
         const airdropResult =
           await this.airdropService.sendAirdrop(walletAddress);
 
@@ -321,10 +299,6 @@ export class WalletsService {
             data: { apt_airdropped: true },
           });
 
-          console.log(
-            `✅ Airdrop sent successfully to ${walletAddress}, tx: ${airdropResult.txHash}`,
-          );
-
           return {
             success: true,
             balance,
@@ -332,10 +306,6 @@ export class WalletsService {
             airdropTxHash: airdropResult.txHash,
           };
         } else {
-          // Log error but don't fail the balance check
-          console.error(
-            `⚠️ Airdrop failed for user ${userId}: ${airdropResult.error}`,
-          );
           return {
             success: true,
             balance,
@@ -458,7 +428,12 @@ export class WalletsService {
   async depositToTrading(
     userId: string,
     amount: number,
-  ): Promise<{ success: boolean; txHash?: string; error?: string }> {
+  ): Promise<{
+    success: boolean;
+    txHash?: string;
+    version?: string;
+    error?: string;
+  }> {
     try {
       // Get wallet address and private key
       const walletAddress = await this.getWalletAddress(userId);
@@ -501,221 +476,104 @@ export class WalletsService {
         };
       }
 
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('📋 DEPOSIT PROCESS - STEP BY STEP');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log(`📍 Step 1: Initialization`);
-      console.log(`   User ID: ${userId}`);
-      console.log(`   Wallet Address: ${walletAddress}`);
-      console.log(`   Requested Amount: ${amount} USDT`);
-      console.log('');
-
       // Convert amount to smallest units (USDT has 6 decimals)
-      // Use BigInt and Math.round for precise conversion
       const amountInSmallestUnit = BigInt(Math.round(amount * 1e6));
-      console.log(`🔢 Step 2: Amount Conversion`);
-      console.log(`   Amount in USDT: ${amount}`);
-      console.log(
-        `   Amount in smallest units: ${amountInSmallestUnit.toString()} (${amount} * 1e6, using BigInt and Math.round)`,
-      );
-      console.log(`   Conversion method: BigInt(Math.round(${amount} * 1e6))`);
-      console.log('');
 
-      // Double-check: ensure we're not trying to transfer more than available
-      // Get actual balance to verify
-      console.log(`🔍 Step 3: Balance Verification`);
-      console.log(`   Checking actual blockchain balance...`);
+      // Verify balance before deposit
       const actualBalance = await this.getUSDTBalance(walletAddress);
       const actualBalanceNum = parseFloat(actualBalance);
       const actualBalanceInSmallestUnit = BigInt(
         Math.round(actualBalanceNum * 1e6),
       );
-      console.log(
-        `   Actual Balance: ${actualBalanceNum} USDT (${actualBalanceInSmallestUnit.toString()} smallest units)`,
-      );
-      console.log(
-        `   Requested Amount: ${amount} USDT (${amountInSmallestUnit.toString()} smallest units)`,
-      );
 
       if (amountInSmallestUnit > actualBalanceInSmallestUnit) {
-        console.error(
-          `   ❌ ERROR: Requested amount exceeds available balance!`,
-        );
-        console.error(
-          `   Trying to deposit ${amount} USDT (${amountInSmallestUnit.toString()} smallest units) but only ${actualBalanceNum} USDT (${actualBalanceInSmallestUnit.toString()} smallest units) available`,
-        );
         return {
           success: false,
           error: `Insufficient balance. Trying to deposit ${amount} USDT but only ${actualBalanceNum} USDT available.`,
         };
       }
 
-      console.log(`   ✅ Balance verification passed`);
-      console.log('');
-
-      console.log(`⛽ Step 4: APT Balance Check (for gas fees)`);
-      console.log(`   Checking APT balance for transaction fees...`);
-
       // Check APT balance for gas fees
       try {
         const aptBalance = await aptos.getAccountAPTAmount({
           accountAddress: account.accountAddress,
         });
-        const aptBalanceInAPT = Number(aptBalance) / 100000000; // Convert from octas to APT
-        console.log(`   APT Balance: ${aptBalanceInAPT.toFixed(8)} APT`);
-        console.log(`   Required: 0.001 APT (minimum)`);
+        const aptBalanceInAPT = Number(aptBalance) / 100000000;
 
-        // Check if user has at least 0.001 APT for gas (safety margin)
         if (aptBalanceInAPT < 0.001) {
-          console.error(`   ❌ ERROR: Insufficient APT for gas fees!`);
           return {
             success: false,
             error: `Insufficient APT for gas fees. Required: 0.001 APT, Available: ${aptBalanceInAPT.toFixed(8)} APT. Please deposit some APT first.`,
           };
         }
-        console.log(`   ✅ APT balance sufficient for gas fees`);
       } catch (error: any) {
-        console.error(`   ⚠️ Error checking APT balance: ${error.message}`);
         // Continue anyway, let the transaction fail if no gas
       }
-      console.log('');
 
-      // Step 5: Get deposit payload from Kana API
-      // Kana API expects amount in USDT directly (not smallest units)
-      // The API will handle the conversion to smallest units internally
-      const amountForApi = amount; // Send amount in USDT directly
-
-      console.log(`🔗 Step 5: Calling Kana Labs Deposit API`);
-      console.log(`   API Endpoint: ${kanaRest}/deposit`);
-      console.log(`   Method: GET`);
-      console.log(`   Parameters:`);
-      console.log(`     - userAddress: ${walletAddress}`);
-      console.log(
-        `     - amount: ${amountForApi} USDT (sent directly, API expects USDT not smallest units)`,
-      );
-      console.log(
-        `     - Note: Kana API expects amount in USDT, not smallest units`,
-      );
-      console.log(
-        `     - Internal conversion (for reference): ${amountInSmallestUnit.toString()} smallest units`,
-      );
-
+      // Get deposit payload from Kana API
+      const amountForApi = amount;
       const response = await axios.get(`${kanaRest}/deposit`, {
         params: {
           userAddress: walletAddress,
-          amount: amountForApi, // Send USDT amount directly
+          amount: amountForApi,
         },
         headers: {
           'x-api-key': kanaApiKey,
         },
       });
 
-      console.log(`   ✅ Kana API Response received`);
-      console.log(`   Response Status: ${response.status}`);
-      console.log(`   Response Data:`, JSON.stringify(response.data, null, 2));
-
-      // Check if the response is successful
       if (!response.data.success) {
-        console.error(
-          `   ❌ Kana API error: ${response.data.message || 'Failed to get deposit payload'}`,
-        );
         return {
           success: false,
           error: response.data.message || 'Failed to get deposit payload',
         };
       }
 
-      // Extract payload data - Kana API returns { success: true, data: { function, functionArguments, typeArguments } }
       const payloadData = response.data.data;
 
       if (!payloadData) {
-        console.error(`   ❌ No payload data in response`);
         return {
           success: false,
           error: 'No payload data received from Kana API',
         };
       }
 
-      console.log(`   ✅ Deposit payload extracted successfully`);
-      console.log(`   Payload Structure (exactly as received from Kana API):`);
-      console.log(
-        `     - Full payloadData:`,
-        JSON.stringify(payloadData, null, 2),
-      );
-      console.log(`     - Function: ${payloadData.function}`);
-      console.log(
-        `     - Function Arguments: ${JSON.stringify(payloadData.functionArguments)}`,
-      );
-      console.log(
-        `     - Type Arguments: ${JSON.stringify(payloadData.typeArguments || [])}`,
-      );
-      console.log('');
-
-      // Step 6: Build transaction with gas optimization (exactly like your working code)
-      console.log(`🔨 Step 6: Building Aptos Transaction`);
-      console.log(`   Sender: ${account.accountAddress.toString()}`);
-      console.log(`   Gas Settings:`);
-      console.log(`     - maxGasAmount: 15000`);
-      console.log(`     - gasUnitPrice: 100 octas`);
-      console.log(`   Using payloadData directly from Kana API`);
-      console.log(`   Payload:`, JSON.stringify(payloadData, null, 2));
-
+      // Build and submit transaction
       const transactionPayload = await aptos.transaction.build.simple({
         sender: account.accountAddress,
-        data: payloadData, // This is response.data.data, which matches your payloadData.data
+        data: payloadData,
         options: {
-          maxGasAmount: 15000, // Limit max gas instead of auto-estimation
-          gasUnitPrice: 100, // Use lower gas price (100 octas)
+          maxGasAmount: 15000,
+          gasUnitPrice: 100,
         },
       });
-      console.log(`   ✅ Transaction built successfully`);
-      console.log('');
 
-      // Step 7: Sign and submit transaction
-      console.log(`✍️ Step 7: Signing Transaction`);
-      console.log(`   Signer: ${account.accountAddress.toString()}`);
-      console.log(`   Using private key from encrypted storage`);
       const committedTxn = await aptos.transaction.signAndSubmitTransaction({
         transaction: transactionPayload,
         signer: account,
       });
-      console.log(`   ✅ Transaction signed and submitted`);
-      console.log(`   Transaction Hash: ${committedTxn.hash}`);
-      console.log('');
 
-      // Step 8: Wait for transaction confirmation
-      console.log(`⏳ Step 8: Waiting for Transaction Confirmation`);
-      console.log(`   Transaction Hash: ${committedTxn.hash}`);
-      console.log(`   Checking blockchain status...`);
       const executedTxn = await aptos.waitForTransaction({
         transactionHash: committedTxn.hash,
       });
 
-      if (executedTxn.success) {
-        console.log(`   ✅ Transaction confirmed successfully!`);
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('✅ DEPOSIT COMPLETED SUCCESSFULLY');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log(`   From Wallet: ${walletAddress}`);
-        console.log(`   To: Trading Account`);
-        console.log(`   Amount: ${amount} USDT`);
-        console.log(`   Transaction Hash: ${committedTxn.hash}`);
-        console.log(
-          `   View on Aptoscan: https://aptoscan.com/txn/${committedTxn.hash}`,
-        );
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      } else {
-        console.error(`   ❌ Transaction failed on blockchain!`);
-        console.error(`   Transaction Hash: ${committedTxn.hash}`);
+      if (!executedTxn.success) {
         return {
           success: false,
           error: 'Transaction failed on blockchain',
         };
       }
 
+      // Extract version from multiple possible locations
+      const version =
+        (executedTxn as any).version ||
+        (executedTxn as any).transaction?.version ||
+        (executedTxn as any).version_number;
+
       return {
         success: true,
         txHash: committedTxn.hash,
+        version: version || undefined,
       };
     } catch (error: any) {
       console.error(
@@ -741,7 +599,9 @@ export class WalletsService {
     walletBalance: number;
     tradingBalance: number;
     deposited?: boolean;
+    depositAmount?: number;
     txHash?: string;
+    version?: string;
     error?: string;
   }> {
     try {
@@ -762,15 +622,9 @@ export class WalletsService {
 
       // Get wallet account balance from Kana API
       const walletBalance = await this.getWalletAccountBalance(walletAddress);
-      console.log(
-        `📊 Wallet balance for user ${userId}: ${walletBalance} USDT`,
-      );
 
       // Get current trading balance
       const tradingBalance = await this.getTradingBalance(walletAddress);
-      console.log(
-        `📊 Trading balance for user ${userId}: ${tradingBalance} USDT`,
-      );
 
       // If wallet has balance, deposit it to trading account
       if (walletBalance > 0) {
@@ -778,22 +632,10 @@ export class WalletsService {
         const actualUSDTBalance = await this.getUSDTBalance(walletAddress);
         const actualBalanceNum = parseFloat(actualUSDTBalance);
 
-        console.log(`📊 Kana API Balance: ${walletBalance} USDT`);
-        console.log(`📊 Blockchain Balance: ${actualBalanceNum} USDT`);
-
         // Use the smaller of the two balances to avoid insufficient balance error
-        // Convert to number for comparison and deposit
         const depositAmount = Math.min(walletBalance, actualBalanceNum);
 
-        // Use BigInt conversion for precise amount calculation
-        const depositAmountInSmallestUnit = BigInt(
-          Math.round(depositAmount * 1e6),
-        );
-
         if (depositAmount <= 0) {
-          console.log(
-            `⚠️ No balance available for deposit (Kana: ${walletBalance}, Blockchain: ${actualBalanceNum})`,
-          );
           return {
             success: true,
             walletBalance: walletBalance,
@@ -801,13 +643,6 @@ export class WalletsService {
             deposited: false,
           };
         }
-
-        console.log(
-          `🔄 Auto-depositing ${depositAmount} USDT to trading account for user ${userId}`,
-        );
-        console.log(
-          `📤 Transfer Details: ${depositAmount} USDT from wallet to trading account`,
-        );
 
         const depositResult = await this.depositToTrading(
           userId,
@@ -819,24 +654,16 @@ export class WalletsService {
           const updatedTradingBalance =
             await this.getTradingBalance(walletAddress);
 
-          console.log(
-            `✅ Deposit successful! Transaction: ${depositResult.txHash}`,
-          );
-          console.log(
-            `📊 Updated trading balance: ${updatedTradingBalance} USDT`,
-          );
-
           return {
             success: true,
             walletBalance: 0, // Should be 0 after deposit
             tradingBalance: updatedTradingBalance,
             deposited: true,
+            depositAmount: depositAmount, // Amount that was actually deposited
             txHash: depositResult.txHash,
+            version: depositResult.version,
           };
         } else {
-          console.error(
-            `❌ Deposit failed for user ${userId}: ${depositResult.error}`,
-          );
           return {
             success: false,
             walletBalance,
@@ -848,9 +675,6 @@ export class WalletsService {
       }
 
       // No balance to deposit, just return current balances
-      console.log(
-        `ℹ️ No balance to deposit for user ${userId} (wallet balance: ${walletBalance} USDT)`,
-      );
       return {
         success: true,
         walletBalance,
@@ -867,6 +691,300 @@ export class WalletsService {
         walletBalance: 0,
         tradingBalance: 0,
         error: error.message || 'Failed to check wallet and deposit',
+      };
+    }
+  }
+
+  /**
+   * Withdraw from Kana trading account to wallet
+   * Withdraws USDT from trading account back to user's wallet
+   *
+   * @param userId - User ID
+   * @param amount - Amount to withdraw in USDT (not smallest units)
+   * @param marketId - Market ID (e.g., "14" for APT-USD)
+   * @returns Transaction hash if successful
+   */
+  async withdrawFromKana(
+    userId: string,
+    amount: number,
+    marketId: string,
+  ): Promise<{
+    success: boolean;
+    txHash?: string;
+    version?: string;
+    error?: string;
+  }> {
+    try {
+      // Get wallet address
+      const walletAddress = await this.getWalletAddress(userId);
+      if (!walletAddress) {
+        return {
+          success: false,
+          error: 'Wallet not found',
+        };
+      }
+
+      // Get private key for signing
+      const privateKey = await this.getPrivateKeyForSigning(userId);
+      if (!privateKey) {
+        return {
+          success: false,
+          error: 'Private key not found',
+        };
+      }
+
+      // Create account from private key
+      const account = Account.fromPrivateKey({
+        privateKey: new Ed25519PrivateKey(privateKey),
+      });
+
+      // Initialize Aptos client
+      const aptos = new Aptos(
+        new AptosConfig({ network: 'mainnet' as Network }),
+      );
+
+      // Get Kana API config
+      const kanaApiKey = process.env.KANA_API_KEY;
+      const kanaRest =
+        process.env.KANA_REST || 'https://perps-tradeapi.kana.trade';
+
+      if (!kanaApiKey) {
+        return {
+          success: false,
+          error: 'Kana API key not configured',
+        };
+      }
+
+      // Check trading balance
+      const tradingBalance = await this.getTradingBalance(walletAddress);
+
+      if (amount > tradingBalance) {
+        return {
+          success: false,
+          error: `Insufficient balance. Trying to withdraw ${amount} USDT but only ${tradingBalance} USDT available.`,
+        };
+      }
+
+      // Check APT balance for gas fees
+      try {
+        const aptBalance = await aptos.getAccountAPTAmount({
+          accountAddress: account.accountAddress,
+        });
+        const aptBalanceInAPT = Number(aptBalance) / 100000000;
+
+        if (aptBalanceInAPT < 0.001) {
+          return {
+            success: false,
+            error: `Insufficient APT for gas fees. Required: 0.001 APT, Available: ${aptBalanceInAPT.toFixed(8)} APT.`,
+          };
+        }
+      } catch (error: any) {
+        // Continue anyway, let the transaction fail if no gas
+      }
+
+      // Get withdrawal payload from Kana API
+      const response = await axios.get(`${kanaRest}/withdrawSpecifiMarket`, {
+        params: {
+          userAddress: walletAddress,
+          marketId: marketId,
+          amount: amount,
+        },
+        headers: {
+          'x-api-key': kanaApiKey,
+        },
+      });
+
+      if (!response.data.success) {
+        return {
+          success: false,
+          error: response.data.message || 'Failed to get withdrawal payload',
+        };
+      }
+
+      const payloadData = response.data.data;
+
+      if (!payloadData) {
+        return {
+          success: false,
+          error: 'No payload data received from Kana API',
+        };
+      }
+
+      // Build and submit transaction
+      const transactionPayload = await aptos.transaction.build.simple({
+        sender: account.accountAddress,
+        data: payloadData,
+        options: {
+          maxGasAmount: 15000,
+          gasUnitPrice: 100,
+        },
+      });
+
+      const committedTxn = await aptos.transaction.signAndSubmitTransaction({
+        transaction: transactionPayload,
+        signer: account,
+      });
+
+      const executedTxn = await aptos.waitForTransaction({
+        transactionHash: committedTxn.hash,
+      });
+
+      if (!executedTxn.success) {
+        return {
+          success: false,
+          error: 'Transaction failed on blockchain',
+        };
+      }
+
+      const version =
+        (executedTxn as any).version ||
+        (executedTxn as any).transaction?.version;
+      return {
+        success: true,
+        txHash: committedTxn.hash,
+        version: version,
+      };
+    } catch (error: any) {
+      console.error(
+        `❌ Error withdrawing from Kana trading account for user ${userId}:`,
+        error,
+      );
+      return {
+        success: false,
+        error: error.message || 'Failed to withdraw from trading account',
+      };
+    }
+  }
+
+  /**
+   * Transfer USDT from user's wallet to a destination address
+   * Uses the wallet account balance (from Kana API)
+   *
+   * @param userId - User ID
+   * @param recipientAddress - Destination wallet address
+   * @param amount - Amount to transfer in USDT
+   * @returns Transaction hash if successful
+   */
+  async transferUSDTToAddress(
+    userId: string,
+    recipientAddress: string,
+    amount: number,
+  ): Promise<{
+    success: boolean;
+    txHash?: string;
+    version?: string;
+    error?: string;
+  }> {
+    try {
+      // Get wallet address
+      const walletAddress = await this.getWalletAddress(userId);
+      if (!walletAddress) {
+        return {
+          success: false,
+          error: 'Wallet not found',
+        };
+      }
+
+      // Get private key for signing
+      const privateKey = await this.getPrivateKeyForSigning(userId);
+      if (!privateKey) {
+        return {
+          success: false,
+          error: 'Private key not found',
+        };
+      }
+
+      // Create account from private key
+      const account = Account.fromPrivateKey({
+        privateKey: new Ed25519PrivateKey(privateKey),
+      });
+
+      // Initialize Aptos client
+      const aptos = new Aptos(
+        new AptosConfig({ network: 'mainnet' as Network }),
+      );
+
+      // USDT metadata address on Aptos mainnet
+      const USDT_METADATA_ADDRESS =
+        '0x357b0b74bc833e95a115ad22604854d6b0fca151cecd94111770e5d6ffc9dc2b';
+
+      // Validate recipient address
+      if (!recipientAddress || !recipientAddress.startsWith('0x')) {
+        return {
+          success: false,
+          error: 'Invalid recipient address format. Must start with 0x',
+        };
+      }
+
+      // Check wallet account balance from Kana API
+      const walletBalance = await this.getWalletAccountBalance(walletAddress);
+
+      if (amount > walletBalance) {
+        return {
+          success: false,
+          error: `Insufficient balance. Trying to transfer ${amount} USDT but only ${walletBalance} USDT available.`,
+        };
+      }
+
+      // Check APT balance for gas fees
+      try {
+        const aptBalance = await aptos.getAccountAPTAmount({
+          accountAddress: account.accountAddress,
+        });
+        const aptBalanceInAPT = Number(aptBalance) / 100000000;
+
+        if (aptBalanceInAPT < 0.001) {
+          return {
+            success: false,
+            error: `Insufficient APT for gas fees. Required: 0.001 APT, Available: ${aptBalanceInAPT.toFixed(8)} APT.`,
+          };
+        }
+      } catch (error: any) {
+        // Continue anyway, let the transaction fail if no gas
+      }
+
+      // Convert amount to smallest units
+      const amountUnits = BigInt(Math.round(amount * 1e6));
+
+      // Build and submit transfer transaction
+      const rawTx = await aptos.transferFungibleAsset({
+        sender: account,
+        fungibleAssetMetadataAddress: USDT_METADATA_ADDRESS,
+        recipient: recipientAddress,
+        amount: amountUnits,
+        options: {
+          maxGasAmount: 5000,
+          gasUnitPrice: 100,
+        },
+      });
+
+      const pending = await aptos.signAndSubmitTransaction({
+        signer: account,
+        transaction: rawTx,
+      });
+
+      const result = await aptos.waitForTransaction({
+        transactionHash: pending.hash,
+      });
+
+      if (!result.success) {
+        return {
+          success: false,
+          error: 'Transaction failed on blockchain',
+        };
+      }
+
+      const version =
+        (result as any).version || (result as any).transaction?.version;
+      return {
+        success: true,
+        txHash: pending.hash,
+        version: version,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Failed to transfer USDT',
       };
     }
   }

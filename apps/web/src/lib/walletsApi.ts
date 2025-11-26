@@ -263,7 +263,9 @@ export async function checkWalletAndDeposit(): Promise<{
   walletBalance?: string;
   tradingBalance?: string;
   deposited?: boolean;
+  depositAmount?: number;
   txHash?: string;
+  version?: string;
   error?: string;
 }> {
   try {
@@ -281,7 +283,9 @@ export async function checkWalletAndDeposit(): Promise<{
       walletBalance?: string;
       tradingBalance?: string;
       deposited?: boolean;
+      depositAmount?: number;
       txHash?: string;
+      version?: string;
       error?: string;
     }>('/wallets/check-and-deposit', session.access_token, {
       method: 'POST',
@@ -383,5 +387,97 @@ export function formatWalletAddress(address: string): string {
   if (!address) return '';
   if (address.length <= 12) return address;
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+/**
+ * Withdraw from Kana trading account to wallet
+ * POST /api/wallets/withdraw
+ *
+ * @param amount - Amount to withdraw in USDT
+ * @param marketId - Market ID (e.g., "14" for APT-USD)
+ * @returns Withdrawal result with transaction hash
+ */
+export async function withdrawFromKana(
+  amount: number,
+  marketId: string,
+): Promise<{ success: boolean; txHash?: string; version?: string; error?: string }> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      return {
+        success: false,
+        error: 'No session found. Please sign in.',
+      };
+    }
+
+    const response = await authenticatedRequest<{
+      success: boolean;
+      txHash?: string;
+      version?: string;
+      error?: string;
+    }>(
+      '/wallets/withdraw',
+      session.access_token,
+      {
+        method: 'POST',
+        body: JSON.stringify({ amount, marketId }),
+      }
+    );
+
+    return response;
+  } catch (error: any) {
+    console.error('Error withdrawing from Kana:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to withdraw from trading account',
+    };
+  }
+}
+
+/**
+ * Transfer USDT from user's wallet to a destination address
+ * POST /api/wallets/transfer
+ *
+ * @param recipientAddress - Destination wallet address
+ * @param amount - Amount to transfer in USDT
+ * @returns Transfer result with transaction hash
+ */
+export async function transferUSDTToAddress(
+  recipientAddress: string,
+  amount: number,
+): Promise<{ success: boolean; txHash?: string; version?: string; error?: string }> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      return {
+        success: false,
+        error: 'No session found. Please sign in.',
+      };
+    }
+
+    const response = await authenticatedRequest<{
+      success: boolean;
+      txHash?: string;
+      version?: string;
+      error?: string;
+    }>(
+      '/wallets/transfer',
+      session.access_token,
+      {
+        method: 'POST',
+        body: JSON.stringify({ recipientAddress, amount }),
+      }
+    );
+
+    return response;
+  } catch (error: any) {
+    console.error('Error transferring USDT:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to transfer USDT',
+    };
+  }
 }
 
