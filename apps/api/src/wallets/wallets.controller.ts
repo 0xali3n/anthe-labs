@@ -8,6 +8,7 @@ import {
   Request,
   UseGuards,
   HttpException,
+  Query,
 } from '@nestjs/common';
 import { WalletsService } from './wallets.service';
 import { AuthGuard } from '../auth/auth.guard';
@@ -273,6 +274,150 @@ export class WalletsController {
       };
     } catch (error: any) {
       console.error('Error in getTradingBalance:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        { success: false, error: error.message || 'Internal server error' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * Get positions for authenticated user
+   * GET /api/wallets/positions
+   *
+   * Security: Requires JWT authentication
+   * Query params: marketId (optional) - Filter by market ID
+   * Returns: Array of positions from Kana API
+   */
+  @Get('positions')
+  @UseGuards(AuthGuard)
+  async getPositions(
+    @Request() req: any,
+    @Query('marketId') marketId?: string,
+  ) {
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        throw new HttpException(
+          { success: false, error: 'User ID is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const walletAddress = await this.walletsService.getWalletAddress(userId);
+      if (!walletAddress) {
+        throw new HttpException(
+          { success: false, error: 'Wallet not found' },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const positions = await this.walletsService.getPositions(
+        walletAddress,
+        marketId,
+      );
+
+      return {
+        success: true,
+        data: positions,
+      };
+    } catch (error: any) {
+      console.error('Error in getPositions:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        { success: false, error: error.message || 'Internal server error' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * Get order history for authenticated user
+   * GET /api/wallets/order-history
+   *
+   * Security: Requires JWT authentication
+   * Query params: marketId (optional) - Filter by market ID
+   * Returns: Array of order history from Kana API
+   */
+  @Get('order-history')
+  @UseGuards(AuthGuard)
+  async getOrderHistory(
+    @Request() req: any,
+    @Query('marketId') marketId?: string,
+  ) {
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        throw new HttpException(
+          { success: false, error: 'User ID is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const walletAddress = await this.walletsService.getWalletAddress(userId);
+      if (!walletAddress) {
+        throw new HttpException(
+          { success: false, error: 'Wallet not found' },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const orderHistory = await this.walletsService.getOrderHistory(
+        walletAddress,
+        marketId,
+      );
+
+      return {
+        success: true,
+        data: orderHistory,
+      };
+    } catch (error: any) {
+      console.error('Error in getOrderHistory:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        { success: false, error: error.message || 'Internal server error' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * Get all trades for authenticated user
+   * GET /api/wallets/getAllTrades
+   *
+   * Security: Requires JWT authentication
+   * Returns: Array of all trades from Kana API
+   */
+  @Get('getAllTrades')
+  @UseGuards(AuthGuard)
+  async getAllTrades(@Request() req: any) {
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        throw new HttpException(
+          { success: false, error: 'User ID is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const allTrades = await this.walletsService.getAllTrades();
+
+      return {
+        success: true,
+        data: allTrades,
+      };
+    } catch (error: any) {
+      console.error('Error in getAllTrades:', error);
       if (error instanceof HttpException) {
         throw error;
       }

@@ -375,6 +375,154 @@ export class WalletsService {
   }
 
   /**
+   * Get positions from Kana Labs API
+   * Fetches open positions for a user's wallet address
+   *
+   * @param walletAddress - Aptos wallet address
+   * @param marketId - Optional market ID to filter positions
+   * @returns Array of position data
+   */
+  async getPositions(
+    walletAddress: string,
+    marketId?: string,
+  ): Promise<any[]> {
+    try {
+      const kanaApiKey = process.env.KANA_API_KEY;
+      const kanaRest =
+        process.env.KANA_REST || 'https://perps-tradeapi.kana.trade';
+
+      if (!kanaApiKey) {
+        throw new Error('Kana API key not configured');
+      }
+
+      const params: any = {
+        userAddress: walletAddress,
+      };
+
+      if (marketId) {
+        params.marketId = marketId;
+      }
+
+      const response = await axios.get(`${kanaRest}/getPositions`, {
+        params,
+        headers: {
+          'x-api-key': kanaApiKey,
+        },
+      });
+
+      if (response.data.success && response.data.data) {
+        return response.data.data;
+      }
+
+      return [];
+    } catch (error: any) {
+      console.error(
+        `Error fetching positions for ${walletAddress}:`,
+        error.message,
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Get order history from Kana Labs API
+   * Fetches order history for a user's wallet address
+   *
+   * @param walletAddress - Aptos wallet address
+   * @param marketId - Optional market ID to filter order history
+   * @returns Array of order history data
+   */
+  async getOrderHistory(
+    walletAddress: string,
+    marketId?: string,
+  ): Promise<any[]> {
+    try {
+      const kanaApiKey = process.env.KANA_API_KEY;
+      const kanaRest =
+        process.env.KANA_REST || 'https://perps-tradeapi.kana.trade';
+
+      if (!kanaApiKey) {
+        throw new Error('Kana API key not configured');
+      }
+
+      const params: any = {
+        userAddress: walletAddress,
+      };
+
+      if (marketId) {
+        params.marketId = marketId;
+      }
+
+      const response = await axios.get(`${kanaRest}/getOrderHistory`, {
+        params,
+        headers: {
+          'x-api-key': kanaApiKey,
+        },
+      });
+
+      if (response.data.success && response.data.data) {
+        return response.data.data;
+      }
+
+      return [];
+    } catch (error: any) {
+      console.error(
+        `Error fetching order history for ${walletAddress}:`,
+        error.message,
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Get all trades from Kana Labs API
+   * Fetches all trades for specified markets
+   *
+   * @param marketIds - Array of market IDs to fetch trades for
+   * @returns Array of all trades data
+   */
+  async getAllTrades(marketIds: string[] = ['14', '15', '16', '31']): Promise<any[]> {
+    try {
+      const kanaApiKey = process.env.KANA_API_KEY;
+      const kanaRest =
+        process.env.KANA_REST || 'https://perps-tradeapi.kana.trade';
+
+      if (!kanaApiKey) {
+        throw new Error('Kana API key not configured');
+      }
+
+      // Fetch trades for all markets in parallel
+      const promises = marketIds.map((marketId) =>
+        axios.get(`${kanaRest}/getAllTrades`, {
+          params: { marketId },
+          headers: {
+            'x-api-key': kanaApiKey,
+          },
+        }),
+      );
+
+      const responses = await Promise.all(promises);
+      const allTrades: any[] = [];
+
+      responses.forEach((response) => {
+        if (response.data.success && response.data.data) {
+          allTrades.push(...response.data.data);
+        }
+      });
+
+      // Sort by time (newest first)
+      return allTrades.sort((a, b) => {
+        const timeA = new Date(a.time).getTime();
+        const timeB = new Date(b.time).getTime();
+        return timeB - timeA;
+      });
+    } catch (error: any) {
+      console.error('Error fetching all trades:', error.message);
+      return [];
+    }
+  }
+
+  /**
    * Get trading account balance from Kana Labs API
    * Fetches balance in the user's Kana trading account
    *
