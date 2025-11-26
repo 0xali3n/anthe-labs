@@ -211,6 +211,28 @@ export class RedisService {
     }
   }
 
+  /**
+   * Delete entry from Redis stream
+   * @param streamKey - The stream key
+   * @param entryId - The entry ID to delete
+   * @returns Number of entries deleted (0 or 1)
+   */
+  async deleteStreamEntry(streamKey: string, entryId: string): Promise<number> {
+    if (!this.client) {
+      Logger.error("Redis client not available for stream deletion");
+      return 0;
+    }
+
+    try {
+      // XDEL streamKey entryId
+      const result = await this.client.xdel(streamKey, entryId);
+      return result;
+    } catch (error) {
+      Logger.error(`Failed to delete entry ${entryId} from stream ${streamKey}`, error);
+      return 0;
+    }
+  }
+
   async disconnect(): Promise<void> {
     if (this.subscriber) {
       await this.subscriber.quit();

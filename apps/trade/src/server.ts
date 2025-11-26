@@ -140,8 +140,10 @@ async function getSubscribers(
 
 /**
  * Display parameters that will be sent to Kana Labs API
+ * Optimized: minimal logging for performance
  */
 async function displayKanaApiParameters(
+  entryId: string,
   orderData: Record<string, string>
 ): Promise<void> {
   try {
@@ -152,59 +154,11 @@ async function displayKanaApiParameters(
     const marketId = orderData.marketId || orderData.market_id || "";
     const leverage = parseFloat(orderData.leverage || "1");
     const orderSize = parseFloat(orderData.size || "0");
-    const percentage = parseFloat(orderData.percentage || "0");
 
-    console.log("\n" + "=".repeat(80));
-    console.log("📡 KANA LABS API PARAMETERS");
-    console.log("=".repeat(80));
-    console.log(`API URL: ${KANA_REST_URL}/placeMarketOrder`);
-    console.log("\nOrder Details:");
-    console.log("-".repeat(80));
-    console.log(`  Order Type      : ${orderType}`);
-    console.log(`  Market ID       : ${marketId}`);
-    console.log(
-      `  Trade Side      : ${tradeSide} (${tradeSide ? "LONG" : "SHORT"})`
+    // Optimized: concise logging
+    Logger.info(
+      `📡 Order ${entryId}: ${orderType} | Market: ${marketId} | Size: ${orderSize} | Leverage: ${leverage} | ${tradeSide ? "LONG" : "SHORT"} | ${direction ? "CLOSE" : "OPEN"}`
     );
-    console.log(
-      `  Direction       : ${direction} (${direction ? "CLOSE" : "OPEN"})`
-    );
-    console.log(`  Size            : ${orderSize}`);
-    console.log(`  Leverage        : ${leverage}`);
-    console.log(`  Percentage      : ${percentage}%`);
-
-    // Get subscribers to show how many trades would be placed
-    const traderAddress = orderData.address;
-    const subscribers = await getSubscribers(traderAddress);
-
-    console.log("\nSubscribers:");
-    console.log("-".repeat(80));
-    if (subscribers.size === 0) {
-      console.log("  ⚠️  No subscribers found for this trader");
-    } else {
-      console.log(`  Found ${subscribers.size} subscriber(s):`);
-      let index = 1;
-      for (const [userAddress, allocatedAmount] of subscribers.entries()) {
-        const allocated = parseFloat(allocatedAmount);
-        // Use exact size from Redis, not calculated size
-        console.log(
-          `\n  ${index}. Subscriber: ${userAddress.substring(0, 10)}...`
-        );
-        console.log(`     Allocated Amount: ${allocated}`);
-        console.log(`     Trade Size      : ${orderSize} (exact from Redis)`);
-        console.log(`     Would place     : ${orderType} order`);
-        console.log(`     Parameters      :`);
-        console.log(`       - marketId    : ${marketId}`);
-        console.log(`       - tradeSide   : ${tradeSide}`);
-        console.log(`       - direction   : ${direction}`);
-        console.log(`       - size        : ${orderSize} (exact from Redis)`);
-        console.log(`       - leverage    : ${leverage}`);
-        index++;
-      }
-    }
-
-    console.log("\n" + "=".repeat(80));
-    console.log("🚀 EXECUTING TRADES FOR ALL SUBSCRIBERS");
-    console.log("=".repeat(80) + "\n");
   } catch (error) {
     Logger.error("Error displaying Kana API parameters", error);
   }
@@ -443,15 +397,13 @@ async function executeTradeForSubscriber(
 
 /**
  * Process order from Redis stream
+ * Returns true if successful, false otherwise
  */
-async function processOrder(orderData: Record<string, string>): Promise<void> {
+async function processOrder(
+  entryId: string,
+  orderData: Record<string, string>
+): Promise<boolean> {
   try {
-    // Display transaction data
-    displayTransaction("current", orderData);
-
-    // Display Kana Labs API parameters
-    await displayKanaApiParameters(orderData);
-
     // Parse order details (optimized format from Redis)
     let orderType = orderData.orderType || "MARKET";
     let tradeSide: boolean;
@@ -462,32 +414,38 @@ async function processOrder(orderData: Record<string, string>): Promise<void> {
 
     // Check if using new optimized format
     if (
-      orderData.tradeSide !== undefined &&
-      orderData.direction !== undefined
+      orderData.tradeSide === undefined ||
+      orderData.direction === undefined
     ) {
-      tradeSide = orderData.tradeSide === "true";
-      direction = orderData.direction === "true";
-    } else {
-      Logger.warn("Order missing tradeSide/direction, skipping");
-      return;
+      Logger.warn(`Order ${entryId} missing tradeSide/direction, skipping`);
+      return false;
     }
+
+    tradeSide = orderData.tradeSide === "true";
+    direction = orderData.direction === "true";
 
     // Get trader wallet address (already wallet address from Redis)
     const traderWalletAddress = orderData.address;
+    if (!traderWalletAddress) {
+      Logger.warn(`Order ${entryId} missing address, skipping`);
+      return false;
+    }
 
-    // Get subscribers
+    // Get subscribers (optimized: fetch once)
     const subscribers = await getSubscribers(traderWalletAddress);
     if (subscribers.size === 0) {
-      Logger.info("No subscribers found for this trader, skipping execution");
-      return;
+      Logger.info(
+        `No subscribers found for trader ${traderWalletAddress.substring(0, 10)}..., skipping execution`
+      );
+      return true; // Consider this successful (no work to do)
     }
 
     Logger.info(
-      `Found ${subscribers.size} subscriber(s) for trader ${traderWalletAddress.substring(0, 10)}...`
+      `📊 Processing order ${entryId}: ${subscribers.size} subscriber(s) for trader ${traderWalletAddress.substring(0, 10)}...`
     );
 
-    // Execute trades for all subscribers in parallel
-    const executionPromises: Promise<void>[] = [];
+    // Execute trades for all subscribers in parallel (optimized)
+    const executionPromises: Promise<boolean>[] = [];
     for (const [userAddress] of subscribers.entries()) {
       executionPromises.push(
         executeTradeForSubscriber(
@@ -499,15 +457,26 @@ async function processOrder(orderData: Record<string, string>): Promise<void> {
           leverage,
           orderSize
         )
+          .then(() => true)
+          .catch(() => false)
       );
     }
 
-    await Promise.allSettled(executionPromises);
+    const results = await Promise.allSettled(executionPromises);
+    const successCount = results.filter(
+      (r) => r.status === "fulfilled" && r.value === true
+    ).length;
+    const totalCount = results.length;
+
     Logger.success(
-      `✅ Completed trade execution for ${subscribers.size} subscriber(s)`
+      `✅ Completed trade execution: ${successCount}/${totalCount} successful for order ${entryId}`
     );
+
+    // Return true if at least one trade succeeded (or all succeeded)
+    return successCount > 0;
   } catch (error) {
-    Logger.error("Error processing order", error);
+    Logger.error(`Error processing order ${entryId}`, error);
+    return false;
   }
 }
 
@@ -545,19 +514,76 @@ async function listenToStream(): Promise<void> {
       );
 
       if (entries && entries.length > 0) {
-        Logger.info(`📥 Received ${entries.length} new transaction(s)`);
+        Logger.info(
+          `📥 Received ${entries.length} new transaction(s) - processing in parallel`
+        );
 
-        for (const [entryId, fields] of entries) {
+        // Process all entries in parallel for maximum throughput
+        const processingPromises = entries.map(async ([entryId, fields]) => {
           const transactionData = parseStreamEntry(fields);
 
-          try {
-            await processOrder(transactionData);
-          } catch (error) {
-            Logger.error("Error processing order", error);
+          // Display transaction data (non-blocking, minimal)
+          displayTransaction(entryId, transactionData);
+
+          // Display API parameters (non-blocking)
+          await displayKanaApiParameters(entryId, transactionData);
+
+          // Process order and get result
+          const success = await processOrder(entryId, transactionData);
+
+          // Delete from Redis stream after successful processing
+          if (success) {
+            try {
+              const deleted = await redisService.deleteStreamEntry(
+                STREAM_KEY,
+                entryId
+              );
+              if (deleted > 0) {
+                Logger.info(
+                  `🗑️  Deleted processed entry ${entryId} from Redis stream`
+                );
+              } else {
+                Logger.warn(
+                  `⚠️  Failed to delete entry ${entryId} from Redis stream (may have been already deleted)`
+                );
+              }
+            } catch (error) {
+              Logger.error(
+                `Error deleting entry ${entryId} from Redis stream`,
+                error
+              );
+            }
+          } else {
+            Logger.warn(
+              `⚠️  Keeping entry ${entryId} in stream (processing failed)`
+            );
           }
 
-          lastProcessedId = entryId;
+          return entryId;
+        });
+
+        // Wait for all entries to be processed in parallel
+        const processedIds = await Promise.allSettled(processingPromises);
+
+        // Update lastProcessedId to the highest ID processed
+        const successfulIds = processedIds
+          .filter(
+            (r): r is PromiseFulfilledResult<string> => r.status === "fulfilled"
+          )
+          .map((r) => r.value);
+
+        if (successfulIds.length > 0) {
+          // Sort IDs and get the latest one
+          successfulIds.sort((a, b) => {
+            const [aTime, aSeq] = a.split("-").map(Number);
+            const [bTime, bSeq] = b.split("-").map(Number);
+            if (aTime !== bTime) return aTime - bTime;
+            return aSeq - bSeq;
+          });
+          lastProcessedId = successfulIds[successfulIds.length - 1];
         }
+
+        Logger.success(`✅ Batch processed ${entries.length} transaction(s)`);
       }
     } catch (error) {
       Logger.error("Error reading from stream", error);
