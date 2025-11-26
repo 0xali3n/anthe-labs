@@ -14,6 +14,7 @@ interface OrderData {
   size: number;
   price?: number;
   restriction?: number;
+  percentage?: number; // For smart ratio calculation
 }
 
 export class StreamProcessorService {
@@ -68,6 +69,9 @@ export class StreamProcessorService {
       const restriction = orderData.restriction
         ? parseFloat(orderData.restriction)
         : undefined;
+      const percentage = orderData.percentage
+        ? parseFloat(orderData.percentage)
+        : undefined;
       const address = orderData.address;
 
       if (!address || !marketId || size <= 0) {
@@ -84,6 +88,7 @@ export class StreamProcessorService {
         size,
         price,
         restriction,
+        percentage,
       };
     } catch (error) {
       Logger.error("Error parsing order data", error);
@@ -129,6 +134,7 @@ export class StreamProcessorService {
               direction: parsed.direction,
               price: parsed.price,
               restriction: parsed.restriction,
+              percentage: parsed.percentage,
             }
           );
 
