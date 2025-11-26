@@ -382,10 +382,7 @@ export class WalletsService {
    * @param marketId - Optional market ID to filter positions
    * @returns Array of position data
    */
-  async getPositions(
-    walletAddress: string,
-    marketId?: string,
-  ): Promise<any[]> {
+  async getPositions(walletAddress: string, marketId?: string): Promise<any[]> {
     try {
       const kanaApiKey = process.env.KANA_API_KEY;
       const kanaRest =
@@ -475,49 +472,51 @@ export class WalletsService {
   }
 
   /**
-   * Get all trades from Kana Labs API
-   * Fetches all trades for specified markets
+   * Get trade history from Kana Labs API
+   * Fetches trade history for a user's wallet address
    *
-   * @param marketIds - Array of market IDs to fetch trades for
-   * @returns Array of all trades data
+   * @param walletAddress - Aptos wallet address
+   * @param marketId - Optional market ID to filter trade history
+   * @returns Array of trade history data
    */
-  async getAllTrades(marketIds: string[] = ['14', '15', '16', '31']): Promise<any[]> {
+  async getTradeHistory(
+    walletAddress: string,
+    marketId?: string,
+  ): Promise<any[]> {
     try {
       const kanaApiKey = process.env.KANA_API_KEY;
       const kanaRest =
-        process.env.KANA_REST || 'https://perps-tradeapi.kana.trade';
+        process.env.KANA_REST || 'https://perps-tradeapi.kanalabs.io';
 
       if (!kanaApiKey) {
         throw new Error('Kana API key not configured');
       }
 
-      // Fetch trades for all markets in parallel
-      const promises = marketIds.map((marketId) =>
-        axios.get(`${kanaRest}/getAllTrades`, {
-          params: { marketId },
-          headers: {
-            'x-api-key': kanaApiKey,
-          },
-        }),
-      );
+      const params: any = {
+        userAddress: walletAddress,
+      };
 
-      const responses = await Promise.all(promises);
-      const allTrades: any[] = [];
+      if (marketId) {
+        params.marketId = marketId;
+      }
 
-      responses.forEach((response) => {
-        if (response.data.success && response.data.data) {
-          allTrades.push(...response.data.data);
-        }
+      const response = await axios.get(`${kanaRest}/getTradeHistory`, {
+        params,
+        headers: {
+          'x-api-key': kanaApiKey,
+        },
+        timeout: 15000,
       });
 
-      // Sort by time (newest first)
-      return allTrades.sort((a, b) => {
-        const timeA = new Date(a.time).getTime();
-        const timeB = new Date(b.time).getTime();
-        return timeB - timeA;
-      });
+      if (response.data.success && response.data.data) {
+        return response.data.data.sort((a: any, b: any) => {
+          return (b.timestamp || 0) - (a.timestamp || 0);
+        });
+      }
+
+      return [];
     } catch (error: any) {
-      console.error('Error fetching all trades:', error.message);
+      console.error('Error fetching trade history:', error.message);
       return [];
     }
   }

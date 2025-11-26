@@ -1,7 +1,9 @@
 // API for fetching positions from backend (which calls Kana Trade API)
 
 import { authenticatedRequest } from "./apiClient";
-import { supabase } from "./supabaseClient";
+import { getAuthToken } from "./utils/authUtils";
+import { mapMarketIdToSymbol } from "./utils/marketUtils";
+import { formatNumber, formatPnL } from "./utils/formatUtils";
 
 export interface PositionResponse {
   address: string;
@@ -27,34 +29,6 @@ export interface PositionsApiResponse {
   data: PositionResponse[];
 }
 
-/**
- * Map market_id to symbol
- * Market IDs:
- * - 14: APT-USD
- * - 15: BTC-USD
- * - 16: ETH-USD
- * - 31: SOL-USD
- */
-function mapMarketIdToSymbol(marketId: string): "BTC" | "ETH" | "APT" | "SOL" {
-  const marketMap: Record<string, "BTC" | "ETH" | "APT" | "SOL"> = {
-    "14": "APT",
-    "15": "BTC",
-    "16": "ETH",
-    "31": "SOL",
-  };
-
-  return marketMap[marketId] || "APT"; // Default to APT if unknown
-}
-
-/**
- * Get authentication token from Supabase session
- */
-async function getAuthToken(): Promise<string | null> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  return session?.access_token || null;
-}
 
 /**
  * Fetch positions from backend API (which calls Kana Trade API)
@@ -71,17 +45,14 @@ export async function getPositions(): Promise<PositionsApiResponse> {
       };
     }
 
-    const response = await authenticatedRequest<PositionsApiResponse>(
+    return await authenticatedRequest<PositionsApiResponse>(
       "/wallets/positions",
       token,
       {
         method: "GET",
       }
     );
-
-    return response;
   } catch (error: any) {
-    console.error("Error fetching positions:", error);
     return {
       success: false,
       message: error.message || "Failed to fetch positions",
@@ -130,41 +101,23 @@ export function mapPositionToOpenPosition(position: PositionResponse): {
     pnl = entryValue - currentValue;
   }
 
-  const pnlFormatted = pnl >= 0 ? `+${pnl.toFixed(2)}` : pnl.toFixed(2);
   const pnlPercent =
     entryValue > 0 ? `${((pnl / entryValue) * 100).toFixed(2)}%` : "0.00%";
   const pnlPercentFormatted = pnl >= 0 ? `+${pnlPercent}` : pnlPercent;
 
-  // Calculate mark price: current value / size
-  const markPrice =
-    size > 0 ? (currentValue / size).toFixed(2) : position.entry_price;
+  const markPrice = size > 0 ? (currentValue / size).toFixed(2) : position.entry_price;
 
   return {
     id: position.trade_id,
     symbol,
     side,
     size: position.size,
-    entryPrice: parseFloat(position.entry_price).toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }),
-    markPrice: parseFloat(markPrice).toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }),
-    value: parseFloat(position.value).toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }),
-    liqPrice: parseFloat(position.liq_price).toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }),
-    margin: parseFloat(position.margin).toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }),
-    pnl: pnlFormatted,
+    entryPrice: formatNumber(position.entry_price),
+    markPrice: formatNumber(markPrice),
+    value: formatNumber(position.value),
+    liqPrice: formatNumber(position.liq_price),
+    margin: formatNumber(position.margin),
+    pnl: formatPnL(pnl),
     pnlPercent: pnlPercentFormatted,
     leverage,
   };

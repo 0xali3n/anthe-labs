@@ -91,6 +91,7 @@ interface TradeHistory {
   size: string;
   price: string;
   orderValue: string;
+  fee: string;
   pnl: string;
 }
 
@@ -129,30 +130,82 @@ export default function Copytrade() {
   const [tradeHistory, setTradeHistory] = useState<TradeHistory[]>([]);
   const [loadingTradeHistory, setLoadingTradeHistory] = useState(false);
 
-  // Fetch order history
+  // Fetch all data in parallel (positions and trade history)
   useEffect(() => {
     if (!isSignedIn) return;
 
-    const fetchOrderHistory = async () => {
+    const fetchAllData = async () => {
       setLoadingTradeHistory(true);
+      const runningBotIds = runningBots
+        .filter((bot) => bot.status === "running")
+        .map((bot) => bot.id);
+
+      setLoadingPositions((prev) => {
+        const newState = { ...prev };
+        runningBotIds.forEach((botId) => {
+          newState[botId] = true;
+        });
+        return newState;
+      });
+
       try {
-        const result = await getOrderHistory();
-        setTradeHistory(
-          result.success && result.data
-            ? result.data.map(mapOrderHistoryToTradeHistory)
-            : []
-        );
+        const [positionsResult, tradeHistoryResult] = await Promise.all([
+          getPositions(),
+          getOrderHistory(),
+        ]);
+
+        if (positionsResult.success && positionsResult.data) {
+          const mappedPositions = positionsResult.data.map(
+            mapPositionToOpenPosition
+          );
+          setBotPositions((prev) => {
+            const newState = { ...prev };
+            runningBotIds.forEach((botId) => {
+              newState[botId] = mappedPositions;
+            });
+            return newState;
+          });
+        } else {
+          setBotPositions((prev) => {
+            const newState = { ...prev };
+            runningBotIds.forEach((botId) => {
+              newState[botId] = [];
+            });
+            return newState;
+          });
+        }
+
+        if (tradeHistoryResult.success && tradeHistoryResult.data) {
+          setTradeHistory(
+            tradeHistoryResult.data.map(mapOrderHistoryToTradeHistory)
+          );
+        } else {
+          setTradeHistory([]);
+        }
       } catch (error) {
-        console.error("Failed to fetch order history:", error);
         setTradeHistory([]);
+        setBotPositions((prev) => {
+          const newState = { ...prev };
+          runningBotIds.forEach((botId) => {
+            newState[botId] = [];
+          });
+          return newState;
+        });
       } finally {
         setLoadingTradeHistory(false);
+        setLoadingPositions((prev) => {
+          const newState = { ...prev };
+          runningBotIds.forEach((botId) => {
+            newState[botId] = false;
+          });
+          return newState;
+        });
       }
     };
 
-    fetchOrderHistory();
+    fetchAllData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSignedIn]);
+  }, [isSignedIn, runningBots]);
 
   // Validate Aptos address format
   const isValidAptosAddress = (address: string): boolean => {
@@ -345,55 +398,10 @@ export default function Copytrade() {
   };
 
   // Fetch positions for a bot
-  const fetchBotPositions = async (bot: CopyTradeBot) => {
-    if (bot.status !== "running") {
-      return;
-    }
-
-    setLoadingPositions((prev) => ({ ...prev, [bot.id]: true }));
-
-    try {
-      // Backend gets userAddress from authenticated user's JWT token
-      const result = await getPositions();
-      if (result.success && result.data) {
-        const mappedPositions = result.data.map(mapPositionToOpenPosition);
-        setBotPositions((prev) => ({
-          ...prev,
-          [bot.id]: mappedPositions,
-        }));
-      } else {
-        setBotPositions((prev) => ({
-          ...prev,
-          [bot.id]: [],
-        }));
-      }
-    } catch (error) {
-      console.error(`Failed to fetch positions for bot ${bot.id}:`, error);
-      setBotPositions((prev) => ({
-        ...prev,
-        [bot.id]: [],
-      }));
-    } finally {
-      setLoadingPositions((prev) => ({ ...prev, [bot.id]: false }));
-    }
-  };
-
   // Get open positions for a bot
   const getOpenPositions = (botId: string): OpenPosition[] => {
     return botPositions[botId] || [];
   };
-
-  // Fetch positions when bots are loaded
-  useEffect(() => {
-    if (runningBots.length > 0 && isSignedIn) {
-      runningBots.forEach((bot) => {
-        if (bot.status === "running") {
-          fetchBotPositions(bot);
-        }
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runningBots, isSignedIn]);
 
   const balanceNum = parseFloat(balance) || 0;
   const allocatedAmount = (balanceNum * allocation) / 100;
@@ -1561,6 +1569,9 @@ export default function Copytrade() {
                         Order Value (USDT)
                       </th>
                       <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                        Fee (USDT)
+                      </th>
+                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
                         PnL (USDT)
                       </th>
                     </tr>
@@ -1585,7 +1596,12 @@ export default function Copytrade() {
                                 {trade.symbol}
                               </p>
                               <p
-                                className={`text-xs ${trade.direction.includes("Long") ? "text-green-400" : "text-red-400"}`}
+                                className={`text-xs ${
+                                  trade.direction === "Long" ||
+                                  trade.direction === "Exit Short"
+                                    ? "text-green-400"
+                                    : "text-red-400"
+                                }`}
                               >
                                 {trade.leverage} •{" "}
                                 {trade.direction.includes("Long")
@@ -1601,7 +1617,8 @@ export default function Copytrade() {
                         <td className="px-4 py-3">
                           <span
                             className={`px-2 py-1 rounded text-xs font-medium ${
-                              trade.direction.includes("Long")
+                              trade.direction === "Long" ||
+                              trade.direction === "Exit Short"
                                 ? "bg-green-500/20 text-green-400 border border-green-500/30"
                                 : "bg-red-500/20 text-red-400 border border-red-500/30"
                             }`}
@@ -1624,6 +1641,9 @@ export default function Copytrade() {
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-200">
                           {trade.orderValue}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-200">
+                          {trade.fee}
                         </td>
                         <td className="px-4 py-3">
                           <span

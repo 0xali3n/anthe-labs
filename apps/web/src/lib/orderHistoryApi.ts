@@ -1,81 +1,41 @@
-// API for fetching all trades from backend (which calls Kana Trade API)
+// API for fetching trade history from backend (which calls Kana Trade API)
 
 import { authenticatedRequest } from "./apiClient";
-import { supabase } from "./supabaseClient";
+import { getAuthToken } from "./utils/authUtils";
+import { mapMarketIdToSymbol } from "./utils/marketUtils";
+import { formatTimestamp, formatNumber, formatPnL } from "./utils/formatUtils";
 
-export interface TradeResponse {
-  txn_version: number;
-  event_idx: number;
-  emit_address: string;
-  time: string; // ISO string
-  maker_address: string;
-  maker_custodian_id: number;
-  maker_order_id: string;
-  maker_side: boolean; // true = Long, false = Short
-  market_id: number;
-  price: number;
-  sequence_number_for_trade: number;
-  size: number;
-  taker_address: string;
-  taker_custodian_id: number;
-  taker_order_id: string;
-  taker_quote_fees_paid: number;
+export interface TradeHistoryResponse {
+  address: string;
+  leverage: number;
+  market_id: string;
+  timestamp: number;
+  size: string;
+  order_type: number; // 1=OPEN_LONG, 2=OPEN_SHORT, 3=INCREASE_LONG, 4=INCREASE_SHORT, 5=DECREASE_LONG, 6=DECREASE_SHORT, 7=CLOSE_LONG, 8=CLOSE_SHORT
+  price: string;
+  order_value: string;
+  pnl: string;
+  fee: string;
+  trade_id: string;
+  last_updated: number;
+  transaction_version: number;
+  entry_price: string | null;
+  order_id: string;
 }
 
-export interface TradesApiResponse {
+export interface TradeHistoryApiResponse {
   success: boolean;
   message?: string;
-  data: TradeResponse[];
+  data: TradeHistoryResponse[];
 }
 
 /**
- * Map market_id to symbol
- * Market IDs:
- * - 14: APT-USD
- * - 15: BTC-USD
- * - 16: ETH-USD
- * - 31: SOL-USD
+ * Fetch trade history from backend API (which calls Kana Trade API)
  */
-function mapMarketIdToSymbol(marketId: string): "BTC" | "ETH" | "APT" | "SOL" {
-  const marketMap: Record<string, "BTC" | "ETH" | "APT" | "SOL"> = {
-    "14": "APT",
-    "15": "BTC",
-    "16": "ETH",
-    "31": "SOL",
-  };
-
-  return marketMap[marketId] || "APT"; // Default to APT if unknown
-}
-
-/**
- * Format ISO timestamp to readable format
- */
-function formatTimestamp(isoString: string): string {
-  const date = new Date(isoString);
-  const time = date.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
-  const dateStr = date.toLocaleDateString("en-US", {
-    month: "numeric",
-    day: "numeric",
-    year: "numeric",
-  });
-  return `${time} • ${dateStr}`;
-}
-
-/**
- * Fetch all trades from backend API (which calls Kana Trade API)
- */
-export async function getOrderHistory(): Promise<TradesApiResponse> {
+export async function getOrderHistory(): Promise<TradeHistoryApiResponse> {
   try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session?.access_token) {
+    const token = await getAuthToken();
+    if (!token) {
       return {
         success: false,
         message: "No session found. Please sign in.",
@@ -83,52 +43,84 @@ export async function getOrderHistory(): Promise<TradesApiResponse> {
       };
     }
 
-    const response = await authenticatedRequest<TradesApiResponse>(
-      "/wallets/getAllTrades",
-      session.access_token,
-      {
-        method: "GET",
-      }
-    );
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
 
-    return response;
+    try {
+      const response = await authenticatedRequest<TradeHistoryApiResponse>(
+        "/wallets/getTradeHistory",
+        token,
+        {
+          method: "GET",
+          signal: controller.signal,
+        }
+      );
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      throw error;
+    }
   } catch (error: any) {
-    console.error("Error fetching trades:", error);
     return {
       success: false,
-      message: error.message || "Failed to fetch trades",
+      message: error.message || "Failed to fetch trade history",
       data: [],
     };
   }
 }
 
 /**
- * Map TradeResponse to TradeHistory format
+ * Map order_type to direction
+ * order_type values:
+ * 1 = OPEN_LONG: Opens a new long position -> "Long"
+ * 2 = OPEN_SHORT: Opens a new short position -> "Short"
+ * 3 = INCREASE_LONG: Increases the size of an existing long position -> "Long"
+ * 4 = INCREASE_SHORT: Increases the size of an existing short position -> "Short"
+ * 5 = DECREASE_LONG: Reduces the size of an existing long position -> "Exit Long"
+ * 6 = DECREASE_SHORT: Reduces the size of an existing short position -> "Exit Short"
+ * 7 = CLOSE_LONG: Closes an existing long position -> "Exit Long"
+ * 8 = CLOSE_SHORT: Closes an existing short position -> "Exit Short"
  */
-export function mapOrderHistoryToTradeHistory(trade: TradeResponse) {
-  const symbol = mapMarketIdToSymbol(trade.market_id.toString());
-  const direction = trade.maker_side ? "Long" : "Short";
+function mapOrderTypeToDirection(
+  orderType: number
+): "Long" | "Exit Long" | "Short" | "Exit Short" {
+  switch (orderType) {
+    case 1: // OPEN_LONG
+    case 3: // INCREASE_LONG
+      return "Long";
+    case 2: // OPEN_SHORT
+    case 4: // INCREASE_SHORT
+      return "Short";
+    case 5: // DECREASE_LONG
+    case 7: // CLOSE_LONG
+      return "Exit Long";
+    case 6: // DECREASE_SHORT
+    case 8: // CLOSE_SHORT
+      return "Exit Short";
+    default:
+      // Fallback: treat odd numbers as Long, even as Short
+      return orderType % 2 === 1 ? "Long" : "Short";
+  }
+}
 
-  // Price and size appear to be in fixed-point format (divide by 1e6 for USDT)
-  const price = (trade.price / 1000000).toFixed(2);
-  const size = (trade.size / 1000000).toFixed(6);
-  const orderValue = ((trade.price * trade.size) / 1000000000000).toFixed(2);
+/**
+ * Map TradeHistoryResponse to TradeHistory format
+ */
+export function mapOrderHistoryToTradeHistory(trade: TradeHistoryResponse) {
+  const symbol = mapMarketIdToSymbol(trade.market_id);
+  const direction = mapOrderTypeToDirection(trade.order_type);
 
   return {
-    id: `${trade.txn_version}-${trade.event_idx}-${trade.maker_order_id}`,
-    timestamp: formatTimestamp(trade.time),
-    direction: direction as "Long" | "Short",
+    id: `${trade.order_id}-${trade.trade_id}-${trade.timestamp}`,
+    timestamp: formatTimestamp(trade.timestamp),
+    direction: direction as "Long" | "Short" | "Exit Long" | "Exit Short",
     symbol,
-    leverage: "1x",
-    size,
-    price: parseFloat(price).toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }),
-    orderValue: parseFloat(orderValue).toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }),
-    pnl: "-",
+    leverage: `${trade.leverage}x`,
+    size: trade.size,
+    price: formatNumber(trade.price),
+    orderValue: formatNumber(trade.order_value),
+    fee: formatNumber(trade.fee),
+    pnl: formatPnL(trade.pnl),
   };
 }

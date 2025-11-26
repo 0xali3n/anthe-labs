@@ -391,15 +391,19 @@ export class WalletsController {
   }
 
   /**
-   * Get all trades for authenticated user
-   * GET /api/wallets/getAllTrades
+   * Get trade history for authenticated user
+   * GET /api/wallets/getTradeHistory
    *
    * Security: Requires JWT authentication
-   * Returns: Array of all trades from Kana API
+   * Query params: marketId (optional) - Filter by market ID
+   * Returns: Array of trade history from Kana API
    */
-  @Get('getAllTrades')
+  @Get('getTradeHistory')
   @UseGuards(AuthGuard)
-  async getAllTrades(@Request() req: any) {
+  async getTradeHistory(
+    @Request() req: any,
+    @Query('marketId') marketId?: string,
+  ) {
     try {
       const userId = req.user?.id;
 
@@ -410,14 +414,25 @@ export class WalletsController {
         );
       }
 
-      const allTrades = await this.walletsService.getAllTrades();
+      const walletAddress = await this.walletsService.getWalletAddress(userId);
+      if (!walletAddress) {
+        throw new HttpException(
+          { success: false, error: 'Wallet not found' },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const tradeHistory = await this.walletsService.getTradeHistory(
+        walletAddress,
+        marketId,
+      );
 
       return {
         success: true,
-        data: allTrades,
+        data: tradeHistory,
       };
     } catch (error: any) {
-      console.error('Error in getAllTrades:', error);
+      console.error('Error in getTradeHistory:', error);
       if (error instanceof HttpException) {
         throw error;
       }
