@@ -165,6 +165,178 @@ async function displayKanaApiParameters(
 }
 
 /**
+ * Place limit order using Kana Labs API (with gas optimization)
+ */
+async function placeLimitOrder(
+  userAddress: string,
+  privateKey: string,
+  marketId: string,
+  size: number,
+  price: number,
+  leverage: number,
+  tradeSide: boolean,
+  direction: boolean,
+  restriction: number = 0
+): Promise<{ success: boolean; txHash?: string; error?: string }> {
+  try {
+    Logger.info(
+      `🔧 [placeLimitOrder] Starting for ${userAddress.substring(0, 10)}...`
+    );
+    Logger.info(
+      `   Market: ${marketId}, Size: ${size}, Price: ${price}, Leverage: ${leverage}, TradeSide: ${tradeSide} (${tradeSide ? "LONG" : "SHORT"}), Direction: ${direction} (${direction ? "CLOSE" : "OPEN"})`
+    );
+
+    // Format private key using PrivateKey.formatPrivateKey
+    const formattedPrivateKey = PrivateKey.formatPrivateKey(
+      privateKey.trim(),
+      "ed25519" as PrivateKeyVariants
+    );
+
+    // Create account from private key
+    const account = Account.fromPrivateKey({
+      privateKey: new Ed25519PrivateKey(formattedPrivateKey),
+    });
+
+    // Check APT balance for gas fees
+    try {
+      const aptBalance = await aptos.getAccountAPTAmount({
+        accountAddress: account.accountAddress,
+      });
+      const aptBalanceInAPT = Number(aptBalance) / 100000000;
+
+      if (aptBalanceInAPT < 0.001) {
+        return {
+          success: false,
+          error: `Insufficient APT for gas fees. Required: 0.001 APT, Available: ${aptBalanceInAPT.toFixed(8)} APT.`,
+        };
+      }
+    } catch (error: any) {
+      // Continue anyway
+    }
+
+    // Build query params using URLSearchParams
+    const queryParams = new URLSearchParams({
+      marketId: marketId,
+      tradeSide: tradeSide.toString(),
+      direction: direction.toString(),
+      size: size.toString(),
+      price: price.toString(),
+      leverage: leverage.toString(),
+    });
+
+    // Add restriction if provided (defaults to 0)
+    if (restriction !== undefined && restriction !== null) {
+      queryParams.append("restriction", restriction.toString());
+    }
+
+    Logger.info(
+      `[placeLimitOrder] Calling Kana API: ${KANA_REST_URL}/placeLimitOrder`
+    );
+
+    // Get limit order payload from Kana API
+    const response = await axios.get(
+      `${KANA_REST_URL}/placeLimitOrder?${queryParams.toString()}`,
+      {
+        headers: {
+          "x-api-key": KANA_API_KEY,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.data.success) {
+      return {
+        success: false,
+        error: response.data.message || "Failed to get limit order payload",
+      };
+    }
+
+    const payloadData = response.data.data;
+
+    if (!payloadData) {
+      return {
+        success: false,
+        error: "No payload data received from Kana API",
+      };
+    }
+
+    // Build and submit transaction with gas optimization
+    Logger.info(`[placeLimitOrder] Building Aptos transaction...`);
+    const transactionPayload = await aptos.transaction.build.simple({
+      sender: account.accountAddress,
+      data: payloadData,
+      options: {
+        maxGasAmount: 10000, // Gas optimization: lower gas limit
+        gasUnitPrice: 100, // Gas optimization: lower gas price
+      },
+    });
+
+    Logger.info(`[placeLimitOrder] Transaction built successfully`);
+
+    // Sign and submit transaction
+    Logger.info(`[placeLimitOrder] Signing and submitting transaction...`);
+    const committedTxn = await aptos.transaction.signAndSubmitTransaction({
+      transaction: transactionPayload,
+      signer: account,
+    });
+
+    Logger.info(
+      `[placeLimitOrder] Transaction submitted: ${committedTxn.hash}`
+    );
+
+    // Wait for transaction
+    Logger.info(`[placeLimitOrder] Waiting for confirmation...`);
+    const executedTxn = await aptos.waitForTransaction({
+      transactionHash: committedTxn.hash,
+    });
+
+    if (!executedTxn.success) {
+      const txResult = executedTxn as any;
+      const errorMessage =
+        txResult.vm_status ||
+        txResult.error?.message ||
+        txResult.message ||
+        txResult.transaction?.vm_status ||
+        "Transaction failed on blockchain";
+
+      Logger.error(`[placeLimitOrder] Transaction failed: ${errorMessage}`);
+      return {
+        success: false,
+        error: `Transaction ${committedTxn.hash} failed: ${errorMessage}`,
+      };
+    }
+
+    Logger.success(
+      `[placeLimitOrder] Transaction confirmed: ${committedTxn.hash}`
+    );
+    Logger.info(
+      `View on Aptos Explorer: https://explorer.aptoslabs.com/txn/${committedTxn.hash}`
+    );
+
+    return {
+      success: true,
+      txHash: committedTxn.hash,
+    };
+  } catch (error: any) {
+    let errorMessage = error.message || "Failed to place limit order";
+
+    if (error.data?.message) {
+      errorMessage = error.data.message;
+    } else if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.vm_status) {
+      errorMessage = error.vm_status;
+    }
+
+    Logger.error(`[placeLimitOrder] Error: ${errorMessage}`);
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+}
+
+/**
  * Place market order using Kana Labs API (with gas optimization)
  */
 async function placeMarketOrder(
@@ -330,6 +502,7 @@ async function placeMarketOrder(
 
 /**
  * Execute trade for a single subscriber
+ * Optimized for parallel execution
  */
 async function executeTradeForSubscriber(
   userAddress: string,
@@ -338,7 +511,9 @@ async function executeTradeForSubscriber(
   direction: boolean,
   marketId: string,
   leverage: number,
-  orderSize: number
+  orderSize: number,
+  price?: number,
+  restriction?: number
 ): Promise<void> {
   try {
     // Get user ID from wallet address
@@ -357,11 +532,7 @@ async function executeTradeForSubscriber(
       return;
     }
 
-    Logger.info(
-      `💼 Executing trade for ${userAddress.substring(0, 10)}...: Size=${orderSize}, Leverage=${leverage}, Type=${orderType}, Market=${marketId}, Side=${tradeSide ? "LONG" : "SHORT"}, Direction=${direction ? "CLOSE" : "OPEN"}`
-    );
-
-    // Place order based on orderType
+    // Place order based on orderType (optimized: minimal logging)
     let result;
     if (orderType === "MARKET") {
       result = await placeMarketOrder(
@@ -373,6 +544,24 @@ async function executeTradeForSubscriber(
         tradeSide,
         direction
       );
+    } else if (orderType === "LIMIT") {
+      if (price === undefined || price === null) {
+        Logger.error(
+          `LIMIT order missing price for ${userAddress.substring(0, 10)}..., skipping`
+        );
+        return;
+      }
+      result = await placeLimitOrder(
+        userAddress,
+        privateKey,
+        marketId,
+        orderSize,
+        price,
+        leverage,
+        tradeSide,
+        direction,
+        restriction || 0
+      );
     } else {
       Logger.error(`Unknown order type: ${orderType}, skipping`);
       return;
@@ -380,12 +569,10 @@ async function executeTradeForSubscriber(
 
     if (result.success) {
       Logger.success(
-        `✅ Trade executed successfully for ${userAddress.substring(0, 10)}...: TX=${result.txHash}`
+        `✅ ${userAddress.substring(0, 10)}...: TX=${result.txHash}`
       );
     } else {
-      Logger.error(
-        `❌ Trade execution failed for ${userAddress.substring(0, 10)}...: ${result.error}`
-      );
+      Logger.error(`❌ ${userAddress.substring(0, 10)}...: ${result.error}`);
     }
   } catch (error) {
     Logger.error(
@@ -411,6 +598,10 @@ async function processOrder(
     const marketId = orderData.marketId || orderData.market_id || "";
     const leverage = parseFloat(orderData.leverage || "1");
     const orderSize = parseFloat(orderData.size || "0");
+    const price = orderData.price ? parseFloat(orderData.price) : undefined;
+    const restriction = orderData.restriction
+      ? parseFloat(orderData.restriction)
+      : undefined;
 
     // Check if using new optimized format
     if (
@@ -455,7 +646,9 @@ async function processOrder(
           direction,
           marketId,
           leverage,
-          orderSize
+          orderSize,
+          price,
+          restriction
         )
           .then(() => true)
           .catch(() => false)
