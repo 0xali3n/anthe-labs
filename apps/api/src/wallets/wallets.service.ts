@@ -132,28 +132,6 @@ export class WalletsService {
   }
 
   /**
-   * Get debug info including encrypted private key (for debugging only)
-   * WARNING: This exposes encrypted private key - use only for debugging!
-   */
-  async getDebugInfo(userId: string): Promise<{
-    walletAddress: string | null;
-    encryptedPrivateKey: string | null;
-  }> {
-    const wallet = await this.prisma.wallet.findUnique({
-      where: { user_id: userId },
-      select: {
-        address: true,
-        key: true, // Encrypted private key
-      },
-    });
-
-    return {
-      walletAddress: wallet?.address || null,
-      encryptedPrivateKey: wallet?.key || null,
-    };
-  }
-
-  /**
    * Internal: Decrypt and get private key (for backend operations only)
    * WARNING: This should only be used for server-side operations like signing transactions
    * NEVER expose this to frontend!
@@ -371,6 +349,153 @@ export class WalletsService {
         error.message,
       );
       return 0;
+    }
+  }
+
+  /**
+   * Get positions from Kana Labs API
+   * Fetches open positions for a user's wallet address
+   *
+   * @param walletAddress - Aptos wallet address
+   * @param marketId - Optional market ID to filter positions
+   * @returns Array of position data
+   */
+  async getPositions(walletAddress: string, marketId?: string): Promise<any[]> {
+    try {
+      const kanaApiKey = process.env.KANA_API_KEY;
+      const kanaRest =
+        process.env.KANA_REST || 'https://perps-tradeapi.kana.trade';
+
+      if (!kanaApiKey) {
+        throw new Error('Kana API key not configured');
+      }
+
+      const params: any = {
+        userAddress: walletAddress,
+      };
+
+      if (marketId) {
+        params.marketId = marketId;
+      }
+
+      const response = await axios.get(`${kanaRest}/getPositions`, {
+        params,
+        headers: {
+          'x-api-key': kanaApiKey,
+        },
+      });
+
+      if (response.data.success && response.data.data) {
+        return response.data.data;
+      }
+
+      return [];
+    } catch (error: any) {
+      console.error(
+        `Error fetching positions for ${walletAddress}:`,
+        error.message,
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Get order history from Kana Labs API
+   * Fetches order history for a user's wallet address
+   *
+   * @param walletAddress - Aptos wallet address
+   * @param marketId - Optional market ID to filter order history
+   * @returns Array of order history data
+   */
+  async getOrderHistory(
+    walletAddress: string,
+    marketId?: string,
+  ): Promise<any[]> {
+    try {
+      const kanaApiKey = process.env.KANA_API_KEY;
+      const kanaRest =
+        process.env.KANA_REST || 'https://perps-tradeapi.kana.trade';
+
+      if (!kanaApiKey) {
+        throw new Error('Kana API key not configured');
+      }
+
+      const params: any = {
+        userAddress: walletAddress,
+      };
+
+      if (marketId) {
+        params.marketId = marketId;
+      }
+
+      const response = await axios.get(`${kanaRest}/getOrderHistory`, {
+        params,
+        headers: {
+          'x-api-key': kanaApiKey,
+        },
+      });
+
+      if (response.data.success && response.data.data) {
+        return response.data.data;
+      }
+
+      return [];
+    } catch (error: any) {
+      console.error(
+        `Error fetching order history for ${walletAddress}:`,
+        error.message,
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Get trade history from Kana Labs API
+   * Fetches trade history for a user's wallet address
+   *
+   * @param walletAddress - Aptos wallet address
+   * @param marketId - Optional market ID to filter trade history
+   * @returns Array of trade history data
+   */
+  async getTradeHistory(
+    walletAddress: string,
+    marketId?: string,
+  ): Promise<any[]> {
+    try {
+      const kanaApiKey = process.env.KANA_API_KEY;
+      const kanaRest =
+        process.env.KANA_REST || 'https://perps-tradeapi.kanalabs.io';
+
+      if (!kanaApiKey) {
+        throw new Error('Kana API key not configured');
+      }
+
+      const params: any = {
+        userAddress: walletAddress,
+      };
+
+      if (marketId) {
+        params.marketId = marketId;
+      }
+
+      const response = await axios.get(`${kanaRest}/getTradeHistory`, {
+        params,
+        headers: {
+          'x-api-key': kanaApiKey,
+        },
+        timeout: 15000,
+      });
+
+      if (response.data.success && response.data.data) {
+        return response.data.data.sort((a: any, b: any) => {
+          return (b.timestamp || 0) - (a.timestamp || 0);
+        });
+      }
+
+      return [];
+    } catch (error: any) {
+      console.error('Error fetching trade history:', error.message);
+      return [];
     }
   }
 

@@ -8,6 +8,7 @@ import {
   Request,
   UseGuards,
   HttpException,
+  Query,
 } from '@nestjs/common';
 import { WalletsService } from './wallets.service';
 import { AuthGuard } from '../auth/auth.guard';
@@ -284,15 +285,19 @@ export class WalletsController {
   }
 
   /**
-   * Debug endpoint: Get wallet info including encrypted private key (for debugging only)
-   * GET /api/wallets/debug/info
+   * Get positions for authenticated user
+   * GET /api/wallets/positions
    *
    * Security: Requires JWT authentication
-   * Returns: Wallet address and encrypted private key (for debugging)
+   * Query params: marketId (optional) - Filter by market ID
+   * Returns: Array of positions from Kana API
    */
-  @Get('debug/info')
+  @Get('positions')
   @UseGuards(AuthGuard)
-  async getDebugInfo(@Request() req: any) {
+  async getPositions(
+    @Request() req: any,
+    @Query('marketId') marketId?: string,
+  ) {
     try {
       const userId = req.user?.id;
 
@@ -303,25 +308,25 @@ export class WalletsController {
         );
       }
 
-      const wallet = await this.walletsService.getWalletAddress(userId);
-      if (!wallet) {
+      const walletAddress = await this.walletsService.getWalletAddress(userId);
+      if (!walletAddress) {
         throw new HttpException(
           { success: false, error: 'Wallet not found' },
           HttpStatus.NOT_FOUND,
         );
       }
 
-      // Get debug info including encrypted private key (for debugging only)
-      const debugInfo = await this.walletsService.getDebugInfo(userId);
+      const positions = await this.walletsService.getPositions(
+        walletAddress,
+        marketId,
+      );
 
       return {
         success: true,
-        walletAddress: debugInfo.walletAddress,
-        encryptedPrivateKey: debugInfo.encryptedPrivateKey, // This is encrypted, not the actual key
-        note: 'Private key is encrypted. This is for debugging purposes only.',
+        data: positions,
       };
     } catch (error: any) {
-      console.error('Error in getDebugInfo:', error);
+      console.error('Error in getPositions:', error);
       if (error instanceof HttpException) {
         throw error;
       }
@@ -333,16 +338,19 @@ export class WalletsController {
   }
 
   /**
-   * Test deposit with specific amount (for debugging)
-   * POST /api/wallets/debug/deposit
+   * Get order history for authenticated user
+   * GET /api/wallets/order-history
    *
    * Security: Requires JWT authentication
-   * Body: { amount: number }
-   * Returns: Deposit result
+   * Query params: marketId (optional) - Filter by market ID
+   * Returns: Array of order history from Kana API
    */
-  @Post('debug/deposit')
+  @Get('order-history')
   @UseGuards(AuthGuard)
-  async testDeposit(@Request() req: any) {
+  async getOrderHistory(
+    @Request() req: any,
+    @Query('marketId') marketId?: string,
+  ) {
     try {
       const userId = req.user?.id;
 
@@ -353,23 +361,78 @@ export class WalletsController {
         );
       }
 
-      const { amount } = req.body;
-      if (!amount || typeof amount !== 'number' || amount <= 0) {
+      const walletAddress = await this.walletsService.getWalletAddress(userId);
+      if (!walletAddress) {
         throw new HttpException(
-          { success: false, error: 'Valid amount is required' },
+          { success: false, error: 'Wallet not found' },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const orderHistory = await this.walletsService.getOrderHistory(
+        walletAddress,
+        marketId,
+      );
+
+      return {
+        success: true,
+        data: orderHistory,
+      };
+    } catch (error: any) {
+      console.error('Error in getOrderHistory:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        { success: false, error: error.message || 'Internal server error' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * Get trade history for authenticated user
+   * GET /api/wallets/getTradeHistory
+   *
+   * Security: Requires JWT authentication
+   * Query params: marketId (optional) - Filter by market ID
+   * Returns: Array of trade history from Kana API
+   */
+  @Get('getTradeHistory')
+  @UseGuards(AuthGuard)
+  async getTradeHistory(
+    @Request() req: any,
+    @Query('marketId') marketId?: string,
+  ) {
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        throw new HttpException(
+          { success: false, error: 'User ID is required' },
           HttpStatus.BAD_REQUEST,
         );
       }
 
-      const result = await this.walletsService.depositToTrading(userId, amount);
+      const walletAddress = await this.walletsService.getWalletAddress(userId);
+      if (!walletAddress) {
+        throw new HttpException(
+          { success: false, error: 'Wallet not found' },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const tradeHistory = await this.walletsService.getTradeHistory(
+        walletAddress,
+        marketId,
+      );
 
       return {
-        success: result.success,
-        txHash: result.txHash,
-        error: result.error,
+        success: true,
+        data: tradeHistory,
       };
     } catch (error: any) {
-      console.error('Error in testDeposit:', error);
+      console.error('Error in getTradeHistory:', error);
       if (error instanceof HttpException) {
         throw error;
       }

@@ -11,6 +11,11 @@ import {
   updateCopyTradeBot,
   type CopyTradeBot as ApiCopyTradeBot,
 } from "@/lib/copyTradeBotsApi";
+import { getPositions, mapPositionToOpenPosition } from "@/lib/positionsApi";
+import {
+  getOrderHistory,
+  mapOrderHistoryToTradeHistory,
+} from "@/lib/orderHistoryApi";
 import {
   Play,
   Square,
@@ -32,9 +37,11 @@ import {
   Minus,
   Percent,
   ArrowRight,
-  Eye,
   Power,
+  TrendingUp,
+  Activity,
 } from "lucide-react";
+import Image from "next/image";
 
 const palanquinDark = Palanquin_Dark({
   weight: ["400", "700"],
@@ -48,6 +55,7 @@ const outfit = Outfit({
 
 interface CopyTradeBot {
   id: string;
+  userAddress: string;
   traderAddress: string | null;
   mode: string;
   allocation: number;
@@ -56,6 +64,34 @@ interface CopyTradeBot {
   pnl: string;
   trades: number;
   startedAt: string;
+}
+
+interface OpenPosition {
+  id: string;
+  symbol: "BTC" | "ETH" | "APT" | "SOL";
+  side: "LONG" | "SHORT";
+  size: string;
+  entryPrice: string;
+  markPrice: string;
+  value: string;
+  liqPrice: string;
+  margin: string;
+  pnl: string;
+  pnlPercent: string;
+  leverage: string;
+}
+
+interface TradeHistory {
+  id: string;
+  timestamp: string;
+  direction: "Long" | "Exit Long" | "Short" | "Exit Short";
+  symbol: "BTC" | "ETH" | "APT" | "SOL";
+  leverage: string;
+  size: string;
+  price: string;
+  orderValue: string;
+  fee: string;
+  pnl: string;
 }
 
 export default function Copytrade() {
@@ -82,6 +118,93 @@ export default function Copytrade() {
   const [addressError, setAddressError] = useState<string | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const modeDropdownRef = useRef<HTMLDivElement>(null);
+  const [botPositions, setBotPositions] = useState<
+    Record<string, OpenPosition[]>
+  >({});
+  const [loadingPositions, setLoadingPositions] = useState<
+    Record<string, boolean>
+  >({});
+
+  // Trade history data
+  const [tradeHistory, setTradeHistory] = useState<TradeHistory[]>([]);
+  const [loadingTradeHistory, setLoadingTradeHistory] = useState(false);
+
+  // Fetch all data in parallel (positions and trade history)
+  useEffect(() => {
+    if (!isSignedIn) return;
+
+    const fetchAllData = async () => {
+      setLoadingTradeHistory(true);
+      const runningBotIds = runningBots
+        .filter((bot) => bot.status === "running")
+        .map((bot) => bot.id);
+
+      setLoadingPositions((prev) => {
+        const newState = { ...prev };
+        runningBotIds.forEach((botId) => {
+          newState[botId] = true;
+        });
+        return newState;
+      });
+
+      try {
+        const [positionsResult, tradeHistoryResult] = await Promise.all([
+          getPositions(),
+          getOrderHistory(),
+        ]);
+
+        if (positionsResult.success && positionsResult.data) {
+          const mappedPositions = positionsResult.data.map(
+            mapPositionToOpenPosition
+          );
+          setBotPositions((prev) => {
+            const newState = { ...prev };
+            runningBotIds.forEach((botId) => {
+              newState[botId] = mappedPositions;
+            });
+            return newState;
+          });
+        } else {
+          setBotPositions((prev) => {
+            const newState = { ...prev };
+            runningBotIds.forEach((botId) => {
+              newState[botId] = [];
+            });
+            return newState;
+          });
+        }
+
+        if (tradeHistoryResult.success && tradeHistoryResult.data) {
+          setTradeHistory(
+            tradeHistoryResult.data.map(mapOrderHistoryToTradeHistory)
+          );
+        } else {
+          setTradeHistory([]);
+        }
+      } catch (error) {
+        setTradeHistory([]);
+        setBotPositions((prev) => {
+          const newState = { ...prev };
+          runningBotIds.forEach((botId) => {
+            newState[botId] = [];
+          });
+          return newState;
+        });
+      } finally {
+        setLoadingTradeHistory(false);
+        setLoadingPositions((prev) => {
+          const newState = { ...prev };
+          runningBotIds.forEach((botId) => {
+            newState[botId] = false;
+          });
+          return newState;
+        });
+      }
+    };
+
+    fetchAllData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignedIn, runningBots]);
 
   // Validate Aptos address format
   const isValidAptosAddress = (address: string): boolean => {
@@ -159,6 +282,7 @@ export default function Copytrade() {
             pnlNum >= 0 ? `+${pnlNum.toFixed(2)}` : pnlNum.toFixed(2);
           return {
             id: bot.id,
+            userAddress: bot.userAddress,
             traderAddress: bot.traderAddress,
             mode: bot.mode,
             allocation: parseFloat(bot.allocationPercent),
@@ -257,6 +381,27 @@ export default function Copytrade() {
     }).format(num);
   };
 
+  const getSymbolLogo = (symbol: "BTC" | "ETH" | "APT" | "SOL") => {
+    switch (symbol) {
+      case "BTC":
+        return "/btc.png";
+      case "ETH":
+        return "/eth.png";
+      case "APT":
+        return "/aptos.png";
+      case "SOL":
+        return "/sol.png";
+      default:
+        return "/aptos.png";
+    }
+  };
+
+  // Fetch positions for a bot
+  // Get open positions for a bot
+  const getOpenPositions = (botId: string): OpenPosition[] => {
+    return botPositions[botId] || [];
+  };
+
   const balanceNum = parseFloat(balance) || 0;
   const allocatedAmount = (balanceNum * allocation) / 100;
   const platformFees = allocatedAmount * 0.0075; // 0.75% average
@@ -280,8 +425,8 @@ export default function Copytrade() {
     // Check if user already has a running bot (skip check if restarting the same bot)
     const hasOtherRunningBot = botToRestart
       ? runningBots.some(
-        (bot) => bot.id !== botToRestart.id && bot.status === "running"
-      )
+          (bot) => bot.id !== botToRestart.id && bot.status === "running"
+        )
       : runningBots.length >= 1;
 
     if (hasOtherRunningBot) {
@@ -435,7 +580,9 @@ export default function Copytrade() {
       <div className="max-w-7xl mx-auto pt-24 pb-10 sm:pt-28 sm:pb-12 px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Header Section - Enhanced with reduced spacing */}
         <div className="text-center mb-4">
-          <h1 className={`${palanquinDark.className} text-2xl sm:text-4xl font-semibold text-white mb-1.5 tracking-tight`}>
+          <h1
+            className={`${palanquinDark.className} text-2xl sm:text-4xl font-semibold text-white mb-1.5 tracking-tight`}
+          >
             Start Copy Trading
           </h1>
           <p className="text-slate-400 text-sm max-w-xl mx-auto leading-relaxed mb-1.5">
@@ -444,23 +591,19 @@ export default function Copytrade() {
         </div>
 
         {/* Success/Error Messages */}
-        {
-          success && (
-            <div className="mb-6 bg-green-900/20 border border-green-500/50 rounded-lg p-4">
-              <p className="text-green-400 text-sm">
-                ✅ Copy trade started successfully!
-              </p>
-            </div>
-          )
-        }
+        {success && (
+          <div className="mb-6 bg-green-900/20 border border-green-500/50 rounded-lg p-4">
+            <p className="text-green-400 text-sm">
+              ✅ Copy trade started successfully!
+            </p>
+          </div>
+        )}
 
-        {
-          error && (
-            <div className="mb-6 bg-red-900/20 border border-red-500/50 rounded-lg p-4">
-              <p className="text-red-400 text-sm">{error}</p>
-            </div>
-          )
-        }
+        {error && (
+          <div className="mb-6 bg-red-900/20 border border-red-500/50 rounded-lg p-4">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
 
         {/* Start Copy Trade Button */}
         <div className="flex justify-center mb-6">
@@ -486,661 +629,1032 @@ export default function Copytrade() {
         </div>
 
         {/* Modal Overlay */}
-        {
-          showForm && (
+        {showForm && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowForm(false);
+                setError(null);
+                setSuccess(false);
+                setAddressError(null);
+                setBotToRestart(null);
+                setTraderAddress("");
+                setAllocation(0);
+              }
+            }}
+          >
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+
+            {/* Modal Content */}
             <div
-              className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn"
-              onClick={(e) => {
-                if (e.target === e.currentTarget) {
-                  setShowForm(false);
-                  setError(null);
-                  setSuccess(false);
-                  setAddressError(null);
-                  setBotToRestart(null);
-                  setTraderAddress("");
-                  setAllocation(0);
-                }
+              className="relative w-full max-w-md animate-modalSlideIn rounded-xl border border-slate-700/50 shadow-2xl overflow-hidden"
+              style={{
+                background:
+                  "linear-gradient(to bottom, #1a1d2e 0%, #151824 50%, #0f1117 100%)",
+                boxShadow:
+                  "0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05)",
               }}
             >
-              {/* Backdrop */}
-              <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
-
-              {/* Modal Content */}
-              <div
-                className="relative w-full max-w-md animate-modalSlideIn rounded-xl border border-slate-700/50 shadow-2xl overflow-hidden"
-                style={{
-                  background:
-                    "linear-gradient(to bottom, #1a1d2e 0%, #151824 50%, #0f1117 100%)",
-                  boxShadow:
-                    "0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05)",
-                }}
-              >
-                {/* Header Section */}
-                <div className="relative px-4 pt-4 pb-3 border-b border-slate-800/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/30 flex items-center justify-center">
-                        <Sparkles size={14} className="text-blue-400" />
-                      </div>
-                      <h2 className="text-base font-bold text-white">
-                        {botToRestart
-                          ? "Restart Copy Trading"
-                          : "Start Copy Trading"}
-                      </h2>
+              {/* Header Section */}
+              <div className="relative px-4 pt-4 pb-3 border-b border-slate-800/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/30 flex items-center justify-center">
+                      <Sparkles size={14} className="text-blue-400" />
                     </div>
-                    <button
-                      onClick={() => {
-                        setShowForm(false);
-                        setError(null);
-                        setSuccess(false);
-                        setAddressError(null);
-                        setBotToRestart(null);
-                        setTraderAddress("");
-                        setAllocation(0);
-                      }}
-                      className="p-1 hover:bg-slate-800/50 rounded transition-all duration-200 text-slate-400 hover:text-white"
-                      aria-label="Close modal"
-                    >
-                      <X size={16} />
-                    </button>
+                    <h2 className="text-base font-bold text-white">
+                      {botToRestart
+                        ? "Restart Copy Trading"
+                        : "Start Copy Trading"}
+                    </h2>
                   </div>
+                  <button
+                    onClick={() => {
+                      setShowForm(false);
+                      setError(null);
+                      setSuccess(false);
+                      setAddressError(null);
+                      setBotToRestart(null);
+                      setTraderAddress("");
+                      setAllocation(0);
+                    }}
+                    className="p-1 hover:bg-slate-800/50 rounded transition-all duration-200 text-slate-400 hover:text-white"
+                    aria-label="Close modal"
+                  >
+                    <X size={16} />
+                  </button>
                 </div>
+              </div>
 
-                {/* Form Content */}
-                <div className="p-4">
-                  <form onSubmit={handleStartCopyTrade}>
-                    {/* Error/Success Messages */}
-                    {error && (
-                      <div className="mb-3 bg-red-900/20 border border-red-500/50 rounded-lg p-2">
-                        <p className="text-red-400 text-xs">{error}</p>
-                      </div>
-                    )}
-                    {success && (
-                      <div className="mb-3 bg-green-900/20 border border-green-500/50 rounded-lg p-2">
-                        <p className="text-green-400 text-xs">
-                          ✅ Copy trade started successfully!
-                        </p>
-                      </div>
-                    )}
+              {/* Form Content */}
+              <div className="p-4">
+                <form onSubmit={handleStartCopyTrade}>
+                  {/* Error/Success Messages */}
+                  {error && (
+                    <div className="mb-3 bg-red-900/20 border border-red-500/50 rounded-lg p-2">
+                      <p className="text-red-400 text-xs">{error}</p>
+                    </div>
+                  )}
+                  {success && (
+                    <div className="mb-3 bg-green-900/20 border border-green-500/50 rounded-lg p-2">
+                      <p className="text-green-400 text-xs">
+                        ✅ Copy trade started successfully!
+                      </p>
+                    </div>
+                  )}
 
-                    <div className="space-y-3">
-                      {/* Trader Address Input */}
-                      <div>
-                        <label
-                          htmlFor="trader-address"
-                          className="block text-[11px] font-semibold text-slate-300 mb-1.5"
-                        >
-                          Trader Address
-                        </label>
-                        <div className="relative">
-                          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 z-10">
-                            <Wallet
-                              size={14}
-                              className={
-                                addressError ? "text-red-500" : "text-slate-500"
-                              }
-                            />
-                          </div>
-                          <input
-                            id="trader-address"
-                            type="text"
-                            value={traderAddress}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              setTraderAddress(value);
-                              // Real-time validation
-                              if (value.trim() && !isValidAptosAddress(value)) {
-                                setAddressError("Invalid Aptos address format");
-                              } else {
-                                setAddressError(null);
-                              }
-                            }}
-                            onBlur={(e) => {
-                              // Validate on blur
-                              const value = e.target.value.trim();
-                              if (value && !isValidAptosAddress(value)) {
-                                setAddressError(
-                                  "Invalid Aptos wallet address. Must be 66 characters starting with 0x followed by 64 hex characters."
-                                );
-                              } else {
-                                setAddressError(null);
-                              }
-                            }}
-                            placeholder="0x1234..."
-                            className={`w-full pl-9 pr-3 py-2 bg-slate-900/50 border rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 transition-all font-mono ${addressError
+                  <div className="space-y-3">
+                    {/* Trader Address Input */}
+                    <div>
+                      <label
+                        htmlFor="trader-address"
+                        className="block text-[11px] font-semibold text-slate-300 mb-1.5"
+                      >
+                        Trader Address
+                      </label>
+                      <div className="relative">
+                        <div className="absolute left-2.5 top-1/2 -translate-y-1/2 z-10">
+                          <Wallet
+                            size={14}
+                            className={
+                              addressError ? "text-red-500" : "text-slate-500"
+                            }
+                          />
+                        </div>
+                        <input
+                          id="trader-address"
+                          type="text"
+                          value={traderAddress}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setTraderAddress(value);
+                            // Real-time validation
+                            if (value.trim() && !isValidAptosAddress(value)) {
+                              setAddressError("Invalid Aptos address format");
+                            } else {
+                              setAddressError(null);
+                            }
+                          }}
+                          onBlur={(e) => {
+                            // Validate on blur
+                            const value = e.target.value.trim();
+                            if (value && !isValidAptosAddress(value)) {
+                              setAddressError(
+                                "Invalid Aptos wallet address. Must be 66 characters starting with 0x followed by 64 hex characters."
+                              );
+                            } else {
+                              setAddressError(null);
+                            }
+                          }}
+                          placeholder="0x1234..."
+                          className={`w-full pl-9 pr-3 py-2 bg-slate-900/50 border rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 transition-all font-mono ${
+                            addressError
                               ? "border-red-500/50 focus:ring-red-500/50 focus:border-red-500/50"
                               : "border-slate-700/50 focus:ring-blue-500/50 focus:border-blue-500/50"
-                              }`}
-                          />
-                          {traderAddress &&
-                            isValidAptosAddress(traderAddress) && (
-                              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10">
-                                <CheckCircle2
-                                  size={14}
-                                  className="text-green-500"
-                                />
-                              </div>
-                            )}
-                        </div>
-                        {addressError && (
-                          <p className="mt-1 text-[10px] text-red-400">
-                            {addressError}
-                          </p>
-                        )}
-                        {!addressError &&
-                          traderAddress &&
+                          }`}
+                        />
+                        {traderAddress &&
                           isValidAptosAddress(traderAddress) && (
-                            <p className="mt-1 text-[10px] text-green-400">
-                              ✓ Valid Aptos address
-                            </p>
+                            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10">
+                              <CheckCircle2
+                                size={14}
+                                className="text-green-500"
+                              />
+                            </div>
                           )}
                       </div>
+                      {addressError && (
+                        <p className="mt-1 text-[10px] text-red-400">
+                          {addressError}
+                        </p>
+                      )}
+                      {!addressError &&
+                        traderAddress &&
+                        isValidAptosAddress(traderAddress) && (
+                          <p className="mt-1 text-[10px] text-green-400">
+                            ✓ Valid Aptos address
+                          </p>
+                        )}
+                    </div>
 
-                      {/* Trading Mode */}
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <label className="block text-[11px] font-semibold text-slate-300">
-                            Mode
-                          </label>
-                          <span className="text-xs font-semibold text-white">
-                            Smart Ratio
+                    {/* Trading Mode */}
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <label className="block text-[11px] font-semibold text-slate-300">
+                          Mode
+                        </label>
+                        <span className="text-xs font-semibold text-white">
+                          Smart Ratio
+                        </span>
+                      </div>
+                      <p className="mt-1.5 text-[10px] text-slate-500 leading-relaxed">
+                        Automatically matches trader's position size ratio. If
+                        trader uses 10% of their balance, you'll use 10% of your
+                        allocation.
+                      </p>
+                    </div>
+
+                    {/* Available Balance */}
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <label className="block text-[11px] font-semibold text-slate-300">
+                          Available Balance
+                        </label>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-base font-bold text-white">
+                            {formatCurrency(balanceNum)}
+                          </span>
+                          <span className="text-[10px] text-slate-500">
+                            USDT
                           </span>
                         </div>
-                        <p className="mt-1.5 text-[10px] text-slate-500 leading-relaxed">
-                          Automatically matches trader's position size ratio. If
-                          trader uses 10% of their balance, you'll use 10% of your
-                          allocation.
-                        </p>
                       </div>
+                    </div>
 
-                      {/* Available Balance */}
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <label className="block text-[11px] font-semibold text-slate-300">
-                            Available Balance
-                          </label>
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-base font-bold text-white">
-                              {formatCurrency(balanceNum)}
-                            </span>
-                            <span className="text-[10px] text-slate-500">
-                              USDT
-                            </span>
+                    {/* Allocation */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block text-[11px] font-semibold text-slate-300">
+                          Allocation
+                        </label>
+                        <div className="text-right">
+                          <div className="text-base font-bold text-white leading-tight">
+                            {allocation}%
+                          </div>
+                          <div className="text-[10px] text-slate-400">
+                            {formatCurrency(allocatedAmount)}
                           </div>
                         </div>
                       </div>
-
-                      {/* Allocation */}
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <label className="block text-[11px] font-semibold text-slate-300">
-                            Allocation
-                          </label>
-                          <div className="text-right">
-                            <div className="text-base font-bold text-white leading-tight">
+                      <div className="bg-slate-900/50 border border-slate-700/50 rounded-lg p-2.5">
+                        <div className="relative mb-2">
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            step="1"
+                            value={allocation}
+                            onChange={(e) =>
+                              setAllocation(Number(e.target.value))
+                            }
+                            className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer slider-modern"
+                            style={{
+                              background: `linear-gradient(to right, rgb(59, 130, 246) 0%, rgb(99, 102, 241) ${allocation}%, rgb(30, 41, 59) ${allocation}%, rgb(30, 41, 59) 100%)`,
+                            }}
+                          />
+                          {/* Percentage display above thumb */}
+                          {allocation > 0 && (
+                            <div
+                              className="absolute top-[-22px] text-[10px] font-bold text-blue-400 transform -translate-x-1/2 pointer-events-none whitespace-nowrap"
+                              style={{ left: `${allocation}%` }}
+                            >
                               {allocation}%
                             </div>
-                            <div className="text-[10px] text-slate-400">
-                              {formatCurrency(allocatedAmount)}
-                            </div>
-                          </div>
+                          )}
                         </div>
-                        <div className="bg-slate-900/50 border border-slate-700/50 rounded-lg p-2.5">
-                          <div className="relative mb-2">
-                            <input
-                              type="range"
-                              min="0"
-                              max="100"
-                              step="1"
-                              value={allocation}
-                              onChange={(e) =>
-                                setAllocation(Number(e.target.value))
-                              }
-                              className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer slider-modern"
-                              style={{
-                                background: `linear-gradient(to right, rgb(59, 130, 246) 0%, rgb(99, 102, 241) ${allocation}%, rgb(30, 41, 59) ${allocation}%, rgb(30, 41, 59) 100%)`,
-                              }}
-                            />
-                            {/* Percentage display above thumb */}
-                            {allocation > 0 && (
-                              <div
-                                className="absolute top-[-22px] text-[10px] font-bold text-blue-400 transform -translate-x-1/2 pointer-events-none whitespace-nowrap"
-                                style={{ left: `${allocation}%` }}
-                              >
-                                {allocation}%
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex justify-between text-[10px] text-slate-500">
-                            <span>0%</span>
-                            <span>25%</span>
-                            <span>50%</span>
-                            <span>75%</span>
-                            <span>100%</span>
-                          </div>
+                        <div className="flex justify-between text-[10px] text-slate-500">
+                          <span>0%</span>
+                          <span>25%</span>
+                          <span>50%</span>
+                          <span>75%</span>
+                          <span>100%</span>
                         </div>
                       </div>
-
-                      {/* Platform Fees */}
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <label className="block text-[11px] font-semibold text-slate-300">
-                            Platform Fees
-                          </label>
-                          <div className="relative">
-                            <button
-                              type="button"
-                              onMouseEnter={() => setShowFeesInfo(true)}
-                              onMouseLeave={() => setShowFeesInfo(false)}
-                              className="text-slate-500 hover:text-blue-400 transition-colors"
-                            >
-                              <Info size={12} />
-                            </button>
-                            {showFeesInfo && (
-                              <div
-                                className="absolute left-0 top-5 z-50 w-64 p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-[10px] text-slate-300 shadow-xl"
-                                style={{ animation: "fadeIn 0.2s ease-out" }}
-                              >
-                                <p>
-                                  We charge 0.5-1% as fees of the allocated amount
-                                  only once at the bot start point.
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Start Button */}
-                      <button
-                        type="submit"
-                        disabled={
-                          !traderAddress.trim() ||
-                          allocation === 0 ||
-                          submitting ||
-                          allocatedAmount > balanceNum
-                        }
-                        className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-0.5"
-                      >
-                        {submitting ? (
-                          <>
-                            <Loader className="animate-spin" size={14} />
-                            <span>
-                              {botToRestart ? "Restarting..." : "Starting..."}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <span>
-                              {botToRestart
-                                ? "Restart Copy Trade"
-                                : "Start Copy Trade"}
-                            </span>
-                            <ArrowRight size={14} />
-                          </>
-                        )}
-                      </button>
                     </div>
-                  </form>
+
+                    {/* Platform Fees */}
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <label className="block text-[11px] font-semibold text-slate-300">
+                          Platform Fees
+                        </label>
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onMouseEnter={() => setShowFeesInfo(true)}
+                            onMouseLeave={() => setShowFeesInfo(false)}
+                            className="text-slate-500 hover:text-blue-400 transition-colors"
+                          >
+                            <Info size={12} />
+                          </button>
+                          {showFeesInfo && (
+                            <div
+                              className="absolute left-0 top-5 z-50 w-64 p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-[10px] text-slate-300 shadow-xl"
+                              style={{ animation: "fadeIn 0.2s ease-out" }}
+                            >
+                              <p>
+                                We charge 0.5-1% as fees of the allocated amount
+                                only once at the bot start point.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Start Button */}
+                    <button
+                      type="submit"
+                      disabled={
+                        !traderAddress.trim() ||
+                        allocation === 0 ||
+                        submitting ||
+                        allocatedAmount > balanceNum
+                      }
+                      className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-0.5"
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader className="animate-spin" size={14} />
+                          <span>
+                            {botToRestart ? "Restarting..." : "Starting..."}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span>
+                            {botToRestart
+                              ? "Restart Copy Trade"
+                              : "Start Copy Trade"}
+                          </span>
+                          <ArrowRight size={14} />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bots Section - Premium Redesign */}
+        {(runningBots.length > 0 || stoppedBots.length > 0) && (
+          <div className="mb-6">
+            {/* Section Heading with Toggle - Grouped */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-lg font-semibold text-white mb-1">
+                  Your Active Copy Trades
+                </h2>
+                <p className="text-slate-400 text-sm">
+                  Manage your active and stopped copy trading bots.
+                </p>
+              </div>
+
+              {/* Premium Segmented Tabs - Binance Style */}
+              <div className="flex justify-center sm:justify-end">
+                <div
+                  className="relative inline-flex items-center gap-0 p-1 rounded-full"
+                  style={{
+                    background: "rgba(6, 9, 19, 0.8)",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                    backdropFilter: "blur(20px) saturate(180%)",
+                    boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
+                  }}
+                >
+                  {/* Animated Active Background */}
+                  <div
+                    className={`absolute top-1 bottom-1 rounded-full transition-all duration-300 ease-out ${
+                      activeTab === "running"
+                        ? "left-1 right-1/2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/40 shadow-lg shadow-green-500/20"
+                        : "left-1/2 right-1 bg-gradient-to-r from-slate-500/20 to-slate-600/20 border border-slate-500/40"
+                    }`}
+                  />
+                  <button
+                    onClick={() => setActiveTab("running")}
+                    className={`relative z-10 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
+                      activeTab === "running"
+                        ? "text-white"
+                        : "text-slate-400 hover:text-slate-300"
+                    }`}
+                  >
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        activeTab === "running"
+                          ? "bg-green-400 shadow-lg shadow-green-400/50 animate-pulse"
+                          : "bg-slate-500"
+                      }`}
+                    />
+                    <span>Running</span>
+                    {runningBots.length > 0 && (
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                          activeTab === "running"
+                            ? "bg-green-500/30 text-green-300"
+                            : "bg-slate-700/50 text-slate-500"
+                        }`}
+                      >
+                        {runningBots.length}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("stopped")}
+                    className={`relative z-10 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
+                      activeTab === "stopped"
+                        ? "text-white"
+                        : "text-slate-400 hover:text-slate-300"
+                    }`}
+                  >
+                    <Square
+                      size={12}
+                      className={
+                        activeTab === "stopped"
+                          ? "text-slate-300"
+                          : "text-slate-500"
+                      }
+                    />
+                    <span>Stopped</span>
+                    {stoppedBots.length > 0 && (
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                          activeTab === "stopped"
+                            ? "bg-slate-500/30 text-slate-300"
+                            : "bg-slate-700/50 text-slate-500"
+                        }`}
+                      >
+                        {stoppedBots.length}
+                      </span>
+                    )}
+                  </button>
                 </div>
               </div>
             </div>
-          )
-        }
 
-        {/* Bots Section - Premium Redesign */}
-        {
-          (runningBots.length > 0 || stoppedBots.length > 0) && (
-            <div className="mb-6">
-              {/* Section Heading with Toggle - Grouped */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                <div>
-                  <h2 className="text-lg font-semibold text-white mb-1">
-                    Your Active Copy Trades
-                  </h2>
-                  <p className="text-slate-400 text-sm">
-                    Manage your active and stopped copy trading bots.
-                  </p>
-                </div>
-
-                {/* Premium Segmented Tabs - Binance Style */}
-                <div className="flex justify-center sm:justify-end">
-                  <div
-                    className="relative inline-flex items-center gap-0 p-1 rounded-full"
-                    style={{
-                      background: "rgba(6, 9, 19, 0.8)",
-                      border: "1px solid rgba(255, 255, 255, 0.1)",
-                      backdropFilter: "blur(20px) saturate(180%)",
-                      boxShadow: "0 4px 20px rgba(0, 0, 0, 0.3)",
-                    }}
-                  >
-                    {/* Animated Active Background */}
+            {/* Running Bots Grid - Responsive with consistent gaps */}
+            {activeTab === "running" && runningBots.length > 0 && (
+              <div className="flex justify-center">
+                <div className="grid grid-cols-1 gap-6 sm:gap-8 max-w-7xl w-full">
+                  {runningBots.map((bot, index) => (
                     <div
-                      className={`absolute top-1 bottom-1 rounded-full transition-all duration-300 ease-out ${activeTab === "running"
-                        ? "left-1 right-1/2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/40 shadow-lg shadow-green-500/20"
-                        : "left-1/2 right-1 bg-gradient-to-r from-slate-500/20 to-slate-600/20 border border-slate-500/40"
-                        }`}
-                    />
-                    <button
-                      onClick={() => setActiveTab("running")}
-                      className={`relative z-10 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${activeTab === "running"
-                        ? "text-white"
-                        : "text-slate-400 hover:text-slate-300"
-                        }`}
+                      key={bot.id}
+                      className="relative rounded-[18px] p-5 sm:p-6 transition-all duration-300 group flex flex-col animate-fadeIn hover:scale-[1.01] hover:shadow-xl"
+                      style={{
+                        background:
+                          "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
+                        border: "1px solid rgba(255, 255, 255, 0.06)",
+                        boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
+                        animationDelay: `${index * 0.1}s`,
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor =
+                          "rgba(255, 255, 255, 0.15)";
+                        e.currentTarget.style.boxShadow =
+                          "0px 12px 28px rgba(0, 0, 0, 0.35)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor =
+                          "rgba(255, 255, 255, 0.06)";
+                        e.currentTarget.style.boxShadow =
+                          "0px 8px 20px rgba(0, 0, 0, 0.25)";
+                      }}
                     >
-                      <div
-                        className={`w-2 h-2 rounded-full ${activeTab === "running"
-                          ? "bg-green-400 shadow-lg shadow-green-400/50 animate-pulse"
-                          : "bg-slate-500"
-                          }`}
-                      />
-                      <span>Running</span>
-                      {runningBots.length > 0 && (
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-xs font-bold ${activeTab === "running"
-                            ? "bg-green-500/30 text-green-300"
-                            : "bg-slate-700/50 text-slate-500"
-                            }`}
-                        >
-                          {runningBots.length}
-                        </span>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => setActiveTab("stopped")}
-                      className={`relative z-10 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${activeTab === "stopped"
-                        ? "text-white"
-                        : "text-slate-400 hover:text-slate-300"
-                        }`}
-                    >
-                      <Square
-                        size={12}
-                        className={
-                          activeTab === "stopped"
-                            ? "text-slate-300"
-                            : "text-slate-500"
-                        }
-                      />
-                      <span>Stopped</span>
-                      {stoppedBots.length > 0 && (
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-xs font-bold ${activeTab === "stopped"
-                            ? "bg-slate-500/30 text-slate-300"
-                            : "bg-slate-700/50 text-slate-500"
-                            }`}
-                        >
-                          {stoppedBots.length}
-                        </span>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
+                      {/* Header Row with Bot ID and Status */}
+                      <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-800/50">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base font-semibold text-white mb-0.5">
+                            {formatBotId(bot.id)}
+                          </h3>
+                        </div>
+                        {/* Status Badge */}
+                        <div className="flex items-center gap-1.5 px-2 py-1 bg-green-500/20 border border-green-500/30 rounded-full">
+                          <Play
+                            size={9}
+                            className="text-green-400"
+                            fill="currentColor"
+                          />
+                          <span className="text-[9px] font-semibold text-green-400 uppercase tracking-wide">
+                            Running
+                          </span>
+                        </div>
+                      </div>
 
-              {/* Running Bots Grid - Responsive with consistent gaps */}
-              {activeTab === "running" && runningBots.length > 0 && (
-                <div className="flex justify-center">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-7xl w-full">
-                    {runningBots.map((bot, index) => (
-                      <div
-                        key={bot.id}
-                        className="relative rounded-[18px] p-5 sm:p-6 transition-all duration-300 group flex flex-col animate-fadeIn hover:scale-[1.01] hover:shadow-xl"
-                        style={{
-                          background:
-                            "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
-                          border: "1px solid rgba(255, 255, 255, 0.06)",
-                          boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
-                          animationDelay: `${index * 0.1}s`,
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor =
-                            "rgba(255, 255, 255, 0.15)";
-                          e.currentTarget.style.boxShadow =
-                            "0px 12px 28px rgba(0, 0, 0, 0.35)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor =
-                            "rgba(255, 255, 255, 0.06)";
-                          e.currentTarget.style.boxShadow =
-                            "0px 8px 20px rgba(0, 0, 0, 0.25)";
-                        }}
-                      >
-                        {/* Header Row with Bot ID */}
-                        <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-800/50">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-lg font-semibold text-white mb-1">
-                              {formatBotId(bot.id)}
-                            </h3>
-                            <p className="text-sm text-slate-500 font-mono truncate">
-                              {bot.traderAddress
-                                ? formatAddress(bot.traderAddress)
-                                : "No trader assigned"}
-                            </p>
-                          </div>
-                          {/* Status Badge - Chip-like with icon */}
-                          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-500/20 border border-green-500/30 rounded-full backdrop-blur-sm shadow-lg shadow-green-500/20">
-                            <Play
-                              size={10}
-                              className="text-green-400"
-                              fill="currentColor"
-                            />
-                            <span className="text-[10px] font-semibold text-green-400 uppercase tracking-wide">
+                      {/* Bot Details - Single Horizontal Line */}
+                      <div className="mb-4 flex flex-wrap items-center gap-4 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-500 uppercase tracking-wider">
+                            Address:
+                          </span>
+                          <span className="text-slate-200 font-mono">
+                            {bot.traderAddress
+                              ? formatAddress(bot.traderAddress)
+                              : "No trader assigned"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-500 uppercase tracking-wider">
+                            Status:
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                            <span className="text-green-400 font-medium">
                               Running
                             </span>
                           </div>
                         </div>
-
-                        {/* Stats Grid - Premium Style with aligned labels */}
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                          <div>
-                            <span className="text-[13px] text-slate-500 uppercase tracking-wider block mb-1.5 font-medium">
-                              Allocation
-                            </span>
-                            <span className="text-base font-medium text-white">
-                              {formatCurrency(parseFloat(bot.allocatedAmount))}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-[13px] text-slate-500 uppercase tracking-wider block mb-1.5 font-medium">
-                              PNL
-                            </span>
-                            <span
-                              className={`text-base font-semibold ${bot.pnl && bot.pnl.startsWith("+")
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-500 uppercase tracking-wider">
+                            PNL:
+                          </span>
+                          <span
+                            className={`font-semibold ${
+                              bot.pnl && bot.pnl.startsWith("+")
                                 ? "text-[#4ADE80]"
                                 : "text-[#F87171]"
-                                }`}
-                            >
-                              {bot.pnl || "$0.00"}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Number of Trades */}
-                        <div className="mb-4 p-3 bg-slate-900/30 rounded-lg border border-slate-800/50">
-                          <span className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1.5">
-                            Total Trades
+                            }`}
+                          >
+                            {bot.pnl || "$0.00"}
                           </span>
-                          <span className="text-xl font-bold text-slate-200">
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-500 uppercase tracking-wider">
+                            Allocation:
+                          </span>
+                          <span className="text-slate-200 font-medium">
+                            {formatCurrency(parseFloat(bot.allocatedAmount))}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-500 uppercase tracking-wider">
+                            Trades:
+                          </span>
+                          <span className="text-slate-200 font-semibold">
                             {bot.trades || 0}
                           </span>
                         </div>
+                      </div>
 
-                        {/* Action Buttons - Standardized */}
-                        <div className="flex gap-2.5 mt-auto">
-                          <button
-                            onClick={() =>
-                              router.push(`/copytrade/details/${bot.id}`)
-                            }
-                            className="flex-1 px-3 py-2.5 bg-transparent hover:bg-slate-800/50 border border-slate-700/50 hover:border-slate-600/50 text-slate-300 rounded-[15px] text-xs font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md group/btn"
-                          >
-                            <Eye
-                              size={14}
-                              className="group-hover/btn:translate-x-0.5 transition-transform"
-                            />
-                            <span>Details</span>
-                          </button>
-                          <button
-                            onClick={() => handleStopBot(bot.id)}
-                            className="flex-1 px-3 py-2.5 bg-transparent hover:bg-red-500/10 border border-red-500/40 hover:border-red-500/60 text-red-400 rounded-[15px] text-xs font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-red-500/30 group/btn"
-                          >
-                            <Power
-                              size={14}
-                              className="group-hover/btn:scale-110 transition-transform"
-                            />
-                            <span>Stop</span>
-                          </button>
+                      {/* Open Positions - Matching Copy Trade History Table */}
+                      {bot.status === "running" && (
+                        <div className="mb-3">
+                          <div className="flex items-center gap-2 mb-4">
+                            <TrendingUp size={18} className="text-blue-400" />
+                            <h2 className="text-lg font-semibold text-white">
+                              Open Positions
+                            </h2>
+                          </div>
+                          {loadingPositions[bot.id] ? (
+                            <div
+                              className="text-center py-12 rounded-[18px] overflow-hidden"
+                              style={{
+                                background:
+                                  "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
+                                border: "1px solid rgba(255, 255, 255, 0.06)",
+                                boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
+                              }}
+                            >
+                              <Loader
+                                size={32}
+                                className="text-blue-400 mx-auto mb-3 animate-spin"
+                              />
+                              <p className="text-slate-400 text-sm">
+                                Loading positions...
+                              </p>
+                            </div>
+                          ) : getOpenPositions(bot.id).length > 0 ? (
+                            <div
+                              className="rounded-[18px] overflow-hidden"
+                              style={{
+                                background:
+                                  "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
+                                border: "1px solid rgba(255, 255, 255, 0.06)",
+                                boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
+                              }}
+                            >
+                              <div className="overflow-x-auto">
+                                <table className="w-full">
+                                  <thead className="bg-slate-900/30 border-b border-slate-800/50">
+                                    <tr>
+                                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                                        Symbol
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                                        Side
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                                        Size
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                                        Entry Price (USDT)
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                                        Mark Price (USDT)
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                                        Value (USDT)
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                                        Liq Price (USDT)
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                                        Margin (USDT)
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                                        Leverage
+                                      </th>
+                                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                                        PnL (USDT)
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-800/50">
+                                    {getOpenPositions(bot.id).map(
+                                      (position) => (
+                                        <tr
+                                          key={position.id}
+                                          className="hover:bg-slate-900/30 transition-colors"
+                                        >
+                                          <td className="px-4 py-3">
+                                            <div className="flex items-center gap-2">
+                                              <Image
+                                                src={getSymbolLogo(
+                                                  position.symbol
+                                                )}
+                                                alt={position.symbol}
+                                                width={24}
+                                                height={24}
+                                                className="rounded-full"
+                                              />
+                                              <div>
+                                                <p className="text-sm font-semibold text-slate-200">
+                                                  {position.symbol}
+                                                </p>
+                                                <p
+                                                  className={`text-xs ${position.side === "LONG" ? "text-green-400" : "text-red-400"}`}
+                                                >
+                                                  {position.leverage} •{" "}
+                                                  {position.side}
+                                                </p>
+                                              </div>
+                                            </div>
+                                          </td>
+                                          <td className="px-4 py-3">
+                                            <span
+                                              className={`px-2 py-1 rounded text-xs font-medium ${
+                                                position.side === "LONG"
+                                                  ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                                                  : "bg-red-500/20 text-red-400 border border-red-500/30"
+                                              }`}
+                                            >
+                                              {position.side}
+                                            </span>
+                                          </td>
+                                          <td className="px-4 py-3">
+                                            <div>
+                                              <p className="text-sm font-semibold text-slate-200">
+                                                {position.size}
+                                              </p>
+                                              <p className="text-xs text-slate-500">
+                                                {position.symbol}
+                                              </p>
+                                            </div>
+                                          </td>
+                                          <td className="px-4 py-3 text-sm text-slate-200">
+                                            {position.entryPrice}
+                                          </td>
+                                          <td className="px-4 py-3 text-sm text-slate-200">
+                                            {position.markPrice}
+                                          </td>
+                                          <td className="px-4 py-3 text-sm text-slate-200">
+                                            {position.value}
+                                          </td>
+                                          <td className="px-4 py-3 text-sm text-slate-200">
+                                            {position.liqPrice}
+                                          </td>
+                                          <td className="px-4 py-3 text-sm text-slate-200">
+                                            {position.margin}
+                                          </td>
+                                          <td className="px-4 py-3 text-sm text-slate-200">
+                                            {position.leverage}
+                                          </td>
+                                          <td className="px-4 py-3">
+                                            <div className="flex flex-col">
+                                              <span
+                                                className={`text-sm font-semibold ${
+                                                  position.pnl.startsWith("+")
+                                                    ? "text-[#4ADE80]"
+                                                    : "text-[#F87171]"
+                                                }`}
+                                              >
+                                                {position.pnl}
+                                              </span>
+                                              <span
+                                                className={`text-xs ${
+                                                  position.pnlPercent.startsWith(
+                                                    "+"
+                                                  )
+                                                    ? "text-[#4ADE80]"
+                                                    : "text-[#F87171]"
+                                                }`}
+                                              >
+                                                {position.pnlPercent}
+                                              </span>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      )
+                                    )}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          ) : (
+                            <div
+                              className="text-center py-12 rounded-[18px] overflow-hidden"
+                              style={{
+                                background:
+                                  "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
+                                border: "1px solid rgba(255, 255, 255, 0.06)",
+                                boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
+                              }}
+                            >
+                              <TrendingUp
+                                size={32}
+                                className="text-slate-500 mx-auto mb-3"
+                              />
+                              <p className="text-slate-400 text-sm">
+                                No open positions
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Action Buttons - Standardized */}
+                      <div className="flex gap-2 mt-auto">
+                        <button
+                          onClick={() => handleStopBot(bot.id)}
+                          className="w-full px-3 py-2.5 bg-transparent hover:bg-red-500/10 border border-red-500/40 hover:border-red-500/60 text-red-400 rounded-[15px] text-xs font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-red-500/30 group/btn"
+                        >
+                          <Power
+                            size={14}
+                            className="group-hover/btn:scale-110 transition-transform"
+                          />
+                          <span>Stop</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Stopped Bots Grid - Responsive with consistent gaps */}
+            {activeTab === "stopped" && stoppedBots.length > 0 && (
+              <div className="flex justify-center">
+                <div className="grid grid-cols-1 gap-6 sm:gap-8 max-w-7xl w-full">
+                  {stoppedBots.map((bot, index) => (
+                    <div
+                      key={bot.id}
+                      className="relative rounded-[18px] p-5 sm:p-6 transition-all duration-300 group opacity-80 hover:opacity-100 flex flex-col animate-fadeIn hover:scale-[1.01] hover:shadow-xl"
+                      style={{
+                        background:
+                          "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
+                        border: "1px solid rgba(255, 255, 255, 0.06)",
+                        boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
+                        animationDelay: `${index * 0.1}s`,
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor =
+                          "rgba(255, 255, 255, 0.15)";
+                        e.currentTarget.style.boxShadow =
+                          "0px 12px 28px rgba(0, 0, 0, 0.35)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor =
+                          "rgba(255, 255, 255, 0.06)";
+                        e.currentTarget.style.boxShadow =
+                          "0px 8px 20px rgba(0, 0, 0, 0.25)";
+                      }}
+                    >
+                      {/* Header Row with Bot ID and Status */}
+                      <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-800/50">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base font-semibold text-white mb-0.5">
+                            {formatBotId(bot.id)}
+                          </h3>
+                        </div>
+                        {/* Status Badge */}
+                        <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-500/20 border border-slate-500/30 rounded-full">
+                          <Square
+                            size={9}
+                            className="text-slate-400"
+                            fill="currentColor"
+                          />
+                          <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide">
+                            Stopped
+                          </span>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
-              {/* Stopped Bots Grid - Responsive with consistent gaps */}
-              {activeTab === "stopped" && stoppedBots.length > 0 && (
-                <div className="flex justify-center">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-7xl w-full">
-                    {stoppedBots.map((bot, index) => (
-                      <div
-                        key={bot.id}
-                        className="relative rounded-[18px] p-5 sm:p-6 transition-all duration-300 group opacity-80 hover:opacity-100 flex flex-col animate-fadeIn hover:scale-[1.01] hover:shadow-xl"
-                        style={{
-                          background:
-                            "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
-                          border: "1px solid rgba(255, 255, 255, 0.06)",
-                          boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
-                          animationDelay: `${index * 0.1}s`,
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor =
-                            "rgba(255, 255, 255, 0.15)";
-                          e.currentTarget.style.boxShadow =
-                            "0px 12px 28px rgba(0, 0, 0, 0.35)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor =
-                            "rgba(255, 255, 255, 0.06)";
-                          e.currentTarget.style.boxShadow =
-                            "0px 8px 20px rgba(0, 0, 0, 0.25)";
-                        }}
-                      >
-                        {/* Header Row with Bot ID */}
-                        <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-800/50">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-lg font-semibold text-white mb-1">
-                              {formatBotId(bot.id)}
-                            </h3>
-                            <p className="text-sm text-slate-500 font-mono truncate">
-                              {bot.traderAddress
-                                ? formatAddress(bot.traderAddress)
-                                : "No trader assigned"}
-                            </p>
-                          </div>
-                          {/* Status Badge - Chip-like with icon */}
-                          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-500/20 border border-slate-500/30 rounded-full backdrop-blur-sm">
-                            <Square
-                              size={10}
-                              className="text-slate-400"
-                              fill="currentColor"
-                            />
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
+                      {/* Bot Details - Single Horizontal Line */}
+                      <div className="mb-4 flex flex-wrap items-center gap-4 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-500 uppercase tracking-wider">
+                            Address:
+                          </span>
+                          <span className="text-slate-200 font-mono">
+                            {bot.traderAddress
+                              ? formatAddress(bot.traderAddress)
+                              : "No trader assigned"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-500 uppercase tracking-wider">
+                            Status:
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                            <span className="text-slate-400 font-medium">
                               Stopped
                             </span>
                           </div>
                         </div>
-
-                        {/* Stats Grid - Premium Style with aligned labels */}
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                          <div>
-                            <span className="text-[13px] text-slate-500 uppercase tracking-wider block mb-1.5 font-medium">
-                              Allocation
-                            </span>
-                            <span className="text-base font-medium text-slate-200">
-                              {formatCurrency(parseFloat(bot.allocatedAmount))}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-[13px] text-slate-500 uppercase tracking-wider block mb-1.5 font-medium">
-                              PNL
-                            </span>
-                            <span
-                              className={`text-base font-semibold ${bot.pnl && bot.pnl.startsWith("+")
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-500 uppercase tracking-wider">
+                            PNL:
+                          </span>
+                          <span
+                            className={`font-semibold ${
+                              bot.pnl && bot.pnl.startsWith("+")
                                 ? "text-[#4ADE80]"
                                 : "text-[#F87171]"
-                                }`}
-                            >
-                              {bot.pnl || "$0.00"}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Number of Trades */}
-                        <div className="mb-4 p-5 bg-slate-900/30 rounded-lg border border-slate-800/50">
-                          <span className="text-[13px] text-slate-500 uppercase tracking-wider block mb-1.5 font-medium">
-                            Total Trades
+                            }`}
+                          >
+                            {bot.pnl || "$0.00"}
                           </span>
-                          <span className="text-lg font-semibold text-slate-200">
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-500 uppercase tracking-wider">
+                            Allocation:
+                          </span>
+                          <span className="text-slate-200 font-medium">
+                            {formatCurrency(parseFloat(bot.allocatedAmount))}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-500 uppercase tracking-wider">
+                            Trades:
+                          </span>
+                          <span className="text-slate-200 font-semibold">
                             {bot.trades || 0}
                           </span>
                         </div>
-
-                        {/* Action Buttons - Standardized */}
-                        <div className="flex gap-2.5 mt-auto">
-                          <button
-                            onClick={() =>
-                              router.push(`/copytrade/details/${bot.id}`)
-                            }
-                            className="flex-1 px-3 py-2.5 bg-transparent hover:bg-slate-800/50 border border-slate-700/50 hover:border-slate-600/50 text-slate-300 rounded-[15px] text-xs font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md group/btn"
-                          >
-                            <Eye
-                              size={14}
-                              className="group-hover/btn:translate-x-0.5 transition-transform"
-                            />
-                            <span>Details</span>
-                          </button>
-                          <button
-                            onClick={async () => {
-                              // Refresh bots list to get latest running bots count
-                              await fetchBots();
-                              // Pre-fill form with bot data
-                              setBotToRestart(bot);
-                              setTraderAddress(bot.traderAddress || "");
-                              setAllocation(bot.allocation);
-                              setTradingMode(bot.mode);
-                              setShowForm(true);
-                            }}
-                            className="flex-1 px-3 py-2.5 bg-transparent hover:bg-blue-500/10 border border-blue-500/40 hover:border-blue-500/60 text-blue-400 rounded-[15px] text-xs font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-blue-500/30 group/btn"
-                          >
-                            <RefreshCw
-                              size={14}
-                              className="group-hover/btn:rotate-180 transition-transform duration-300"
-                            />
-                            <span>Restart</span>
-                          </button>
-                        </div>
                       </div>
-                    ))}
-                  </div>
+
+                      {/* Action Buttons - Standardized */}
+                      <div className="flex gap-2 mt-auto">
+                        <button
+                          onClick={async () => {
+                            // Refresh bots list to get latest running bots count
+                            await fetchBots();
+                            // Pre-fill form with bot data
+                            setBotToRestart(bot);
+                            setTraderAddress(bot.traderAddress || "");
+                            setAllocation(bot.allocation);
+                            setTradingMode(bot.mode);
+                            setShowForm(true);
+                          }}
+                          className="w-full px-3 py-2.5 bg-transparent hover:bg-blue-500/10 border border-blue-500/40 hover:border-blue-500/60 text-blue-400 rounded-[15px] text-xs font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-blue-500/30 group/btn"
+                        >
+                          <RefreshCw
+                            size={14}
+                            className="group-hover/btn:rotate-180 transition-transform duration-300"
+                          />
+                          <span>Restart</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              )}
-            </div>
-          )
-        }
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Empty State */}
-        {
-          runningBots.length === 0 && stoppedBots.length === 0 && (
-            <div className="text-center py-16">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-800/50 border border-slate-700/50 mb-4">
-                <Copy size={24} className="text-slate-500" />
+        {runningBots.length === 0 && stoppedBots.length === 0 && (
+          <div className="text-center py-16">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-800/50 border border-slate-700/50 mb-4">
+              <Copy size={24} className="text-slate-500" />
+            </div>
+            <p className="text-slate-400 text-sm">
+              No active copy trades. Start your first one above!
+            </p>
+          </div>
+        )}
+
+        {/* Copy Trade History Section */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Activity size={18} className="text-blue-400" />
+            <h2 className="text-lg font-semibold text-white">
+              Copy Trade History
+            </h2>
+          </div>
+          {loadingTradeHistory ? (
+            <div
+              className="text-center py-12 rounded-[18px] overflow-hidden"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
+                border: "1px solid rgba(255, 255, 255, 0.06)",
+                boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
+              }}
+            >
+              <Loader
+                size={32}
+                className="text-blue-400 mx-auto mb-3 animate-spin"
+              />
+              <p className="text-slate-400 text-sm">Loading trade history...</p>
+            </div>
+          ) : tradeHistory.length > 0 ? (
+            <div
+              className="rounded-[18px] overflow-hidden"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
+                border: "1px solid rgba(255, 255, 255, 0.06)",
+                boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
+              }}
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-slate-900/30 border-b border-slate-800/50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                        Symbol
+                      </th>
+                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                        Time
+                      </th>
+                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                        Direction
+                      </th>
+                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                        Size
+                      </th>
+                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                        Price (USDT)
+                      </th>
+                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                        Order Value (USDT)
+                      </th>
+                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                        Fee (USDT)
+                      </th>
+                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                        PnL (USDT)
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/50">
+                    {tradeHistory.map((trade, index) => (
+                      <tr
+                        key={`${trade.id}-${index}`}
+                        className="hover:bg-slate-900/30 transition-colors"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <Image
+                              src={getSymbolLogo(trade.symbol)}
+                              alt={trade.symbol}
+                              width={24}
+                              height={24}
+                              className="rounded-full"
+                            />
+                            <div>
+                              <p className="text-sm font-semibold text-slate-200">
+                                {trade.symbol}
+                              </p>
+                              <p
+                                className={`text-xs ${
+                                  trade.direction === "Long" ||
+                                  trade.direction === "Exit Short"
+                                    ? "text-green-400"
+                                    : "text-red-400"
+                                }`}
+                              >
+                                {trade.leverage} •{" "}
+                                {trade.direction.includes("Long")
+                                  ? "Long"
+                                  : "Short"}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-300">
+                          {trade.timestamp}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`px-2 py-1 rounded text-xs font-medium ${
+                              trade.direction === "Long" ||
+                              trade.direction === "Exit Short"
+                                ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                                : "bg-red-500/20 text-red-400 border border-red-500/30"
+                            }`}
+                          >
+                            {trade.direction}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-200">
+                              {trade.size}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {trade.symbol}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-200">
+                          {trade.price}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-200">
+                          {trade.orderValue}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-200">
+                          {trade.fee}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`text-sm font-semibold ${
+                              trade.pnl.startsWith("+")
+                                ? "text-[#4ADE80]"
+                                : "text-[#F87171]"
+                            }`}
+                          >
+                            {trade.pnl}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
+            </div>
+          ) : (
+            <div
+              className="text-center py-12 rounded-[18px] overflow-hidden"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
+                border: "1px solid rgba(255, 255, 255, 0.06)",
+                boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
+              }}
+            >
+              <Activity size={32} className="text-slate-500 mx-auto mb-3" />
               <p className="text-slate-400 text-sm">
-                No active copy trades. Start your first one above!
+                No trade history available
               </p>
             </div>
-          )
-        }
-      </div >
-    </div >
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

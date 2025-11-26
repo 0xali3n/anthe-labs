@@ -71,7 +71,8 @@ pnpm run dev:ws     # WebSocket service
 - Create/start/stop copy trade bots
 - Smart ratio & fixed amount allocation modes
 - Real-time PNL tracking
-- Bot details page with positions & history
+- Open positions table with live data
+- Trade history with full order details
 - Single running bot limit
 
 ### Wallet & Deposit System
@@ -122,13 +123,23 @@ anthe-labs/
 
 ## 📝 Recent Updates
 
+### Copy Trade Page Redesign ✨
+
+- ✅ Horizontal full-width bot cards with compact details
+- ✅ Integrated Open Positions table (real-time data)
+- ✅ Copy Trade History section with full trade details
+- ✅ Real API integration for positions and trade history
+- ✅ Fee column in trade history
+- ✅ Proper order type mapping (Long, Short, Exit Long, Exit Short)
+- ✅ Parallel API calls for optimal performance
+
 ### Code Cleanup & Optimization ✨
 
-- ✅ Removed verbose console logs from deposit/withdrawal flows
-- ✅ Cleaned up frontend and backend logging
-- ✅ Removed sensitive data logging (private keys, addresses)
-- ✅ Kept only essential error logs for debugging
-- ✅ Optimized performance by removing unnecessary logging overhead
+- ✅ Removed all debug console logs
+- ✅ Created shared utility modules (marketUtils, authUtils, formatUtils)
+- ✅ Modularized API calls - no code duplication
+- ✅ Removed debug pages and endpoints for production
+- ✅ Cleaned up unnecessary code and imports
 
 ### Wallet & Deposit Management ✨
 
@@ -150,7 +161,6 @@ anthe-labs/
 
 - ✅ Bot creation/management UI
 - ✅ Smart ratio allocation mode
-- ✅ Bot details page with metrics
 - ✅ Redis syncing for active subscriptions
 
 ---
