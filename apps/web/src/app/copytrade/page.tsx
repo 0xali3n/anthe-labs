@@ -129,6 +129,16 @@ export default function Copytrade() {
   const [tradeHistory, setTradeHistory] = useState<TradeHistory[]>([]);
   const [loadingTradeHistory, setLoadingTradeHistory] = useState(false);
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const totalPages = Math.ceil(tradeHistory.length / itemsPerPage);
+  const currentTrades = tradeHistory.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   // Fetch all data in parallel (positions and trade history)
   useEffect(() => {
     if (!isSignedIn) return;
@@ -556,7 +566,9 @@ export default function Copytrade() {
           }}
         />
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-8 max-w-md text-center relative z-10">
-          <h2 className="text-xl font-semibold text-white mb-2 tracking-tight">
+          <h2
+            className={`${palanquinDark.className} text-xl font-semibold text-white mb-2 tracking-tight`}
+          >
             Sign In Required
           </h2>
           <p className="text-slate-400 text-sm mb-6">
@@ -618,7 +630,7 @@ export default function Copytrade() {
               setTradingMode("smart_ratio");
               setShowForm(true);
             }}
-            className={`group flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-lg font-semibold transition-all duration-300 shadow-lg shadow-blue-500/20 ${outfit.className}`}
+            className={`group flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-lg font-semibold transition-all duration-300 shadow-md ${outfit.className}`}
           >
             Start Copy Trade
             {/* <ArrowRight
@@ -664,7 +676,9 @@ export default function Copytrade() {
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/30 flex items-center justify-center">
                       <Sparkles size={14} className="text-blue-400" />
                     </div>
-                    <h2 className="text-base font-bold text-white">
+                    <h2
+                      className={`${palanquinDark.className} text-base font-bold text-white`}
+                    >
                       {botToRestart
                         ? "Restart Copy Trading"
                         : "Start Copy Trading"}
@@ -903,7 +917,7 @@ export default function Copytrade() {
                         submitting ||
                         allocatedAmount > balanceNum
                       }
-                      className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-0.5"
+                      className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:-translate-y-0.5"
                     >
                       {submitting ? (
                         <>
@@ -936,7 +950,9 @@ export default function Copytrade() {
             {/* Section Heading with Toggle - Grouped */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
               <div>
-                <h2 className="text-lg font-semibold text-white mb-1">
+                <h2
+                  className={`${palanquinDark.className} text-lg font-semibold text-white mb-1`}
+                >
                   Your Active Copy Trades
                 </h2>
                 <p className="text-slate-400 text-sm">
@@ -959,7 +975,7 @@ export default function Copytrade() {
                   <div
                     className={`absolute top-1 bottom-1 rounded-full transition-all duration-300 ease-out ${
                       activeTab === "running"
-                        ? "left-1 right-1/2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/40 shadow-lg shadow-green-500/20"
+                        ? "left-1 right-1/2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/40"
                         : "left-1/2 right-1 bg-gradient-to-r from-slate-500/20 to-slate-600/20 border border-slate-500/40"
                     }`}
                   />
@@ -974,7 +990,7 @@ export default function Copytrade() {
                     <div
                       className={`w-2 h-2 rounded-full ${
                         activeTab === "running"
-                          ? "bg-green-400 shadow-lg shadow-green-400/50 animate-pulse"
+                          ? "bg-green-400"
                           : "bg-slate-500"
                       }`}
                     />
@@ -1031,7 +1047,7 @@ export default function Copytrade() {
                   {runningBots.map((bot, index) => (
                     <div
                       key={bot.id}
-                      className="relative rounded-[18px] p-5 sm:p-6 transition-all duration-300 group flex flex-col animate-fadeIn hover:scale-[1.01] hover:shadow-xl"
+                      className="relative rounded-[18px] p-5 sm:p-6 transition-all duration-300 group flex flex-col animate-fadeIn"
                       style={{
                         background:
                           "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
@@ -1039,24 +1055,14 @@ export default function Copytrade() {
                         boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
                         animationDelay: `${index * 0.1}s`,
                       }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor =
-                          "rgba(255, 255, 255, 0.15)";
-                        e.currentTarget.style.boxShadow =
-                          "0px 12px 28px rgba(0, 0, 0, 0.35)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor =
-                          "rgba(255, 255, 255, 0.06)";
-                        e.currentTarget.style.boxShadow =
-                          "0px 8px 20px rgba(0, 0, 0, 0.25)";
-                      }}
                     >
                       {/* Header Row with Bot ID and Status */}
                       <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-800/50">
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-base font-semibold text-white mb-0.5">
-                            {formatBotId(bot.id)}
+                          <h3
+                            className={`${palanquinDark.className} text-base font-semibold text-white mb-0.5`}
+                          >
+                            Bot ID : {formatBotId(bot.id)}
                           </h3>
                         </div>
                         {/* Status Badge */}
@@ -1072,35 +1078,39 @@ export default function Copytrade() {
                         </div>
                       </div>
 
-                      {/* Bot Details - Single Horizontal Line */}
-                      <div className="mb-4 flex flex-wrap items-center gap-4 text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-slate-500 uppercase tracking-wider">
-                            Address:
+                      {/* Bot Details - Grid Layout */}
+
+                      <div className="mb-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5 justify-center">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-1">
+                            Address
                           </span>
-                          <span className="text-slate-200 font-mono">
+                          <span
+                            className="text-sm font-medium text-slate-200 font-mono truncate"
+                            title={bot.traderAddress || ""}
+                          >
                             {bot.traderAddress
                               ? formatAddress(bot.traderAddress)
-                              : "No trader assigned"}
+                              : "No trader"}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-slate-500 uppercase tracking-wider">
-                            Status:
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-1">
+                            Status
                           </span>
-                          <div className="flex items-center gap-1">
-                            <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                            <span className="text-green-400 font-medium">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]" />
+                            <span className="text-sm font-medium text-green-400">
                               Running
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-slate-500 uppercase tracking-wider">
-                            PNL:
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-1">
+                            PNL
                           </span>
                           <span
-                            className={`font-semibold ${
+                            className={`text-sm font-bold ${
                               bot.pnl && bot.pnl.startsWith("+")
                                 ? "text-[#4ADE80]"
                                 : "text-[#F87171]"
@@ -1109,19 +1119,19 @@ export default function Copytrade() {
                             {bot.pnl || "$0.00"}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-slate-500 uppercase tracking-wider">
-                            Allocation:
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-1">
+                            Allocation
                           </span>
-                          <span className="text-slate-200 font-medium">
+                          <span className="text-sm font-medium text-slate-200">
                             {formatCurrency(parseFloat(bot.allocatedAmount))}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-slate-500 uppercase tracking-wider">
-                            Trades:
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-1">
+                            Trades
                           </span>
-                          <span className="text-slate-200 font-semibold">
+                          <span className="text-sm font-medium text-slate-200">
                             {bot.trades || 0}
                           </span>
                         </div>
@@ -1131,8 +1141,9 @@ export default function Copytrade() {
                       {bot.status === "running" && (
                         <div className="mb-3">
                           <div className="flex items-center gap-2 mb-4">
-                            <TrendingUp size={18} className="text-blue-400" />
-                            <h2 className="text-lg font-semibold text-white">
+                            <h2
+                              className={`${palanquinDark.className} text-lg font-semibold text-white`}
+                            >
                               Open Positions
                             </h2>
                           </div>
@@ -1164,38 +1175,38 @@ export default function Copytrade() {
                                 boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
                               }}
                             >
-                              <div className="overflow-x-auto">
+                              <div className="">
                                 <table className="w-full">
-                                  <thead className="bg-slate-900/30 border-b border-slate-800/50">
+                                  <thead className="bg-slate-900/50 border-b border-slate-800">
                                     <tr>
-                                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                                      <th className="pl-6 pr-2 py-4 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                                         Symbol
                                       </th>
-                                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                                      <th className="px-2 py-4 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                                         Side
                                       </th>
-                                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                                      <th className="px-2 py-4 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                                         Size
                                       </th>
-                                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                                      <th className="px-2 py-4 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                                         Entry Price (USDT)
                                       </th>
-                                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                                      <th className="px-2 py-4 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                                         Mark Price (USDT)
                                       </th>
-                                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                                      <th className="px-2 py-4 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                                         Value (USDT)
                                       </th>
-                                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                                      <th className="px-2 py-4 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                                         Liq Price (USDT)
                                       </th>
-                                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                                      <th className="px-2 py-4 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                                         Margin (USDT)
                                       </th>
-                                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                                      <th className="px-2 py-4 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                                         Leverage
                                       </th>
-                                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                                      <th className="pl-2 pr-6 py-4 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                                         PnL (USDT)
                                       </th>
                                     </tr>
@@ -1205,46 +1216,58 @@ export default function Copytrade() {
                                       (position) => (
                                         <tr
                                           key={position.id}
-                                          className="hover:bg-slate-900/30 transition-colors"
+                                          className="hover:bg-slate-800/30 transition-colors group/row"
                                         >
-                                          <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2">
-                                              <Image
-                                                src={getSymbolLogo(
-                                                  position.symbol
-                                                )}
-                                                alt={position.symbol}
-                                                width={24}
-                                                height={24}
-                                                className="rounded-full"
-                                              />
+                                          <td className="pl-6 pr-2 py-4 whitespace-nowrap">
+                                            <div className="flex items-center gap-3">
+                                              <div className="relative">
+                                                <Image
+                                                  src={getSymbolLogo(
+                                                    position.symbol
+                                                  )}
+                                                  alt={position.symbol}
+                                                  width={24}
+                                                  height={24}
+                                                  className="rounded-full"
+                                                />
+                                                <div className="absolute -bottom-1 -right-1 bg-slate-900 rounded-full p-0.5">
+                                                  {position.side === "LONG" ? (
+                                                    <TrendingUp
+                                                      size={14}
+                                                      className="text-green-400"
+                                                    />
+                                                  ) : (
+                                                    <TrendingUp
+                                                      size={14}
+                                                      className="text-red-400 transform rotate-180"
+                                                    />
+                                                  )}
+                                                </div>
+                                              </div>
                                               <div>
-                                                <p className="text-sm font-semibold text-slate-200">
+                                                <p className="text-sm font-bold text-white">
                                                   {position.symbol}
                                                 </p>
-                                                <p
-                                                  className={`text-xs ${position.side === "LONG" ? "text-green-400" : "text-red-400"}`}
-                                                >
-                                                  {position.leverage} •{" "}
-                                                  {position.side}
+                                                <p className="text-xs text-slate-500 font-medium">
+                                                  Perpetual
                                                 </p>
                                               </div>
                                             </div>
                                           </td>
-                                          <td className="px-4 py-3">
+                                          <td className="px-2 py-4 whitespace-nowrap">
                                             <span
-                                              className={`px-2 py-1 rounded text-xs font-medium ${
+                                              className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${
                                                 position.side === "LONG"
-                                                  ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                                                  : "bg-red-500/20 text-red-400 border border-red-500/30"
+                                                  ? "bg-green-500/10 text-green-400 border-green-500/20"
+                                                  : "bg-red-500/10 text-red-400 border-red-500/20"
                                               }`}
                                             >
                                               {position.side}
                                             </span>
                                           </td>
-                                          <td className="px-4 py-3">
-                                            <div>
-                                              <p className="text-sm font-semibold text-slate-200">
+                                          <td className="px-2 py-4 whitespace-nowrap text-right">
+                                            <div className="flex flex-col items-end">
+                                              <p className="text-sm font-medium text-slate-200 font-mono">
                                                 {position.size}
                                               </p>
                                               <p className="text-xs text-slate-500">
@@ -1252,42 +1275,44 @@ export default function Copytrade() {
                                               </p>
                                             </div>
                                           </td>
-                                          <td className="px-4 py-3 text-sm text-slate-200">
+                                          <td className="px-2 py-4 whitespace-nowrap text-right text-sm text-slate-300 font-mono">
                                             {position.entryPrice}
                                           </td>
-                                          <td className="px-4 py-3 text-sm text-slate-200">
+                                          <td className="px-2 py-4 whitespace-nowrap text-right text-sm text-slate-300 font-mono">
                                             {position.markPrice}
                                           </td>
-                                          <td className="px-4 py-3 text-sm text-slate-200">
+                                          <td className="px-2 py-4 whitespace-nowrap text-right text-sm text-slate-300 font-mono">
                                             {position.value}
                                           </td>
-                                          <td className="px-4 py-3 text-sm text-slate-200">
+                                          <td className="px-2 py-4 whitespace-nowrap text-right text-sm text-red-400 font-mono">
                                             {position.liqPrice}
                                           </td>
-                                          <td className="px-4 py-3 text-sm text-slate-200">
+                                          <td className="px-2 py-4 whitespace-nowrap text-right text-sm text-slate-300 font-mono">
                                             {position.margin}
                                           </td>
-                                          <td className="px-4 py-3 text-sm text-slate-200">
-                                            {position.leverage}
+                                          <td className="px-2 py-4 whitespace-nowrap text-right">
+                                            <span className="text-sm font-medium text-slate-400 bg-slate-800/50 px-2 py-1 rounded">
+                                              {position.leverage}
+                                            </span>
                                           </td>
-                                          <td className="px-4 py-3">
-                                            <div className="flex flex-col">
+                                          <td className="pl-2 pr-6 py-4 whitespace-nowrap text-right">
+                                            <div className="flex flex-col items-end">
                                               <span
-                                                className={`text-sm font-semibold ${
+                                                className={`text-sm font-bold font-mono ${
                                                   position.pnl.startsWith("+")
-                                                    ? "text-[#4ADE80]"
-                                                    : "text-[#F87171]"
+                                                    ? "text-green-500/70"
+                                                    : "text-red-500/70"
                                                 }`}
                                               >
                                                 {position.pnl}
                                               </span>
                                               <span
-                                                className={`text-xs ${
+                                                className={`text-xs font-medium ${
                                                   position.pnlPercent.startsWith(
                                                     "+"
                                                   )
-                                                    ? "text-[#4ADE80]"
-                                                    : "text-[#F87171]"
+                                                    ? "text-green-500/70"
+                                                    : "text-red-500/70"
                                                 }`}
                                               >
                                                 {position.pnlPercent}
@@ -1327,7 +1352,7 @@ export default function Copytrade() {
                       <div className="flex gap-2 mt-auto">
                         <button
                           onClick={() => handleStopBot(bot.id)}
-                          className="w-full px-3 py-2.5 bg-transparent hover:bg-red-500/10 border border-red-500/40 hover:border-red-500/60 text-red-400 rounded-[15px] text-xs font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-red-500/30 group/btn"
+                          className="w-full px-3 py-2.5 bg-transparent hover:bg-red-500/10 border border-red-500/40 hover:border-red-500/60 text-red-400 rounded-[15px] text-xs font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md group/btn"
                         >
                           <Power
                             size={14}
@@ -1345,11 +1370,11 @@ export default function Copytrade() {
             {/* Stopped Bots Grid - Responsive with consistent gaps */}
             {activeTab === "stopped" && stoppedBots.length > 0 && (
               <div className="flex justify-center">
-                <div className="grid grid-cols-1 gap-6 sm:gap-8 max-w-7xl w-full">
+                <div className="flex overflow-x-auto pb-6 gap-6 max-w-7xl w-full snap-x scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900/50">
                   {stoppedBots.map((bot, index) => (
                     <div
                       key={bot.id}
-                      className="relative rounded-[18px] p-5 sm:p-6 transition-all duration-300 group opacity-80 hover:opacity-100 flex flex-col animate-fadeIn hover:scale-[1.01] hover:shadow-xl"
+                      className="relative rounded-[18px] p-5 transition-all duration-300 group opacity-80 hover:opacity-100 flex flex-col animate-fadeIn h-full min-w-[280px] sm:min-w-[320px] flex-shrink-0 snap-center"
                       style={{
                         background:
                           "linear-gradient(180deg, rgba(28, 31, 46, 0.8) 0%, rgba(22, 24, 33, 0.8) 100%)",
@@ -1357,23 +1382,13 @@ export default function Copytrade() {
                         boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
                         animationDelay: `${index * 0.1}s`,
                       }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor =
-                          "rgba(255, 255, 255, 0.15)";
-                        e.currentTarget.style.boxShadow =
-                          "0px 12px 28px rgba(0, 0, 0, 0.35)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor =
-                          "rgba(255, 255, 255, 0.06)";
-                        e.currentTarget.style.boxShadow =
-                          "0px 8px 20px rgba(0, 0, 0, 0.25)";
-                      }}
                     >
                       {/* Header Row with Bot ID and Status */}
                       <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-800/50">
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-base font-semibold text-white mb-0.5">
+                          <h3
+                            className={`${palanquinDark.className} text-base font-semibold text-white mb-0.5`}
+                          >
                             {formatBotId(bot.id)}
                           </h3>
                         </div>
@@ -1390,35 +1405,38 @@ export default function Copytrade() {
                         </div>
                       </div>
 
-                      {/* Bot Details - Single Horizontal Line */}
-                      <div className="mb-4 flex flex-wrap items-center gap-4 text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-slate-500 uppercase tracking-wider">
-                            Address:
+                      {/* Bot Details - 2 Column Grid for Cards */}
+                      <div className="mb-4 grid grid-cols-2 gap-y-4 gap-x-2">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-1">
+                            Address
                           </span>
-                          <span className="text-slate-200 font-mono">
+                          <span
+                            className="text-xs font-medium text-slate-200 font-mono truncate"
+                            title={bot.traderAddress || ""}
+                          >
                             {bot.traderAddress
                               ? formatAddress(bot.traderAddress)
-                              : "No trader assigned"}
+                              : "No trader"}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-slate-500 uppercase tracking-wider">
-                            Status:
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-1">
+                            Status
                           </span>
                           <div className="flex items-center gap-1">
                             <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                            <span className="text-slate-400 font-medium">
+                            <span className="text-xs font-medium text-slate-400">
                               Stopped
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-slate-500 uppercase tracking-wider">
-                            PNL:
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-1">
+                            PNL
                           </span>
                           <span
-                            className={`font-semibold ${
+                            className={`text-xs font-bold ${
                               bot.pnl && bot.pnl.startsWith("+")
                                 ? "text-[#4ADE80]"
                                 : "text-[#F87171]"
@@ -1427,26 +1445,26 @@ export default function Copytrade() {
                             {bot.pnl || "$0.00"}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-slate-500 uppercase tracking-wider">
-                            Allocation:
+                        <div className="flex flex-col">
+                          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-1">
+                            Allocation
                           </span>
-                          <span className="text-slate-200 font-medium">
+                          <span className="text-xs font-medium text-slate-200">
                             {formatCurrency(parseFloat(bot.allocatedAmount))}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-slate-500 uppercase tracking-wider">
-                            Trades:
+                        <div className="flex flex-col col-span-2">
+                          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-1">
+                            Trades
                           </span>
-                          <span className="text-slate-200 font-semibold">
+                          <span className="text-xs font-medium text-slate-200">
                             {bot.trades || 0}
                           </span>
                         </div>
                       </div>
 
                       {/* Action Buttons - Standardized */}
-                      <div className="flex gap-2 mt-auto">
+                      <div className="flex gap-2 mt-auto pt-2">
                         <button
                           onClick={async () => {
                             // Refresh bots list to get latest running bots count
@@ -1458,7 +1476,7 @@ export default function Copytrade() {
                             setTradingMode(bot.mode);
                             setShowForm(true);
                           }}
-                          className="w-full px-3 py-2.5 bg-transparent hover:bg-blue-500/10 border border-blue-500/40 hover:border-blue-500/60 text-blue-400 rounded-[15px] text-xs font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-blue-500/30 group/btn"
+                          className="w-full px-3 py-2.5 bg-transparent hover:bg-blue-500/10 border border-blue-500/40 hover:border-blue-500/60 text-blue-400 rounded-[15px] text-xs font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md group/btn"
                         >
                           <RefreshCw
                             size={14}
@@ -1490,8 +1508,9 @@ export default function Copytrade() {
         {/* Copy Trade History Section */}
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-4">
-            <Activity size={18} className="text-blue-400" />
-            <h2 className="text-lg font-semibold text-white">
+            <h2
+              className={`${palanquinDark.className} text-lg font-semibold text-white`}
+            >
               Copy Trade History
             </h2>
           </div>
@@ -1521,57 +1540,73 @@ export default function Copytrade() {
                 boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.25)",
               }}
             >
-              <div className="overflow-x-auto">
+              <div className="">
                 <table className="w-full">
-                  <thead className="bg-slate-900/30 border-b border-slate-800/50">
+                  <thead className="bg-slate-900/50 border-b border-slate-800">
                     <tr>
-                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                      <th className="pl-6 pr-2 py-4 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                         Symbol
                       </th>
-                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                      <th className="px-2 py-4 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                         Time
                       </th>
-                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                      <th className="px-2 py-4 text-left text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                         Direction
                       </th>
-                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                      <th className="px-2 py-4 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                         Size
                       </th>
-                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                      <th className="px-2 py-4 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                         Price (USDT)
                       </th>
-                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                      <th className="px-2 py-4 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                         Order Value (USDT)
                       </th>
-                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                      <th className="px-2 py-4 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                         Fee (USDT)
                       </th>
-                      <th className="px-4 py-3 text-left text-[13px] font-medium text-slate-500 uppercase tracking-wider">
+                      <th className="pl-2 pr-6 py-4 text-right text-[10px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                         PnL (USDT)
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/50">
-                    {tradeHistory.map((trade, index) => (
+                    {currentTrades.map((trade, index) => (
                       <tr
                         key={`${trade.id}-${index}`}
-                        className="hover:bg-slate-900/30 transition-colors"
+                        className="hover:bg-slate-800/30 transition-colors group/row"
                       >
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <Image
-                              src={getSymbolLogo(trade.symbol)}
-                              alt={trade.symbol}
-                              width={24}
-                              height={24}
-                              className="rounded-full"
-                            />
+                        <td className="pl-6 pr-2 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-3">
+                            <div className="relative">
+                              <Image
+                                src={getSymbolLogo(trade.symbol)}
+                                alt={trade.symbol}
+                                width={24}
+                                height={24}
+                                className="rounded-full"
+                              />
+                              <div className="absolute -bottom-1 -right-1 bg-slate-900 rounded-full p-0.5">
+                                {trade.direction === "Long" ||
+                                trade.direction === "Exit Short" ? (
+                                  <TrendingUp
+                                    size={14}
+                                    className="text-green-400"
+                                  />
+                                ) : (
+                                  <TrendingUp
+                                    size={14}
+                                    className="text-red-400 transform rotate-180"
+                                  />
+                                )}
+                              </div>
+                            </div>
                             <div>
-                              <p className="text-sm font-semibold text-slate-200">
+                              <p className="text-sm font-bold text-white">
                                 {trade.symbol}
                               </p>
                               <p
-                                className={`text-xs ${
+                                className={`text-xs font-medium ${
                                   trade.direction === "Long" ||
                                   trade.direction === "Exit Short"
                                     ? "text-green-400"
@@ -1586,24 +1621,24 @@ export default function Copytrade() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-300">
+                        <td className="px-2 py-4 whitespace-nowrap text-sm text-slate-300 font-mono">
                           {trade.timestamp}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-2 py-4 whitespace-nowrap">
                           <span
-                            className={`px-2 py-1 rounded text-xs font-medium ${
+                            className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${
                               trade.direction === "Long" ||
                               trade.direction === "Exit Short"
-                                ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                                : "bg-red-500/20 text-red-400 border border-red-500/30"
+                                ? "bg-green-500/10 text-green-400 border-green-500/20"
+                                : "bg-red-500/10 text-red-400 border-red-500/20"
                             }`}
                           >
                             {trade.direction}
                           </span>
                         </td>
-                        <td className="px-4 py-3">
-                          <div>
-                            <p className="text-sm font-semibold text-slate-200">
+                        <td className="px-2 py-4 whitespace-nowrap text-right">
+                          <div className="flex flex-col items-end">
+                            <p className="text-sm font-medium text-slate-200 font-mono">
                               {trade.size}
                             </p>
                             <p className="text-xs text-slate-500">
@@ -1611,21 +1646,21 @@ export default function Copytrade() {
                             </p>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-200">
+                        <td className="px-2 py-4 whitespace-nowrap text-right text-sm text-slate-300 font-mono">
                           {trade.price}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-200">
+                        <td className="px-2 py-4 whitespace-nowrap text-right text-sm text-slate-300 font-mono">
                           {trade.orderValue}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-200">
+                        <td className="px-2 py-4 whitespace-nowrap text-right text-sm text-slate-300 font-mono">
                           {trade.fee}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="pl-2 pr-6 py-4 whitespace-nowrap text-right">
                           <span
-                            className={`text-sm font-semibold ${
+                            className={`text-sm font-bold font-mono ${
                               trade.pnl.startsWith("+")
-                                ? "text-[#4ADE80]"
-                                : "text-[#F87171]"
+                                ? "text-green-500/70"
+                                : "text-red-500/70"
                             }`}
                           >
                             {trade.pnl}
@@ -1636,6 +1671,87 @@ export default function Copytrade() {
                   </tbody>
                 </table>
               </div>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-slate-800 bg-slate-900/30">
+                  <div className="flex flex-1 justify-between sm:hidden">
+                    <button
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(prev - 1, 1))
+                      }
+                      disabled={currentPage === 1}
+                      className="relative inline-flex items-center rounded-md border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                      }
+                      disabled={currentPage === totalPages}
+                      className="relative ml-3 inline-flex items-center rounded-md border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                  <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm text-slate-400">
+                        Showing{" "}
+                        <span className="font-medium">
+                          {(currentPage - 1) * itemsPerPage + 1}
+                        </span>{" "}
+                        to{" "}
+                        <span className="font-medium">
+                          {Math.min(
+                            currentPage * itemsPerPage,
+                            tradeHistory.length
+                          )}
+                        </span>{" "}
+                        of{" "}
+                        <span className="font-medium">
+                          {tradeHistory.length}
+                        </span>{" "}
+                        results
+                      </p>
+                    </div>
+                    <div>
+                      <nav
+                        className="isolate inline-flex -space-x-px rounded-md shadow-sm"
+                        aria-label="Pagination"
+                      >
+                        <button
+                          onClick={() =>
+                            setCurrentPage((prev) => Math.max(prev - 1, 1))
+                          }
+                          disabled={currentPage === 1}
+                          className="relative inline-flex items-center rounded-l-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-700 hover:bg-slate-800 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <span className="sr-only">Previous</span>
+                          <ChevronDown
+                            className="h-5 w-5 rotate-90"
+                            aria-hidden="true"
+                          />
+                        </button>
+                        <button
+                          onClick={() =>
+                            setCurrentPage((prev) =>
+                              Math.min(prev + 1, totalPages)
+                            )
+                          }
+                          disabled={currentPage === totalPages}
+                          className="relative inline-flex items-center rounded-r-md px-2 py-2 text-slate-400 ring-1 ring-inset ring-slate-700 hover:bg-slate-800 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <span className="sr-only">Next</span>
+                          <ChevronDown
+                            className="h-5 w-5 -rotate-90"
+                            aria-hidden="true"
+                          />
+                        </button>
+                      </nav>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div
