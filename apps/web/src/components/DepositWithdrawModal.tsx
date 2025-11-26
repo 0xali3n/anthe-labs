@@ -77,24 +77,15 @@ export default function DepositWithdrawModal({
     try {
       isFetchingRef.current = true;
       setIsLoadingBalance(true);
-      console.log(`📊 Calling getTradingBalance API...`);
-
       const result = await getTradingBalance();
 
       if (result.success && result.balance !== undefined) {
         const balance = parseFloat(result.balance).toFixed(2);
         setTradingBalance(balance);
-        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        console.log("✅ Trading Account Balance Fetched Successfully");
-        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        console.log(`💵 Trading Balance: ${balance} USDT`);
-        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
       } else {
-        console.error("❌ Failed to fetch trading balance:", result.error);
         setTradingBalance("0.00");
       }
     } catch (error: any) {
-      console.error("❌ Error fetching trading balance:", error);
       setTradingBalance("0.00");
     } finally {
       setIsLoadingBalance(false);
@@ -118,22 +109,12 @@ export default function DepositWithdrawModal({
           });
         }
 
-        console.log(
-          `📊 Calling getWalletAccountBalance API for address: ${walletAddress}`
-        );
-
         const result = await getWalletAccountBalance();
 
         if (result.success && result.balance !== undefined) {
           const balance = parseFloat(result.balance).toFixed(2);
           const balanceNum = parseFloat(result.balance);
           setWalletBalance(balance);
-          console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-          console.log("✅ Wallet Account Balance Fetched Successfully");
-          console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-          console.log(`💰 Wallet Address: ${walletAddress}`);
-          console.log(`💵 Balance: ${balance} USDT`);
-          console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
           // Auto-deposit if balance is 1 USDT or greater
           if (balanceNum >= 1) {
@@ -144,55 +125,10 @@ export default function DepositWithdrawModal({
               });
             }
 
-            console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            console.log("🔄 AUTO-DEPOSIT PROCESS STARTING");
-            console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            console.log(`📊 Step 1: Balance Check`);
-            console.log(`   Wallet Address: ${walletAddress}`);
-            console.log(`   Current Balance: ${balance} USDT`);
-            console.log(`   Threshold: 1 USDT`);
-            console.log(`   Status: Balance (${balance} USDT) >= 1 USDT ✅`);
-            console.log("");
-            console.log(`📤 Step 2: Initiating Deposit to Trading Account...`);
-            console.log(`   From Wallet: ${walletAddress}`);
-            console.log(`   To: Trading Account (Kana Labs)`);
-            console.log(`   Amount: ${balance} USDT`);
-
             const depositResult = await checkWalletAndDeposit();
-
-            console.log("");
-            console.log(`📋 Step 3: Deposit Result Received`);
-            console.log(`   Success: ${depositResult.success}`);
 
             if (depositResult.success) {
               if (depositResult.deposited && depositResult.txHash) {
-                console.log(
-                  "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                );
-                console.log("✅ AUTO-DEPOSIT SUCCESSFUL");
-                console.log(
-                  "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                );
-                console.log(`📊 Transaction Details:`);
-                console.log(`   From Wallet: ${walletAddress}`);
-                console.log(`   To: Trading Account`);
-                console.log(
-                  `   Amount Deposited: ${depositResult.walletBalance || balance} USDT`
-                );
-                console.log(`   Transaction Hash: ${depositResult.txHash}`);
-                console.log(
-                  `   Updated Trading Balance: ${depositResult.tradingBalance || "0.00"} USDT`
-                );
-                console.log(
-                  `   Transaction Version: ${depositResult.version || "N/A"}`
-                );
-                console.log(
-                  `   View on Aptoscan: ${depositResult.version ? `https://aptoscan.com/transaction/${depositResult.version}` : `https://aptoscan.com/txn/${depositResult.txHash}`}`
-                );
-                console.log(
-                  "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                );
-
                 // Update wallet balance to 0 after successful deposit
                 setWalletBalance("0.00");
 
@@ -224,10 +160,6 @@ export default function DepositWithdrawModal({
                   });
                   setTimeout(() => setNotification(null), 5000);
                 }
-                console.log(`⚠️ Step 3: Deposit Not Completed`);
-                console.log(
-                  `   Reason: ${depositResult.error || "Unknown reason"}`
-                );
               }
             } else {
               if (showNotifications) {
@@ -237,16 +169,6 @@ export default function DepositWithdrawModal({
                 });
                 setTimeout(() => setNotification(null), 5000);
               }
-              console.log(
-                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-              );
-              console.log("❌ AUTO-DEPOSIT FAILED");
-              console.log(
-                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-              );
-              console.log(
-                `   Error: ${depositResult.error || "Unknown error"}`
-              );
             }
           } else {
             if (showNotifications) {
@@ -256,9 +178,6 @@ export default function DepositWithdrawModal({
               });
               setTimeout(() => setNotification(null), 4000);
             }
-            console.log(
-              `ℹ️ Balance (${balance} USDT) is less than 1 USDT - No auto-deposit`
-            );
           }
         } else {
           if (showNotifications) {
@@ -268,7 +187,6 @@ export default function DepositWithdrawModal({
             });
             setTimeout(() => setNotification(null), 4000);
           }
-          console.error("❌ Failed to fetch wallet balance:", result.error);
           setWalletBalance("0.00");
         }
       } catch (error: any) {
@@ -279,7 +197,6 @@ export default function DepositWithdrawModal({
           });
           setTimeout(() => setNotification(null), 4000);
         }
-        console.error("❌ Error fetching wallet balance:", error);
         setWalletBalance("0.00");
       } finally {
         setIsLoadingBalance(false);
@@ -292,7 +209,6 @@ export default function DepositWithdrawModal({
   // Fetch wallet account balance when modal opens (only once)
   useEffect(() => {
     if (isOpen && walletAddress && !isFetchingRef.current) {
-      console.log("🔄 Modal opened - Fetching wallet account balance...");
       fetchWalletBalance();
     }
   }, [isOpen, walletAddress, fetchWalletBalance]);
@@ -412,7 +328,7 @@ export default function DepositWithdrawModal({
         copyTimeoutRef.current = null;
       }, 2000);
     } catch (err) {
-      console.error("Failed to copy:", err);
+      // Copy failed silently
     }
   };
 
@@ -433,7 +349,7 @@ export default function DepositWithdrawModal({
         try {
           await onRefreshBalance();
         } catch (error) {
-          console.error("Error refreshing balance after deposit:", error);
+          // Error refreshing balance
         } finally {
           isRefreshingRef.current = false;
         }
@@ -487,29 +403,9 @@ export default function DepositWithdrawModal({
     });
 
     try {
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log("🔄 2-WAY TRANSFER PROCESS STARTING");
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log(`📍 Step 1: Initialization`);
-      console.log(`   Amount: ${amount} USDT`);
-      console.log(`   Destination: ${withdrawAddress}`);
-      console.log(`   Market ID: 14 (APT-USD)`);
-      console.log("");
-
-      // Step 1: Withdraw from Trading Account to Wallet
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log("📥 STEP 1: WITHDRAW FROM TRADING ACCOUNT");
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log(
-        `   Current Trading Balance: ${tradingBalanceNum.toFixed(2)} USDT`
-      );
-      console.log(`   Withdrawing: ${amount} USDT`);
-      console.log("");
-
       const withdrawResult = await withdrawFromKana(amount, "14");
 
       if (!withdrawResult.success) {
-        console.error("❌ STEP 1 FAILED:", withdrawResult.error);
         setNotification({
           type: "error",
           message: `Withdrawal failed: ${withdrawResult.error || "Unknown error"}`,
@@ -520,7 +416,6 @@ export default function DepositWithdrawModal({
       }
 
       if (!withdrawResult.txHash) {
-        console.error("❌ No transaction hash received");
         setNotification({
           type: "error",
           message: "Withdrawal initiated but no transaction hash received",
@@ -530,13 +425,6 @@ export default function DepositWithdrawModal({
         return;
       }
 
-      console.log("✅ STEP 1 SUCCESS: WITHDRAWAL COMPLETED");
-      console.log(`   Transaction Hash: ${withdrawResult.txHash}`);
-      console.log(
-        `   View on Aptoscan: https://aptoscan.com/txn/${withdrawResult.txHash}`
-      );
-      console.log("");
-
       // Update notification to show step 2
       setNotification({
         type: "processing",
@@ -545,14 +433,6 @@ export default function DepositWithdrawModal({
       });
 
       // Step 2: Wait for wallet balance to update and verify before transfer
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log("⏳ STEP 2: WAITING FOR WALLET BALANCE TO UPDATE");
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log(`   Withdrawal Transaction: ${withdrawResult.txHash}`);
-      console.log(`   Expected Amount: ${amount} USDT`);
-      console.log(`   Checking wallet balance...`);
-      console.log("");
-
       // Retry mechanism: Check wallet balance with retries (API might have delay)
       let walletBalance = 0;
       let retryCount = 0;
@@ -567,47 +447,23 @@ export default function DepositWithdrawModal({
           walletBalanceResult.balance !== undefined
         ) {
           walletBalance = parseFloat(walletBalanceResult.balance);
-          console.log(
-            `   Attempt ${retryCount + 1}/${maxRetries}: Wallet Balance = ${walletBalance.toFixed(2)} USDT`
-          );
           setWalletBalance(walletBalance.toFixed(2));
 
           // Check if balance is sufficient
           if (walletBalance >= amount) {
-            console.log(
-              `   ✅ Balance sufficient! Proceeding with transfer...`
-            );
-            console.log("");
             break;
-          } else {
-            console.log(
-              `   ⚠️ Balance (${walletBalance.toFixed(2)} USDT) is less than required (${amount} USDT)`
-            );
           }
-        } else {
-          console.log(
-            `   Attempt ${retryCount + 1}/${maxRetries}: Failed to fetch balance - ${walletBalanceResult.error || "Unknown error"}`
-          );
         }
 
         retryCount++;
 
         if (retryCount < maxRetries) {
-          console.log(
-            `   ⏳ Waiting ${retryDelay / 1000} seconds before retry...`
-          );
           await new Promise((resolve) => setTimeout(resolve, retryDelay));
         }
       }
 
       // Final balance check before transfer
       if (walletBalance < amount) {
-        console.error(
-          "❌ STEP 2 FAILED: Insufficient wallet balance after withdrawal"
-        );
-        console.error(
-          `   Required: ${amount} USDT, Available: ${walletBalance.toFixed(2)} USDT`
-        );
         setNotification({
           type: "error",
           message: `Insufficient balance. Withdrawal completed but wallet balance (${walletBalance.toFixed(2)} USDT) is less than required (${amount} USDT). Please try again in a few moments.`,
@@ -625,22 +481,12 @@ export default function DepositWithdrawModal({
       });
 
       // Step 3: Transfer to destination address
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log("📤 STEP 3: TRANSFER TO DESTINATION ADDRESS");
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log(`   From: Wallet Account`);
-      console.log(`   To: ${withdrawAddress}`);
-      console.log(`   Amount: ${amount} USDT`);
-      console.log(`   Available Balance: ${walletBalance.toFixed(2)} USDT`);
-      console.log("");
-
       const transferResult = await transferUSDTToAddress(
         withdrawAddress,
         amount
       );
 
       if (!transferResult.success) {
-        console.error("❌ STEP 3 FAILED:", transferResult.error);
         setNotification({
           type: "error",
           message: `Transfer failed: ${transferResult.error || "Unknown error"}`,
@@ -651,7 +497,6 @@ export default function DepositWithdrawModal({
       }
 
       if (!transferResult.txHash) {
-        console.error("❌ No transaction hash received");
         setNotification({
           type: "error",
           message: "Transfer initiated but no transaction hash received",
@@ -661,20 +506,7 @@ export default function DepositWithdrawModal({
         return;
       }
 
-      console.log("✅ STEP 3 SUCCESS: TRANSFER COMPLETED");
-      console.log(`   Transaction Hash: ${transferResult.txHash}`);
-      console.log(
-        `   View on Aptoscan: https://aptoscan.com/txn/${transferResult.txHash}`
-      );
-      console.log("");
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log("✅ 2-WAY TRANSFER COMPLETED SUCCESSFULLY");
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-      console.log(`   From: Trading Account → Wallet → ${withdrawAddress}`);
-      console.log(`   Total Amount: ${amount} USDT`);
-      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-
-      // Show success notification with blushing/pink color
+      // Show success notification
       setNotification({
         type: "success",
         message: `Success! ${amount} USDT transferred to ${withdrawAddress.slice(0, 6)}...${withdrawAddress.slice(-4)}`,
@@ -693,7 +525,7 @@ export default function DepositWithdrawModal({
           await onRefreshBalance();
           await fetchTradingBalance();
         } catch (error) {
-          console.error("Error refreshing balance after withdrawal:", error);
+          // Error refreshing balance
         } finally {
           isRefreshingRef.current = false;
         }
@@ -704,7 +536,6 @@ export default function DepositWithdrawModal({
         setNotification(null);
       }, 8000);
     } catch (error: any) {
-      console.error("❌ Error during 2-way transfer:", error);
       setNotification({
         type: "error",
         message: `Error: ${error.message || "Unknown error occurred"}`,
@@ -922,10 +753,6 @@ export default function DepositWithdrawModal({
                   isRefreshingRef.current = true;
 
                   try {
-                    console.log(
-                      "🔄 Refresh button clicked - Checking for deposits..."
-                    );
-
                     // If on deposit tab, check for deposits and auto-transfer
                     if (activeTab === "deposit") {
                       await fetchWalletBalance(true); // Show notifications
@@ -937,7 +764,6 @@ export default function DepositWithdrawModal({
                       }
                     }
                   } catch (error: any) {
-                    console.error("❌ Error refreshing:", error);
                     setNotification({
                       type: "error",
                       message: "Error refreshing balance",
