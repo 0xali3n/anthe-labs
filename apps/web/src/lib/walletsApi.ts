@@ -263,6 +263,7 @@ export async function checkWalletAndDeposit(): Promise<{
   walletBalance?: string;
   tradingBalance?: string;
   deposited?: boolean;
+  depositAmount?: number;
   txHash?: string;
   version?: string;
   error?: string;
@@ -282,6 +283,7 @@ export async function checkWalletAndDeposit(): Promise<{
       walletBalance?: string;
       tradingBalance?: string;
       deposited?: boolean;
+      depositAmount?: number;
       txHash?: string;
       version?: string;
       error?: string;

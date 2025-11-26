@@ -198,9 +198,13 @@ export default function DepositWithdrawModal({
 
                 // Show success notification
                 if (showNotifications) {
+                  // Use depositAmount if available, otherwise use balance (before deposit)
+                  const depositedAmount = depositResult.depositAmount
+                    ? depositResult.depositAmount.toFixed(2)
+                    : balance;
                   setNotification({
                     type: "success",
-                    message: `Success! ${depositResult.walletBalance || balance} USDT transferred to trading account`,
+                    message: `Success! ${depositedAmount} USDT transferred to trading account`,
                     txHash: depositResult.txHash,
                     version: depositResult.version,
                   });

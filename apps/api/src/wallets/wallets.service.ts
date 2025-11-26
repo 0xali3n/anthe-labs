@@ -766,6 +766,7 @@ export class WalletsService {
     walletBalance: number;
     tradingBalance: number;
     deposited?: boolean;
+    depositAmount?: number;
     txHash?: string;
     version?: string;
     error?: string;
@@ -857,7 +858,9 @@ export class WalletsService {
             walletBalance: 0, // Should be 0 after deposit
             tradingBalance: updatedTradingBalance,
             deposited: true,
+            depositAmount: depositAmount, // Amount that was actually deposited
             txHash: depositResult.txHash,
+            version: depositResult.version,
           };
         } else {
           console.error(
