@@ -37,7 +37,6 @@ import {
   Minus,
   Percent,
   ArrowRight,
-  Eye,
   Power,
   TrendingUp,
   Activity,
@@ -1327,20 +1326,8 @@ export default function Copytrade() {
                       {/* Action Buttons - Standardized */}
                       <div className="flex gap-2 mt-auto">
                         <button
-                          onClick={() =>
-                            router.push(`/copytrade/details/${bot.id}`)
-                          }
-                          className="flex-1 px-3 py-2.5 bg-transparent hover:bg-slate-800/50 border border-slate-700/50 hover:border-slate-600/50 text-slate-300 rounded-[15px] text-xs font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md group/btn"
-                        >
-                          <Eye
-                            size={14}
-                            className="group-hover/btn:translate-x-0.5 transition-transform"
-                          />
-                          <span>Details</span>
-                        </button>
-                        <button
                           onClick={() => handleStopBot(bot.id)}
-                          className="flex-1 px-3 py-2.5 bg-transparent hover:bg-red-500/10 border border-red-500/40 hover:border-red-500/60 text-red-400 rounded-[15px] text-xs font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-red-500/30 group/btn"
+                          className="w-full px-3 py-2.5 bg-transparent hover:bg-red-500/10 border border-red-500/40 hover:border-red-500/60 text-red-400 rounded-[15px] text-xs font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-red-500/30 group/btn"
                         >
                           <Power
                             size={14}
@@ -1461,18 +1448,6 @@ export default function Copytrade() {
                       {/* Action Buttons - Standardized */}
                       <div className="flex gap-2 mt-auto">
                         <button
-                          onClick={() =>
-                            router.push(`/copytrade/details/${bot.id}`)
-                          }
-                          className="flex-1 px-3 py-2.5 bg-transparent hover:bg-slate-800/50 border border-slate-700/50 hover:border-slate-600/50 text-slate-300 rounded-[15px] text-xs font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md group/btn"
-                        >
-                          <Eye
-                            size={14}
-                            className="group-hover/btn:translate-x-0.5 transition-transform"
-                          />
-                          <span>Details</span>
-                        </button>
-                        <button
                           onClick={async () => {
                             // Refresh bots list to get latest running bots count
                             await fetchBots();
@@ -1483,7 +1458,7 @@ export default function Copytrade() {
                             setTradingMode(bot.mode);
                             setShowForm(true);
                           }}
-                          className="flex-1 px-3 py-2.5 bg-transparent hover:bg-blue-500/10 border border-blue-500/40 hover:border-blue-500/60 text-blue-400 rounded-[15px] text-xs font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-blue-500/30 group/btn"
+                          className="w-full px-3 py-2.5 bg-transparent hover:bg-blue-500/10 border border-blue-500/40 hover:border-blue-500/60 text-blue-400 rounded-[15px] text-xs font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-blue-500/30 group/btn"
                         >
                           <RefreshCw
                             size={14}

@@ -132,28 +132,6 @@ export class WalletsService {
   }
 
   /**
-   * Get debug info including encrypted private key (for debugging only)
-   * WARNING: This exposes encrypted private key - use only for debugging!
-   */
-  async getDebugInfo(userId: string): Promise<{
-    walletAddress: string | null;
-    encryptedPrivateKey: string | null;
-  }> {
-    const wallet = await this.prisma.wallet.findUnique({
-      where: { user_id: userId },
-      select: {
-        address: true,
-        key: true, // Encrypted private key
-      },
-    });
-
-    return {
-      walletAddress: wallet?.address || null,
-      encryptedPrivateKey: wallet?.key || null,
-    };
-  }
-
-  /**
    * Internal: Decrypt and get private key (for backend operations only)
    * WARNING: This should only be used for server-side operations like signing transactions
    * NEVER expose this to frontend!

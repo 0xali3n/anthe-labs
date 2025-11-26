@@ -1,5 +1,5 @@
-import { apiRequest, authenticatedRequest } from './apiClient';
-import { supabase } from './supabaseClient';
+import { apiRequest, authenticatedRequest } from "./apiClient";
+import { supabase } from "./supabaseClient";
 
 export interface WalletData {
   success: boolean;
@@ -16,30 +16,32 @@ export interface WalletData {
 export async function createOrGetWallet(userId: string): Promise<WalletData> {
   try {
     // Get JWT token from Supabase session
-    const { data: { session } } = await supabase.auth.getSession();
-    
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
     if (!session?.access_token) {
       return {
         success: false,
-        error: 'No session found. Please sign in.',
+        error: "No session found. Please sign in.",
       };
     }
 
     // Use authenticated request with JWT token
     const response = await authenticatedRequest<WalletData>(
-      '/wallets',
+      "/wallets",
       session.access_token,
       {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({}), // No userId in body - comes from JWT
       }
     );
-    
+
     return response;
   } catch (error: any) {
     return {
       success: false,
-      error: error.message || 'Failed to create/get wallet',
+      error: error.message || "Failed to create/get wallet",
     };
   }
 }
@@ -51,29 +53,31 @@ export async function createOrGetWallet(userId: string): Promise<WalletData> {
 export async function getWalletAddress(userId: string): Promise<WalletData> {
   try {
     // Get JWT token from Supabase session
-    const { data: { session } } = await supabase.auth.getSession();
-    
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
     if (!session?.access_token) {
       return {
         success: false,
-        error: 'No session found. Please sign in.',
+        error: "No session found. Please sign in.",
       };
     }
 
     // Use authenticated request with JWT token
     const response = await authenticatedRequest<WalletData>(
-      '/wallets/me',
+      "/wallets/me",
       session.access_token,
       {
-        method: 'GET',
+        method: "GET",
       }
     );
-    
+
     return response;
   } catch (error: any) {
     return {
       success: false,
-      error: error.message || 'Failed to get wallet address',
+      error: error.message || "Failed to get wallet address",
     };
   }
 }
@@ -83,15 +87,21 @@ export async function getWalletAddress(userId: string): Promise<WalletData> {
  * Fetches real-time balance from Aptos blockchain via backend
  * Uses JWT token from Supabase session
  */
-export async function getUSDTBalance(): Promise<{ success: boolean; balance?: string; error?: string }> {
+export async function getUSDTBalance(): Promise<{
+  success: boolean;
+  balance?: string;
+  error?: string;
+}> {
   try {
     // Get JWT token from Supabase session
-    const { data: { session } } = await supabase.auth.getSession();
-    
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
     if (!session?.access_token) {
       return {
         success: false,
-        error: 'No session found. Please sign in.',
+        error: "No session found. Please sign in.",
       };
     }
 
@@ -101,31 +111,27 @@ export async function getUSDTBalance(): Promise<{ success: boolean; balance?: st
       balance?: string;
       address?: string;
       error?: string;
-    }>(
-      '/wallets/balance',
-      session.access_token,
-      {
-        method: 'GET',
-      }
-    );
-    
+    }>("/wallets/balance", session.access_token, {
+      method: "GET",
+    });
+
     if (!response.success) {
       return {
         success: false,
-        error: response.error || 'Failed to fetch balance',
+        error: response.error || "Failed to fetch balance",
       };
     }
 
     return {
       success: true,
-      balance: response.balance || '0.00',
+      balance: response.balance || "0.00",
     };
   } catch (error: any) {
-    console.error('Error fetching balance:', error);
+    console.error("Error fetching balance:", error);
     return {
       success: false,
-      error: error.message || 'Failed to fetch balance',
-      balance: '0.00', // Return 0.00 as fallback
+      error: error.message || "Failed to fetch balance",
+      balance: "0.00", // Return 0.00 as fallback
     };
   }
 }
@@ -144,12 +150,14 @@ export async function checkDepositAndAirdrop(): Promise<{
 }> {
   try {
     // Get JWT token from Supabase session
-    const { data: { session } } = await supabase.auth.getSession();
-    
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
     if (!session?.access_token) {
       return {
         success: false,
-        error: 'No session found. Please sign in.',
+        error: "No session found. Please sign in.",
       };
     }
 
@@ -160,20 +168,16 @@ export async function checkDepositAndAirdrop(): Promise<{
       airdropped?: boolean;
       airdropTxHash?: string;
       error?: string;
-    }>(
-      '/wallets/check-deposit',
-      session.access_token,
-      {
-        method: 'POST',
-      }
-    );
-    
+    }>("/wallets/check-deposit", session.access_token, {
+      method: "POST",
+    });
+
     return response;
   } catch (error: any) {
-    console.error('Error checking deposit:', error);
+    console.error("Error checking deposit:", error);
     return {
       success: false,
-      error: error.message || 'Failed to check deposit',
+      error: error.message || "Failed to check deposit",
     };
   }
 }
@@ -188,12 +192,14 @@ export async function getWalletAccountBalance(): Promise<{
   error?: string;
 }> {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
     if (!session?.access_token) {
       return {
         success: false,
-        error: 'No session found. Please sign in.',
+        error: "No session found. Please sign in.",
       };
     }
 
@@ -201,17 +207,17 @@ export async function getWalletAccountBalance(): Promise<{
       success: boolean;
       balance?: string;
       error?: string;
-    }>('/wallets/wallet-balance', session.access_token, {
-      method: 'GET',
+    }>("/wallets/wallet-balance", session.access_token, {
+      method: "GET",
     });
 
     return response;
   } catch (error: any) {
-    console.error('Error fetching wallet account balance:', error);
+    console.error("Error fetching wallet account balance:", error);
     return {
       success: false,
-      error: error.message || 'Failed to fetch wallet balance',
-      balance: '0.00',
+      error: error.message || "Failed to fetch wallet balance",
+      balance: "0.00",
     };
   }
 }
@@ -226,12 +232,14 @@ export async function getTradingBalance(): Promise<{
   error?: string;
 }> {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
     if (!session?.access_token) {
       return {
         success: false,
-        error: 'No session found. Please sign in.',
+        error: "No session found. Please sign in.",
       };
     }
 
@@ -239,17 +247,17 @@ export async function getTradingBalance(): Promise<{
       success: boolean;
       balance?: string;
       error?: string;
-    }>('/wallets/trading-balance', session.access_token, {
-      method: 'GET',
+    }>("/wallets/trading-balance", session.access_token, {
+      method: "GET",
     });
 
     return response;
   } catch (error: any) {
-    console.error('Error fetching trading balance:', error);
+    console.error("Error fetching trading balance:", error);
     return {
       success: false,
-      error: error.message || 'Failed to fetch trading balance',
-      balance: '0.00',
+      error: error.message || "Failed to fetch trading balance",
+      balance: "0.00",
     };
   }
 }
@@ -269,12 +277,14 @@ export async function checkWalletAndDeposit(): Promise<{
   error?: string;
 }> {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
     if (!session?.access_token) {
       return {
         success: false,
-        error: 'No session found. Please sign in.',
+        error: "No session found. Please sign in.",
       };
     }
 
@@ -287,95 +297,16 @@ export async function checkWalletAndDeposit(): Promise<{
       txHash?: string;
       version?: string;
       error?: string;
-    }>('/wallets/check-and-deposit', session.access_token, {
-      method: 'POST',
+    }>("/wallets/check-and-deposit", session.access_token, {
+      method: "POST",
     });
 
     return response;
   } catch (error: any) {
-    console.error('Error checking wallet and depositing:', error);
+    console.error("Error checking wallet and depositing:", error);
     return {
       success: false,
-      error: error.message || 'Failed to check wallet and deposit',
-    };
-  }
-}
-
-/**
- * Get debug info including encrypted private key (for debugging only)
- * Uses JWT token from Supabase session
- */
-export async function getDebugInfo(): Promise<{
-  success: boolean;
-  walletAddress?: string;
-  encryptedPrivateKey?: string;
-  note?: string;
-  error?: string;
-}> {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session?.access_token) {
-      return {
-        success: false,
-        error: 'No session found. Please sign in.',
-      };
-    }
-
-    const response = await authenticatedRequest<{
-      success: boolean;
-      walletAddress?: string;
-      encryptedPrivateKey?: string;
-      note?: string;
-      error?: string;
-    }>('/wallets/debug/info', session.access_token, {
-      method: 'GET',
-    });
-
-    return response;
-  } catch (error: any) {
-    console.error('Error fetching debug info:', error);
-    return {
-      success: false,
-      error: error.message || 'Failed to fetch debug info',
-    };
-  }
-}
-
-/**
- * Test deposit with specific amount (for debugging)
- * Uses JWT token from Supabase session
- */
-export async function testDeposit(amount: number): Promise<{
-  success: boolean;
-  txHash?: string;
-  error?: string;
-}> {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session?.access_token) {
-      return {
-        success: false,
-        error: 'No session found. Please sign in.',
-      };
-    }
-
-    const response = await authenticatedRequest<{
-      success: boolean;
-      txHash?: string;
-      error?: string;
-    }>('/wallets/debug/deposit', session.access_token, {
-      method: 'POST',
-      body: JSON.stringify({ amount }),
-    });
-
-    return response;
-  } catch (error: any) {
-    console.error('Error testing deposit:', error);
-    return {
-      success: false,
-      error: error.message || 'Failed to test deposit',
+      error: error.message || "Failed to check wallet and deposit",
     };
   }
 }
@@ -384,7 +315,7 @@ export async function testDeposit(amount: number): Promise<{
  * Format wallet address for display (shortened version)
  */
 export function formatWalletAddress(address: string): string {
-  if (!address) return '';
+  if (!address) return "";
   if (address.length <= 12) return address;
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
@@ -399,15 +330,22 @@ export function formatWalletAddress(address: string): string {
  */
 export async function withdrawFromKana(
   amount: number,
-  marketId: string,
-): Promise<{ success: boolean; txHash?: string; version?: string; error?: string }> {
+  marketId: string
+): Promise<{
+  success: boolean;
+  txHash?: string;
+  version?: string;
+  error?: string;
+}> {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
     if (!session?.access_token) {
       return {
         success: false,
-        error: 'No session found. Please sign in.',
+        error: "No session found. Please sign in.",
       };
     }
 
@@ -416,21 +354,17 @@ export async function withdrawFromKana(
       txHash?: string;
       version?: string;
       error?: string;
-    }>(
-      '/wallets/withdraw',
-      session.access_token,
-      {
-        method: 'POST',
-        body: JSON.stringify({ amount, marketId }),
-      }
-    );
+    }>("/wallets/withdraw", session.access_token, {
+      method: "POST",
+      body: JSON.stringify({ amount, marketId }),
+    });
 
     return response;
   } catch (error: any) {
-    console.error('Error withdrawing from Kana:', error);
+    console.error("Error withdrawing from Kana:", error);
     return {
       success: false,
-      error: error.message || 'Failed to withdraw from trading account',
+      error: error.message || "Failed to withdraw from trading account",
     };
   }
 }
@@ -445,15 +379,22 @@ export async function withdrawFromKana(
  */
 export async function transferUSDTToAddress(
   recipientAddress: string,
-  amount: number,
-): Promise<{ success: boolean; txHash?: string; version?: string; error?: string }> {
+  amount: number
+): Promise<{
+  success: boolean;
+  txHash?: string;
+  version?: string;
+  error?: string;
+}> {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
     if (!session?.access_token) {
       return {
         success: false,
-        error: 'No session found. Please sign in.',
+        error: "No session found. Please sign in.",
       };
     }
 
@@ -462,22 +403,17 @@ export async function transferUSDTToAddress(
       txHash?: string;
       version?: string;
       error?: string;
-    }>(
-      '/wallets/transfer',
-      session.access_token,
-      {
-        method: 'POST',
-        body: JSON.stringify({ recipientAddress, amount }),
-      }
-    );
+    }>("/wallets/transfer", session.access_token, {
+      method: "POST",
+      body: JSON.stringify({ recipientAddress, amount }),
+    });
 
     return response;
   } catch (error: any) {
-    console.error('Error transferring USDT:', error);
+    console.error("Error transferring USDT:", error);
     return {
       success: false,
-      error: error.message || 'Failed to transfer USDT',
+      error: error.message || "Failed to transfer USDT",
     };
   }
 }
-
