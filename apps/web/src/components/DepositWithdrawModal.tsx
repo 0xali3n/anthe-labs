@@ -59,6 +59,7 @@ export default function DepositWithdrawModal({
     type: "success" | "error" | "processing" | "info";
     message: string;
     txHash?: string;
+    version?: string;
     step?: string;
   } | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -101,7 +102,7 @@ export default function DepositWithdrawModal({
     }
   }, []);
 
-  // Function to fetch wallet account balance and auto-deposit if balance > 1 USDT (for deposit tab)
+  // Function to fetch wallet account balance and auto-deposit if balance >= 1 USDT (for deposit tab)
   const fetchWalletBalance = useCallback(
     async (showNotifications = false) => {
       if (!walletAddress || isFetchingRef.current) return;
@@ -134,8 +135,8 @@ export default function DepositWithdrawModal({
           console.log(`💵 Balance: ${balance} USDT`);
           console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
-          // Auto-deposit if balance is greater than 1 USDT
-          if (balanceNum > 1) {
+          // Auto-deposit if balance is 1 USDT or greater
+          if (balanceNum >= 1) {
             if (showNotifications) {
               setNotification({
                 type: "processing",
@@ -150,7 +151,7 @@ export default function DepositWithdrawModal({
             console.log(`   Wallet Address: ${walletAddress}`);
             console.log(`   Current Balance: ${balance} USDT`);
             console.log(`   Threshold: 1 USDT`);
-            console.log(`   Status: Balance (${balance} USDT) > 1 USDT ✅`);
+            console.log(`   Status: Balance (${balance} USDT) >= 1 USDT ✅`);
             console.log("");
             console.log(`📤 Step 2: Initiating Deposit to Trading Account...`);
             console.log(`   From Wallet: ${walletAddress}`);
@@ -183,7 +184,10 @@ export default function DepositWithdrawModal({
                   `   Updated Trading Balance: ${depositResult.tradingBalance || "0.00"} USDT`
                 );
                 console.log(
-                  `   View on Aptoscan: https://aptoscan.com/txn/${depositResult.txHash}`
+                  `   Transaction Version: ${depositResult.version || "N/A"}`
+                );
+                console.log(
+                  `   View on Aptoscan: ${depositResult.version ? `https://aptoscan.com/transaction/${depositResult.version}` : `https://aptoscan.com/txn/${depositResult.txHash}`}`
                 );
                 console.log(
                   "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -198,6 +202,7 @@ export default function DepositWithdrawModal({
                     type: "success",
                     message: `Success! ${depositResult.walletBalance || balance} USDT transferred to trading account`,
                     txHash: depositResult.txHash,
+                    version: depositResult.version,
                   });
                   setTimeout(() => setNotification(null), 8000);
                 }
@@ -243,12 +248,12 @@ export default function DepositWithdrawModal({
             if (showNotifications) {
               setNotification({
                 type: "info",
-                message: `No deposit found. Current balance: ${balance} USDT (minimum 1 USDT required)`,
+                message: `No deposit found. Current balance: ${balance} USDT (minimum 1 USDT required for auto-transfer)`,
               });
               setTimeout(() => setNotification(null), 4000);
             }
             console.log(
-              `ℹ️ Balance (${balance} USDT) is less than or equal to 1 USDT - No auto-deposit`
+              `ℹ️ Balance (${balance} USDT) is less than 1 USDT - No auto-deposit`
             );
           }
         } else {
@@ -299,13 +304,20 @@ export default function DepositWithdrawModal({
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
-  // Close modal when clicking outside
+  // Close modal when clicking outside (but not on notification)
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (
-        modalRef.current &&
-        !modalRef.current.contains(event.target as Node)
-      ) {
+      const target = event.target as Node;
+
+      // Don't close if clicking on notification
+      const notificationElement = document.querySelector(
+        '[data-notification="true"]'
+      );
+      if (notificationElement && notificationElement.contains(target)) {
+        return;
+      }
+
+      if (modalRef.current && !modalRef.current.contains(target)) {
         onClose();
       }
     }
@@ -663,6 +675,7 @@ export default function DepositWithdrawModal({
         type: "success",
         message: `Success! ${amount} USDT transferred to ${withdrawAddress.slice(0, 6)}...${withdrawAddress.slice(-4)}`,
         txHash: transferResult.txHash,
+        version: transferResult.version,
       });
 
       // Reset form and refresh balance
@@ -713,10 +726,22 @@ export default function DepositWithdrawModal({
     <>
       {/* Toast Notification - Top Right Corner */}
       {notification && (
-        <div className="fixed top-4 right-4 z-[200] animate-in slide-in-from-right duration-300">
+        <div
+          data-notification="true"
+          className="fixed top-4 right-4 z-[300] animate-in slide-in-from-right duration-300"
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent clicks from bubbling to backdrop
+            e.preventDefault(); // Prevent any default behavior
+          }}
+          onMouseDown={(e) => e.stopPropagation()} // Also prevent mousedown events
+        >
           <div
-            onClick={(e) => e.stopPropagation()} // Prevent clicks from bubbling up
-            className={`rounded-lg p-4 shadow-2xl backdrop-blur-md border-2 min-w-[320px] max-w-[420px] ${
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent clicks from bubbling up
+              e.preventDefault(); // Prevent any default behavior
+            }}
+            onMouseDown={(e) => e.stopPropagation()} // Also prevent mousedown events
+            className={`rounded-lg p-4 shadow-2xl backdrop-blur-md border-2 min-w-[320px] max-w-[420px] cursor-default ${
               notification.type === "success"
                 ? "bg-gradient-to-br from-green-500/20 to-emerald-500/20 border-green-400/50 shadow-green-500/30"
                 : notification.type === "error"
@@ -761,16 +786,26 @@ export default function DepositWithdrawModal({
                 >
                   {notification.message}
                 </p>
-                {notification.txHash && (
+                {(notification.txHash || notification.version) && (
                   <a
-                    href={`https://aptoscan.com/txn/${notification.txHash}`}
+                    href={
+                      notification.version
+                        ? `https://aptoscan.com/transaction/${notification.version}`
+                        : `https://aptoscan.com/transaction/${notification.txHash}`
+                    }
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => {
-                      e.stopPropagation(); // Prevent event bubbling
-                      // Link will open in new tab due to target="_blank"
+                      e.stopPropagation(); // Prevent event bubbling to parent
+                      e.preventDefault(); // Prevent default link behavior temporarily
+                      // Open in new tab manually to ensure it works
+                      const url = notification.version
+                        ? `https://aptoscan.com/transaction/${notification.version}`
+                        : `https://aptoscan.com/transaction/${notification.txHash}`;
+                      window.open(url, "_blank", "noopener,noreferrer");
                     }}
-                    className="mt-2 inline-flex items-center gap-1.5 text-xs text-blue-300 hover:text-blue-200 transition-colors underline"
+                    onMouseDown={(e) => e.stopPropagation()} // Prevent mousedown from bubbling
+                    className="mt-2 inline-flex items-center gap-1.5 text-xs text-blue-300 hover:text-blue-200 transition-colors underline cursor-pointer"
                   >
                     View Transaction
                     <ExternalLink size={14} />
@@ -795,7 +830,17 @@ export default function DepositWithdrawModal({
         {/* Backdrop */}
         <div
           className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          onClick={onClose}
+          onClick={(e) => {
+            // Don't close if clicking on notification
+            const target = e.target as Node;
+            const notificationElement = document.querySelector(
+              '[data-notification="true"]'
+            );
+            if (notificationElement && notificationElement.contains(target)) {
+              return;
+            }
+            onClose();
+          }}
         />
 
         {/* Modal */}
@@ -959,7 +1004,7 @@ export default function DepositWithdrawModal({
                     Deposit USDT
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Send USDT on Aptos network only
+                    Send USDT on Aptos network only (Min 1 USDT)
                   </p>
                 </div>
 
@@ -1051,7 +1096,29 @@ export default function DepositWithdrawModal({
               </div>
             ) : (
               <div className="space-y-6">
-                {/* Withdraw Amount */}
+                {/* Withdraw Address - Moved to top */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-2">
+                    Withdraw to Address
+                  </label>
+                  <input
+                    type="text"
+                    value={withdrawAddress}
+                    onChange={(e) => setWithdrawAddress(e.target.value)}
+                    placeholder="0x..."
+                    className="w-full px-4 py-3 rounded-xl border border-slate-800/50 bg-slate-900/50 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all font-mono text-sm"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, rgba(30,41,59,0.45), rgba(15,23,42,0.35))",
+                    }}
+                  />
+                  <p className="text-xs text-slate-500 mt-2">
+                    Enter the Aptos wallet address to receive funds (must start
+                    with 0x)
+                  </p>
+                </div>
+
+                {/* Withdraw Amount - Moved to bottom */}
                 <div>
                   <label className="block text-xs font-medium text-slate-400 mb-2">
                     Amount to Withdraw (USDT)
@@ -1110,28 +1177,6 @@ export default function DepositWithdrawModal({
                       );
                     })}
                   </div>
-                </div>
-
-                {/* Withdraw Address */}
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-2">
-                    Withdraw to Address
-                  </label>
-                  <input
-                    type="text"
-                    value={withdrawAddress}
-                    onChange={(e) => setWithdrawAddress(e.target.value)}
-                    placeholder="0x..."
-                    className="w-full px-4 py-3 rounded-xl border border-slate-800/50 bg-slate-900/50 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all font-mono text-sm"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, rgba(30,41,59,0.45), rgba(15,23,42,0.35))",
-                    }}
-                  />
-                  <p className="text-xs text-slate-500 mt-2">
-                    Enter the Aptos wallet address to receive funds (must start
-                    with 0x)
-                  </p>
                 </div>
 
                 {/* Withdraw Button */}

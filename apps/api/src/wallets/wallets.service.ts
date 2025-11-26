@@ -458,7 +458,12 @@ export class WalletsService {
   async depositToTrading(
     userId: string,
     amount: number,
-  ): Promise<{ success: boolean; txHash?: string; error?: string }> {
+  ): Promise<{
+    success: boolean;
+    txHash?: string;
+    version?: string;
+    error?: string;
+  }> {
     try {
       // Get wallet address and private key
       const walletAddress = await this.getWalletAddress(userId);
@@ -692,6 +697,12 @@ export class WalletsService {
       });
 
       if (executedTxn.success) {
+        // Extract version from multiple possible locations
+        const version =
+          (executedTxn as any).version ||
+          (executedTxn as any).transaction?.version ||
+          (executedTxn as any).version_number;
+
         console.log(`   ✅ Transaction confirmed successfully!`);
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('✅ DEPOSIT COMPLETED SUCCESSFULLY');
@@ -700,9 +711,16 @@ export class WalletsService {
         console.log(`   To: Trading Account`);
         console.log(`   Amount: ${amount} USDT`);
         console.log(`   Transaction Hash: ${committedTxn.hash}`);
-        console.log(
-          `   View on Aptoscan: https://aptoscan.com/txn/${committedTxn.hash}`,
-        );
+        console.log(`   Transaction Version: ${version || 'N/A'}`);
+        if (version) {
+          console.log(
+            `   View on Aptoscan: https://aptoscan.com/transaction/${version}`,
+          );
+        } else {
+          console.log(
+            `   View on Aptoscan: https://aptoscan.com/txn/${committedTxn.hash}`,
+          );
+        }
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       } else {
         console.error(`   ❌ Transaction failed on blockchain!`);
@@ -713,9 +731,16 @@ export class WalletsService {
         };
       }
 
+      // Extract version from multiple possible locations
+      const version =
+        (executedTxn as any).version ||
+        (executedTxn as any).transaction?.version ||
+        (executedTxn as any).version_number;
+
       return {
         success: true,
         txHash: committedTxn.hash,
+        version: version || undefined,
       };
     } catch (error: any) {
       console.error(
@@ -742,6 +767,7 @@ export class WalletsService {
     tradingBalance: number;
     deposited?: boolean;
     txHash?: string;
+    version?: string;
     error?: string;
   }> {
     try {
@@ -884,7 +910,12 @@ export class WalletsService {
     userId: string,
     amount: number,
     marketId: string,
-  ): Promise<{ success: boolean; txHash?: string; error?: string }> {
+  ): Promise<{
+    success: boolean;
+    txHash?: string;
+    version?: string;
+    error?: string;
+  }> {
     try {
       // Get wallet address
       const walletAddress = await this.getWalletAddress(userId);
@@ -1069,6 +1100,9 @@ export class WalletsService {
       });
 
       if (executedTxn.success) {
+        const version =
+          (executedTxn as any).version ||
+          (executedTxn as any).transaction?.version;
         console.log(`   ✅ Transaction confirmed successfully!`);
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('✅ WITHDRAWAL COMPLETED SUCCESSFULLY');
@@ -1078,8 +1112,9 @@ export class WalletsService {
         console.log(`   Amount: ${amount} USDT`);
         console.log(`   Market ID: ${marketId}`);
         console.log(`   Transaction Hash: ${committedTxn.hash}`);
+        console.log(`   Transaction Version: ${version}`);
         console.log(
-          `   View on Aptoscan: https://aptoscan.com/txn/${committedTxn.hash}`,
+          `   View on Aptoscan: https://aptoscan.com/transaction/${version}`,
         );
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       } else {
@@ -1090,9 +1125,13 @@ export class WalletsService {
         };
       }
 
+      const version =
+        (executedTxn as any).version ||
+        (executedTxn as any).transaction?.version;
       return {
         success: true,
         txHash: committedTxn.hash,
+        version: version,
       };
     } catch (error: any) {
       console.error(
@@ -1119,7 +1158,12 @@ export class WalletsService {
     userId: string,
     recipientAddress: string,
     amount: number,
-  ): Promise<{ success: boolean; txHash?: string; error?: string }> {
+  ): Promise<{
+    success: boolean;
+    txHash?: string;
+    version?: string;
+    error?: string;
+  }> {
     try {
       // Get wallet address
       const walletAddress = await this.getWalletAddress(userId);
@@ -1267,6 +1311,8 @@ export class WalletsService {
       });
 
       if (result.success) {
+        const version =
+          (result as any).version || (result as any).transaction?.version;
         console.log(`   ✅ Transaction confirmed successfully!`);
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('✅ USDT TRANSFER COMPLETED SUCCESSFULLY');
@@ -1275,8 +1321,9 @@ export class WalletsService {
         console.log(`   To: ${recipientAddress}`);
         console.log(`   Amount: ${amount} USDT`);
         console.log(`   Transaction Hash: ${pending.hash}`);
+        console.log(`   Transaction Version: ${version}`);
         console.log(
-          `   View on Aptoscan: https://aptoscan.com/txn/${pending.hash}`,
+          `   View on Aptoscan: https://aptoscan.com/transaction/${version}`,
         );
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       } else {
@@ -1287,9 +1334,12 @@ export class WalletsService {
         };
       }
 
+      const version =
+        (result as any).version || (result as any).transaction?.version;
       return {
         success: true,
         txHash: pending.hash,
+        version: version,
       };
     } catch (error: any) {
       console.error(`❌ Error transferring USDT for user ${userId}:`, error);

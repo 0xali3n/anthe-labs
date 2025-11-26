@@ -264,6 +264,7 @@ export async function checkWalletAndDeposit(): Promise<{
   tradingBalance?: string;
   deposited?: boolean;
   txHash?: string;
+  version?: string;
   error?: string;
 }> {
   try {
@@ -282,6 +283,7 @@ export async function checkWalletAndDeposit(): Promise<{
       tradingBalance?: string;
       deposited?: boolean;
       txHash?: string;
+      version?: string;
       error?: string;
     }>('/wallets/check-and-deposit', session.access_token, {
       method: 'POST',
@@ -396,7 +398,7 @@ export function formatWalletAddress(address: string): string {
 export async function withdrawFromKana(
   amount: number,
   marketId: string,
-): Promise<{ success: boolean; txHash?: string; error?: string }> {
+): Promise<{ success: boolean; txHash?: string; version?: string; error?: string }> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
 
@@ -410,6 +412,7 @@ export async function withdrawFromKana(
     const response = await authenticatedRequest<{
       success: boolean;
       txHash?: string;
+      version?: string;
       error?: string;
     }>(
       '/wallets/withdraw',
@@ -441,7 +444,7 @@ export async function withdrawFromKana(
 export async function transferUSDTToAddress(
   recipientAddress: string,
   amount: number,
-): Promise<{ success: boolean; txHash?: string; error?: string }> {
+): Promise<{ success: boolean; txHash?: string; version?: string; error?: string }> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
 
@@ -455,6 +458,7 @@ export async function transferUSDTToAddress(
     const response = await authenticatedRequest<{
       success: boolean;
       txHash?: string;
+      version?: string;
       error?: string;
     }>(
       '/wallets/transfer',
