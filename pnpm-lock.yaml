@@ -168,12 +168,27 @@ importers:
 
   apps/trade:
     dependencies:
+      '@aptos-labs/ts-sdk':
+        specifier: ^5.1.1
+        version: 5.1.1(got@11.8.6)
+      '@prisma/adapter-pg':
+        specifier: ^7.0.0
+        version: 7.0.1
+      '@prisma/client':
+        specifier: ^7.0.0
+        version: 7.0.1(prisma@7.0.1(@types/react@19.1.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.2))(typescript@5.9.2)
+      axios:
+        specifier: ^1.7.9
+        version: 1.13.2
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
       ioredis:
         specifier: ^5.8.2
         version: 5.8.2
+      pg:
+        specifier: ^8.11.3
+        version: 8.16.3
     devDependencies:
       '@types/ioredis':
         specifier: ^5.0.0
@@ -181,6 +196,9 @@ importers:
       '@types/node':
         specifier: ^22.10.7
         version: 22.15.3
+      prisma:
+        specifier: ^7.0.0
+        version: 7.0.1(@types/react@19.1.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.2)
       ts-node-dev:
         specifier: ^2.0.0
         version: 2.0.0(@types/node@22.15.3)(typescript@5.9.2)
@@ -245,12 +263,18 @@ importers:
 
   apps/ws:
     dependencies:
+      bufferutil:
+        specifier: ^4.0.1
+        version: 4.0.9
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
       ioredis:
         specifier: ^5.8.2
         version: 5.8.2
+      utf-8-validate:
+        specifier: ^5.0.2
+        version: 5.0.10
       ws:
         specifier: ^8.18.0
         version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -7280,7 +7304,6 @@ snapshots:
   bufferutil@4.0.9:
     dependencies:
       node-gyp-build: 4.8.4
-    optional: true
 
   busboy@1.6.0:
     dependencies:
@@ -9334,8 +9357,7 @@ snapshots:
 
   node-fetch-native@1.6.7: {}
 
-  node-gyp-build@4.8.4:
-    optional: true
+  node-gyp-build@4.8.4: {}
 
   node-int64@0.4.0: {}
 
@@ -10486,7 +10508,6 @@ snapshots:
   utf-8-validate@5.0.10:
     dependencies:
       node-gyp-build: 4.8.4
-    optional: true
 
   util-deprecate@1.0.2: {}
 
