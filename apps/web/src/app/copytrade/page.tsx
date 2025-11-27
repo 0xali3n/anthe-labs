@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Palanquin_Dark, Outfit } from "next/font/google";
 import { useAuth } from "@/lib/useAuth";
@@ -94,7 +94,7 @@ interface TradeHistory {
   pnl: string;
 }
 
-export default function Copytrade() {
+function CopytradeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isSignedIn, loading: authLoading } = useAuth();
@@ -1757,5 +1757,17 @@ export default function Copytrade() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Copytrade() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0B0E17] flex items-center justify-center">
+        <Loader className="animate-spin text-blue-500" size={32} />
+      </div>
+    }>
+      <CopytradeContent />
+    </Suspense>
   );
 }

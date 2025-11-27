@@ -1,0 +1,79 @@
+name: Build & Deploy to EKS - mainnet (api)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+env:
+  APP_NAME: api
+  NAMESPACE: anthe-labs-mainnet
+  IMAGE_REPO: anthe-labs
+  EKS_CLUSTER: kanalabs-non-prod
+  ENV_PREFIX: api
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag and push image to ECR
+        env:
+          AWS_ACCOUNT_ID: 570870523275
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          set -euo pipefail
+          SHORT_SHA=${GITHUB_SHA::8}
+          IMAGE_TAG="${{ env.ENV_PREFIX }}-${SHORT_SHA}"
+          IMAGE_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${{ env.IMAGE_REPO }}:${IMAGE_TAG}"
+          echo "IMAGE_URI=${IMAGE_URI}" >> $GITHUB_ENV
+
+          docker build -t "${{ env.IMAGE_REPO }}:${IMAGE_TAG}" -f Dockerfile .
+          docker tag "${{ env.IMAGE_REPO }}:${IMAGE_TAG}" "${IMAGE_URI}"
+          docker push "${IMAGE_URI}"
+
+      - name: Update kubeconfig for EKS (kanalabs-non-prod)
+        run: |
+          aws eks update-kubeconfig --name "${{ env.EKS_CLUSTER }}" --region "${{ secrets.AWS_REGION }}"
+      
+      - name: Apply Deployment manifest (mainnet)
+        run: |
+          kubectl apply -f k8s/deployment-mainnet.yaml
+
+      - name: Set image on Deployment (mainnet)
+        env:
+          AWS_ACCOUNT_ID: 570870523275
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          set -euo pipefail
+          SHORT_SHA=${GITHUB_SHA::8}
+          IMAGE_TAG="${{ env.ENV_PREFIX }}-${SHORT_SHA}"
+          IMAGE_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${{ env.IMAGE_REPO }}:${IMAGE_TAG}"
+          kubectl -n ${{ env.NAMESPACE }} set image deployment/${{ env.APP_NAME }} api=${IMAGE_URI} --record || true
+          kubectl -n ${{ env.NAMESPACE }} patch deployment/${{ env.APP_NAME }} -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"api\",\"image\":\"${IMAGE_URI}\"}]}}}}"
+      
+      - name: Generate Deployment Summary
+        if: always()
+        uses: chetanbothra/github-actions-summary@main
+        with:
+          namespace: ${{ env.NAMESPACE }}
+          app_name: ${{ env.APP_NAME }}
+          notify_users: ${{ github.actor }}
+      

@@ -8,7 +8,7 @@ import { Logger } from "../utils/logger";
 export class EncryptionService {
   private readonly algorithm = "aes-256-gcm";
   private readonly keyLength = 32; // 256 bits = 32 bytes
-  private readonly ivLength = 16; // 128 bits = 16 bytes
+  // private readonly ivLength = 16; // 128 bits = 16 bytes
   private readonly masterKey: Buffer;
 
   constructor() {

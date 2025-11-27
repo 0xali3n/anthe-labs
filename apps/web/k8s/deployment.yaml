@@ -1,0 +1,30 @@
+webVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: anthe-labs-mainnet
+  labels:
+    app: web
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: REPLACE_WITH_IMAGE
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 4001
+              name: app
+          envFrom:
+            - secretRef:
+                name: web-secret
+        

@@ -1,0 +1,30 @@
+wsVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ws
+  namespace: anthe-labs-mainnet
+  labels:
+    app: ws
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ws
+  template:
+    metadata:
+      labels:
+        app: ws
+    spec:
+      containers:
+        - name: ws
+          image: REPLACE_WITH_IMAGE
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 4001
+              name: app
+          envFrom:
+            - secretRef:
+                name: ws-secret
+        
