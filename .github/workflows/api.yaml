@@ -45,7 +45,7 @@ jobs:
           IMAGE_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${{ env.IMAGE_REPO }}:${IMAGE_TAG}"
           echo "IMAGE_URI=${IMAGE_URI}" >> $GITHUB_ENV
 
-          docker build -t "${{ env.IMAGE_REPO }}:${IMAGE_TAG}" -f Dockerfile .
+          docker build -t "${{ env.IMAGE_REPO }}:${IMAGE_TAG}" -f apps/api/Dockerfile .
           docker tag "${{ env.IMAGE_REPO }}:${IMAGE_TAG}" "${IMAGE_URI}"
           docker push "${IMAGE_URI}"
 

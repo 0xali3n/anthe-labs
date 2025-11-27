@@ -44,14 +44,14 @@ jobs:
           IMAGE_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${{ env.IMAGE_REPO }}:${IMAGE_TAG}"
           echo "IMAGE_URI=${IMAGE_URI}" >> $GITHUB_ENV
 
-          docker build -t "${{ env.IMAGE_REPO }}:${IMAGE_TAG}" -f Dockerfile .
+          docker build -t "${{ env.IMAGE_REPO }}:${IMAGE_TAG}" -f apps/trade/Dockerfile .
           docker tag "${{ env.IMAGE_REPO }}:${IMAGE_TAG}" "${IMAGE_URI}"
           docker push "${IMAGE_URI}"
 
       - name: Update kubeconfig for EKS (kanalabs-non-prod)
         run: |
           aws eks update-kubeconfig --name "${{ env.EKS_CLUSTER }}" --region "${{ secrets.AWS_REGION }}"
-          
+
       - name: Apply Deployment manifest (mainnet)
         run: |
           kubectl apply -f k8s/deployment-mainnet.yaml
