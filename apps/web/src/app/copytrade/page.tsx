@@ -412,6 +412,70 @@ export default function Copytrade() {
     return botPositions[botId] || [];
   };
 
+  // Refresh positions for a specific bot
+  const refreshBotPositions = async (botId: string) => {
+    if (!isSignedIn) return;
+
+    setLoadingPositions((prev) => ({
+      ...prev,
+      [botId]: true,
+    }));
+
+    try {
+      const positionsResult = await getPositions();
+
+      if (positionsResult.success && positionsResult.data) {
+        const mappedPositions = positionsResult.data.map(
+          mapPositionToOpenPosition
+        );
+        setBotPositions((prev) => ({
+          ...prev,
+          [botId]: mappedPositions,
+        }));
+      } else {
+        setBotPositions((prev) => ({
+          ...prev,
+          [botId]: [],
+        }));
+      }
+    } catch (error) {
+      console.error("Error refreshing positions:", error);
+      setBotPositions((prev) => ({
+        ...prev,
+        [botId]: [],
+      }));
+    } finally {
+      setLoadingPositions((prev) => ({
+        ...prev,
+        [botId]: false,
+      }));
+    }
+  };
+
+  // Refresh trade history
+  const refreshTradeHistory = async () => {
+    if (!isSignedIn) return;
+
+    setLoadingTradeHistory(true);
+
+    try {
+      const tradeHistoryResult = await getOrderHistory();
+
+      if (tradeHistoryResult.success && tradeHistoryResult.data) {
+        setTradeHistory(
+          tradeHistoryResult.data.map(mapOrderHistoryToTradeHistory)
+        );
+      } else {
+        setTradeHistory([]);
+      }
+    } catch (error) {
+      console.error("Error refreshing trade history:", error);
+      setTradeHistory([]);
+    } finally {
+      setLoadingTradeHistory(false);
+    }
+  };
+
   const balanceNum = parseFloat(balance) || 0;
   const allocatedAmount = (balanceNum * allocation) / 100;
   const platformFees = allocatedAmount * 0.0075; // 0.75% average
@@ -423,13 +487,29 @@ export default function Copytrade() {
     setSuccess(false);
     setAddressError(null);
 
-    // Validate Aptos address if provided
+    // Validate Aptos address
     const trimmedAddress = traderAddress.trim();
-    if (trimmedAddress && !isValidAptosAddress(trimmedAddress)) {
+    if (!trimmedAddress) {
+      setAddressError("Trader address is required");
+      return;
+    }
+
+    if (!isValidAptosAddress(trimmedAddress)) {
       setAddressError(
         "Invalid Aptos wallet address. Must be 66 characters starting with 0x followed by 64 hex characters."
       );
       return;
+    }
+
+    // Check minimum balance requirement (10 USDT) - only for new bots, not restarting
+    if (!botToRestart) {
+      const MIN_BALANCE = 10;
+      if (balanceNum < MIN_BALANCE) {
+        setError(
+          `Minimum balance of ${MIN_BALANCE} USDT required to start a copy trade bot. Your current balance: ${formatCurrency(balanceNum)}`
+        );
+        return;
+      }
     }
 
     // Check if user already has a running bot (skip check if restarting the same bot)
@@ -446,33 +526,23 @@ export default function Copytrade() {
       return;
     }
 
-    if (allocation === 0) {
-      setError("Please set allocation percentage");
-      return;
-    }
-
-    if (allocatedAmount > balanceNum) {
-      setError("Allocated amount exceeds your balance");
-      return;
-    }
-
     setSubmitting(true);
 
     try {
-      // Round allocatedAmount to 2 decimal places to avoid floating point precision issues
-      const roundedAmount = Math.round(allocatedAmount * 100) / 100;
+      // Use 100% of balance as default allocation for smart_ratio mode
+      const defaultAllocation = 100;
+      const defaultAllocatedAmount = balanceNum;
 
       if (botToRestart) {
         // Restart existing bot
         const result = await updateCopyTradeBot(botToRestart.id, {
           status: "running",
-          traderAddress: traderAddress.trim() || undefined,
+          traderAddress: trimmedAddress,
         });
 
         if (result.success && result.data) {
           setSuccess(true);
           setTraderAddress("");
-          setAllocation(0);
           setBotToRestart(null);
           setShowForm(false);
 
@@ -486,18 +556,17 @@ export default function Copytrade() {
           setTimeout(() => setError(""), 5000);
         }
       } else {
-        // Create new bot
+        // Create new bot with default 100% allocation
         const result = await createCopyTradeBot({
-          traderAddress: traderAddress.trim() || undefined,
-          allocatedAmount: roundedAmount,
-          allocationPercent: allocation,
+          traderAddress: trimmedAddress,
+          allocatedAmount: defaultAllocatedAmount,
+          allocationPercent: defaultAllocation,
           mode: tradingMode,
         });
 
         if (result.success && result.data) {
           setSuccess(true);
           setTraderAddress("");
-          setAllocation(0);
           setShowForm(false);
 
           // Refresh bots list
@@ -793,7 +862,7 @@ export default function Copytrade() {
                         )}
                     </div>
 
-                    {/* Trading Mode */}
+                    {/* Trading Mode Info */}
                     <div>
                       <div className="flex items-center justify-between">
                         <label className="block text-[11px] font-semibold text-slate-300">
@@ -806,117 +875,14 @@ export default function Copytrade() {
                       <p className="mt-1.5 text-[10px] text-slate-500 leading-relaxed">
                         Automatically matches trader's position size ratio. If
                         trader uses 10% of their balance, you'll use 10% of your
-                        allocation.
+                        balance.
                       </p>
-                    </div>
-
-                    {/* Available Balance */}
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <label className="block text-[11px] font-semibold text-slate-300">
-                          Available Balance
-                        </label>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-base font-bold text-white">
-                            {formatCurrency(balanceNum)}
-                          </span>
-                          <span className="text-[10px] text-slate-500">
-                            USDT
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Allocation */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="block text-[11px] font-semibold text-slate-300">
-                          Allocation
-                        </label>
-                        <div className="text-right">
-                          <div className="text-base font-bold text-white leading-tight">
-                            {allocation}%
-                          </div>
-                          <div className="text-[10px] text-slate-400">
-                            {formatCurrency(allocatedAmount)}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="bg-slate-900/50 border border-slate-700/50 rounded-lg p-2.5">
-                        <div className="relative mb-2">
-                          <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            step="1"
-                            value={allocation}
-                            onChange={(e) =>
-                              setAllocation(Number(e.target.value))
-                            }
-                            className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer slider-modern"
-                            style={{
-                              background: `linear-gradient(to right, rgb(59, 130, 246) 0%, rgb(99, 102, 241) ${allocation}%, rgb(30, 41, 59) ${allocation}%, rgb(30, 41, 59) 100%)`,
-                            }}
-                          />
-                          {/* Percentage display above thumb */}
-                          {allocation > 0 && (
-                            <div
-                              className="absolute top-[-22px] text-[10px] font-bold text-blue-400 transform -translate-x-1/2 pointer-events-none whitespace-nowrap"
-                              style={{ left: `${allocation}%` }}
-                            >
-                              {allocation}%
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex justify-between text-[10px] text-slate-500">
-                          <span>0%</span>
-                          <span>25%</span>
-                          <span>50%</span>
-                          <span>75%</span>
-                          <span>100%</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Platform Fees */}
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <label className="block text-[11px] font-semibold text-slate-300">
-                          Platform Fees
-                        </label>
-                        <div className="relative">
-                          <button
-                            type="button"
-                            onMouseEnter={() => setShowFeesInfo(true)}
-                            onMouseLeave={() => setShowFeesInfo(false)}
-                            className="text-slate-500 hover:text-blue-400 transition-colors"
-                          >
-                            <Info size={12} />
-                          </button>
-                          {showFeesInfo && (
-                            <div
-                              className="absolute left-0 top-5 z-50 w-64 p-2.5 bg-slate-800 border border-slate-700 rounded-lg text-[10px] text-slate-300 shadow-xl"
-                              style={{ animation: "fadeIn 0.2s ease-out" }}
-                            >
-                              <p>
-                                We charge 0.5-1% as fees of the allocated amount
-                                only once at the bot start point.
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
                     </div>
 
                     {/* Start Button */}
                     <button
                       type="submit"
-                      disabled={
-                        !traderAddress.trim() ||
-                        allocation === 0 ||
-                        submitting ||
-                        allocatedAmount > balanceNum
-                      }
+                      disabled={!traderAddress.trim() || submitting}
                       className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:-translate-y-0.5"
                     >
                       {submitting ? (
@@ -1109,14 +1075,8 @@ export default function Copytrade() {
                           <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-1">
                             PNL
                           </span>
-                          <span
-                            className={`text-sm font-bold ${
-                              bot.pnl && bot.pnl.startsWith("+")
-                                ? "text-[#4ADE80]"
-                                : "text-[#F87171]"
-                            }`}
-                          >
-                            {bot.pnl || "$0.00"}
+                          <span className="text-xs font-medium text-slate-500 italic">
+                            Coming Soon
                           </span>
                         </div>
                         <div className="flex flex-col">
@@ -1131,8 +1091,8 @@ export default function Copytrade() {
                           <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-1">
                             Trades
                           </span>
-                          <span className="text-sm font-medium text-slate-200">
-                            {bot.trades || 0}
+                          <span className="text-xs font-medium text-slate-500 italic">
+                            Coming Soon
                           </span>
                         </div>
                       </div>
@@ -1140,12 +1100,28 @@ export default function Copytrade() {
                       {/* Open Positions - Matching Copy Trade History Table */}
                       {bot.status === "running" && (
                         <div className="mb-3">
-                          <div className="flex items-center gap-2 mb-4">
+                          <div className="flex items-center justify-between mb-4">
                             <h2
                               className={`${palanquinDark.className} text-lg font-semibold text-white`}
                             >
                               Open Positions
                             </h2>
+                            <button
+                              onClick={() => refreshBotPositions(bot.id)}
+                              disabled={loadingPositions[bot.id]}
+                              className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 hover:border-slate-600/50 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group"
+                              title="Refresh positions"
+                            >
+                              <RefreshCw
+                                size={14}
+                                className={`${
+                                  loadingPositions[bot.id]
+                                    ? "animate-spin"
+                                    : "group-hover:rotate-180"
+                                } transition-transform duration-300`}
+                              />
+                              <span className="hidden sm:inline">Refresh</span>
+                            </button>
                           </div>
                           {loadingPositions[bot.id] ? (
                             <div
@@ -1435,14 +1411,8 @@ export default function Copytrade() {
                           <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-1">
                             PNL
                           </span>
-                          <span
-                            className={`text-xs font-bold ${
-                              bot.pnl && bot.pnl.startsWith("+")
-                                ? "text-[#4ADE80]"
-                                : "text-[#F87171]"
-                            }`}
-                          >
-                            {bot.pnl || "$0.00"}
+                          <span className="text-xs font-medium text-slate-500 italic">
+                            Coming Soon
                           </span>
                         </div>
                         <div className="flex flex-col">
@@ -1457,8 +1427,8 @@ export default function Copytrade() {
                           <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-1">
                             Trades
                           </span>
-                          <span className="text-xs font-medium text-slate-200">
-                            {bot.trades || 0}
+                          <span className="text-xs font-medium text-slate-500 italic">
+                            Coming Soon
                           </span>
                         </div>
                       </div>
@@ -1472,7 +1442,6 @@ export default function Copytrade() {
                             // Pre-fill form with bot data
                             setBotToRestart(bot);
                             setTraderAddress(bot.traderAddress || "");
-                            setAllocation(bot.allocation);
                             setTradingMode(bot.mode);
                             setShowForm(true);
                           }}
@@ -1507,12 +1476,28 @@ export default function Copytrade() {
 
         {/* Copy Trade History Section */}
         <div className="mb-6">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center justify-between mb-4">
             <h2
               className={`${palanquinDark.className} text-lg font-semibold text-white`}
             >
               Copy Trade History
             </h2>
+            <button
+              onClick={refreshTradeHistory}
+              disabled={loadingTradeHistory}
+              className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 hover:border-slate-600/50 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group"
+              title="Refresh trade history"
+            >
+              <RefreshCw
+                size={14}
+                className={`${
+                  loadingTradeHistory
+                    ? "animate-spin"
+                    : "group-hover:rotate-180"
+                } transition-transform duration-300`}
+              />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
           </div>
           {loadingTradeHistory ? (
             <div
