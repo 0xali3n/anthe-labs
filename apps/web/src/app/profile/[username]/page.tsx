@@ -441,7 +441,7 @@ export default function ProfilePage() {
         if (userData.wallet_address) {
           try {
             const statsResponse = await fetch(
-              `https://perpetual-leaderboard.kanalabs.io/fetchTopPnlUsers?period=overall&search=${userData.wallet_address}`
+              `https://perpetual-leaderboard.kana.trade/fetchTopPnlUsers?period=overall&search=${userData.wallet_address}`
             );
             const statsData = await statsResponse.json();
 

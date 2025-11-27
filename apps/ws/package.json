@@ -1,5 +1,5 @@
 {
-  "name": "order-history-monitor",
+  "name": "ws",
   "version": "1.0.0",
   "description": "Simple service to monitor Kana Labs order history for a target wallet address",
   "author": "",

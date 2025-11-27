@@ -257,13 +257,41 @@ export class OrderHistoryService {
           continue;
         }
 
-        const orderData: Record<string, string> = {};
-        for (const [key, value] of Object.entries(order)) {
-          orderData[key] = String(value);
-        }
-
-        // Calculate and add percentage based on order type
+        // Convert order to optimized format for trade service
         const orderType = order.order_type;
+        
+        // Get wallet address from profile address (order.address is profile address)
+        // We need to push WALLET address to Redis, not profile address
+        const profileAddress = order.address;
+        const walletAddress = this.profileToWallet.get(profileAddress) || profileAddress;
+        
+        // Map order_type (1-8) to optimized format
+        // Order types: 1=OPEN_LONG, 2=OPEN_SHORT, 3=INCREASE_LONG, 4=INCREASE_SHORT,
+        //              5=DECREASE_LONG, 6=DECREASE_SHORT, 7=CLOSE_LONG, 8=CLOSE_SHORT
+        const optimizedOrder = this.convertOrderToOptimizedFormat(order);
+
+        const orderData: Record<string, string> = {
+          // Core optimized fields
+          address: walletAddress, // Use WALLET address, not profile address
+          orderType: optimizedOrder.orderType, // "MARKET", "LIMIT", or "STOP"
+          tradeSide: optimizedOrder.tradeSide, // "true" or "false"
+          direction: optimizedOrder.direction, // "false" (open/increase) or "true" (close/decrease)
+          marketId: order.market_id,
+          size: order.size,
+          leverage: String(order.leverage),
+          
+          // Optional fields
+          ...(order.price && { price: order.price }),
+          ...(order.order_value && { order_value: order.order_value }),
+          ...(order.order_id && { order_id: String(order.order_id) }),
+          ...(order.timestamp && { timestamp: String(order.timestamp) }),
+          ...(order.transaction_version && { transaction_version: String(order.transaction_version) }),
+        };
+
+        // Log optimized format being pushed to Redis
+        Logger.info(
+          `📤 Pushing optimized order to Redis: Wallet=${walletAddress.substring(0, 10)}..., orderType=${optimizedOrder.orderType}, tradeSide=${optimizedOrder.tradeSide} (${optimizedOrder.tradeSide === "true" ? "LONG" : "SHORT"}), direction=${optimizedOrder.direction} (${optimizedOrder.direction === "true" ? "CLOSE" : "OPEN"}), marketId=${order.market_id}, size=${order.size}`
+        );
 
         // Order types 7,8 - set percentage to 100% directly (no calculation needed)
         if (orderType === 7 || orderType === 8) {
@@ -437,6 +465,74 @@ export class OrderHistoryService {
         // Continue processing other orders even if one fails
       }
     }
+  }
+
+  /**
+   * Convert order to optimized format for trade service
+   * Maps order_type (1-8) to orderType, tradeSide, and direction
+   * 
+   * Order Types:
+   * 1 = OPEN_LONG
+   * 2 = OPEN_SHORT
+   * 3 = INCREASE_LONG
+   * 4 = INCREASE_SHORT
+   * 5 = DECREASE_LONG
+   * 6 = DECREASE_SHORT
+   * 7 = CLOSE_LONG
+   * 8 = CLOSE_SHORT
+   */
+  private convertOrderToOptimizedFormat(order: OrderData): {
+    orderType: string; // "MARKET", "LIMIT", or "STOP"
+    tradeSide: string; // "true" (long) or "false" (short)
+    direction: string; // "false" (open/increase) or "true" (close/decrease)
+  } {
+    const orderType = order.order_type;
+    
+    // Determine tradeSide (long/short)
+    // Types 1,3,5,7 = LONG (true)
+    // Types 2,4,6,8 = SHORT (false)
+    const tradeSide = (orderType === 1 || orderType === 3 || orderType === 5 || orderType === 7) 
+      ? "true" 
+      : "false";
+    
+    // Determine direction (open/close)
+    // Types 1,2,3,4 = OPEN/INCREASE (false = open position)
+    // Types 5,6,7,8 = DECREASE/CLOSE (true = close position)
+    const direction = (orderType >= 5 && orderType <= 8) 
+      ? "true" 
+      : "false";
+    
+    // Determine orderType (MARKET, LIMIT, or STOP)
+    // Priority: Check is_market_order field first, then price field, then stop fields
+    let orderTypeStr = "MARKET"; // Default to MARKET
+    
+    // Check for is_market_order field (most reliable)
+    if ((order as any).is_market_order !== undefined) {
+      const isMarket = (order as any).is_market_order === true || 
+                       (order as any).is_market_order === "true" || 
+                       (order as any).is_market_order === 1 ||
+                       (order as any).is_market_order === "1";
+      orderTypeStr = isMarket ? "MARKET" : "LIMIT";
+    }
+    // Check for stop-related fields
+    else if ((order as any).stop_price || (order as any).trigger_price || (order as any).stopPrice) {
+      orderTypeStr = "STOP";
+    }
+    // Check if price field exists and is valid (indicates LIMIT order)
+    else if (order.price && order.price !== "0" && order.price !== "" && parseFloat(order.price) > 0) {
+      orderTypeStr = "LIMIT";
+    }
+    // Default to MARKET if we can't determine
+    
+    Logger.debug(
+      `Converted order_type ${orderType} to: orderType=${orderTypeStr}, tradeSide=${tradeSide}, direction=${direction}`
+    );
+    
+    return {
+      orderType: orderTypeStr,
+      tradeSide,
+      direction,
+    };
   }
 
   private displayOrder(order: OrderData): void {

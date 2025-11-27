@@ -22,6 +22,7 @@ import {
   transferUSDTToAddress,
   getTradingBalance,
 } from "@/lib/walletsApi";
+import { getMyCopyTradeBots } from "@/lib/copyTradeBotsApi";
 
 // Dynamically import QRCode to avoid SSR issues
 const QRCodeSVG = dynamic(
@@ -359,6 +360,31 @@ export default function DepositWithdrawModal({
   };
 
   const handleWithdraw = async () => {
+    // Check for running bots before allowing withdrawal
+    try {
+      const botsResult = await getMyCopyTradeBots();
+      if (botsResult.success && botsResult.data) {
+        const runningBots = botsResult.data.filter(
+          (bot) => bot.status === "running"
+        );
+        if (runningBots.length > 0) {
+          setNotification({
+            type: "error",
+            message: `Cannot withdraw funds while you have ${runningBots.length} running copy trade bot${runningBots.length > 1 ? "s" : ""}. Please stop all running bots before withdrawing.`,
+          });
+          setTimeout(() => setNotification(null), 6000);
+          return;
+        }
+      }
+    } catch (error) {
+      setNotification({
+        type: "error",
+        message: "Error checking running bots. Please try again.",
+      });
+      setTimeout(() => setNotification(null), 4000);
+      return;
+    }
+
     if (!withdrawAmount || parseFloat(withdrawAmount) <= 0) {
       setNotification({
         type: "error",
@@ -809,7 +835,29 @@ export default function DepositWithdrawModal({
               Deposit
             </button>
             <button
-              onClick={() => setActiveTab("withdraw")}
+              onClick={async () => {
+                // Check for running bots before allowing withdrawal
+                try {
+                  const botsResult = await getMyCopyTradeBots();
+                  if (botsResult.success && botsResult.data) {
+                    const runningBots = botsResult.data.filter(
+                      (bot) => bot.status === "running"
+                    );
+                    if (runningBots.length > 0) {
+                      setNotification({
+                        type: "error",
+                        message: `Cannot withdraw funds while you have ${runningBots.length} running copy trade bot${runningBots.length > 1 ? "s" : ""}. Please stop all running bots before withdrawing.`,
+                      });
+                      setTimeout(() => setNotification(null), 6000);
+                      return;
+                    }
+                  }
+                } catch (error) {
+                  // If check fails, still allow access but warn
+                  console.error("Error checking running bots:", error);
+                }
+                setActiveTab("withdraw");
+              }}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-200 ${
                 activeTab === "withdraw"
                   ? "text-white border-b-2 border-blue-500 bg-blue-500/5"

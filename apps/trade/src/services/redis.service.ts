@@ -72,6 +72,43 @@ export class RedisService {
     return this.isConnected;
   }
 
+  // Hash operations
+  async hgetall(key: string): Promise<Record<string, string>> {
+    if (!this.client) {
+      return {};
+    }
+    try {
+      return await this.client.hgetall(key);
+    } catch (error) {
+      Logger.error(`Failed to get hash ${key}`, error);
+      return {};
+    }
+  }
+
+  async hlen(key: string): Promise<number> {
+    if (!this.client) {
+      return 0;
+    }
+    try {
+      return await this.client.hlen(key);
+    } catch (error) {
+      Logger.error(`Failed to get hash length ${key}`, error);
+      return 0;
+    }
+  }
+
+  async smembers(key: string): Promise<string[]> {
+    if (!this.client) {
+      return [];
+    }
+    try {
+      return await this.client.smembers(key);
+    } catch (error) {
+      Logger.error(`Failed to get set members ${key}`, error);
+      return [];
+    }
+  }
+
   subscribeToChannel(
     channel: string,
     callback: (message: string) => void
@@ -108,6 +145,92 @@ export class RedisService {
         Logger.success(`📡 Subscribed to Redis channel: ${channel}`);
       }
     });
+  }
+
+  /**
+   * Read new entries from Redis stream
+   * Uses XREAD with BLOCK to wait for new entries
+   * @param streamKey - The stream key (e.g., "orders:stream")
+   * @param lastId - Last processed entry ID (use "$" for new entries only, or "0" for all)
+   * @param blockMs - Block time in milliseconds (0 = no blocking)
+   * @returns Array of stream entries
+   */
+  async readStream(
+    streamKey: string,
+    lastId: string = "$",
+    blockMs: number = 0
+  ): Promise<Array<[string, string[]]>> {
+    if (!this.client) {
+      Logger.error("Redis client not available for stream reading");
+      return [];
+    }
+
+    try {
+      // XREAD BLOCK blockMs STREAMS streamKey lastId
+      const result = await this.client.xread(
+        "BLOCK",
+        blockMs,
+        "STREAMS",
+        streamKey,
+        lastId
+      );
+
+      if (!result || result.length === 0) {
+        return [];
+      }
+
+      // Result format: [[streamKey, [[entryId, [field1, value1, field2, value2, ...]], ...]]]
+      const [streamName, entries] = result[0];
+      return entries as Array<[string, string[]]>;
+    } catch (error) {
+      Logger.error(`Failed to read from stream ${streamKey}`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Get the last entry ID from a stream
+   * @param streamKey - The stream key
+   * @returns Last entry ID or null if stream is empty
+   */
+  async getLastStreamId(streamKey: string): Promise<string | null> {
+    if (!this.client) {
+      return null;
+    }
+
+    try {
+      // XREVRANGE streamKey + - COUNT 1 (get last entry)
+      const result = await this.client.xrevrange(streamKey, "+", "-", "COUNT", 1);
+      if (result && result.length > 0) {
+        return result[0][0] as string; // Return entry ID
+      }
+      return null;
+    } catch (error) {
+      Logger.error(`Failed to get last stream ID from ${streamKey}`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Delete entry from Redis stream
+   * @param streamKey - The stream key
+   * @param entryId - The entry ID to delete
+   * @returns Number of entries deleted (0 or 1)
+   */
+  async deleteStreamEntry(streamKey: string, entryId: string): Promise<number> {
+    if (!this.client) {
+      Logger.error("Redis client not available for stream deletion");
+      return 0;
+    }
+
+    try {
+      // XDEL streamKey entryId
+      const result = await this.client.xdel(streamKey, entryId);
+      return result;
+    } catch (error) {
+      Logger.error(`Failed to delete entry ${entryId} from stream ${streamKey}`, error);
+      return 0;
+    }
   }
 
   async disconnect(): Promise<void> {

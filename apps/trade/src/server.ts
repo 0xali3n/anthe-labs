@@ -1,14 +1,83 @@
+import * as dotenv from "dotenv";
+dotenv.config();
+
+import { Logger } from "./utils/logger";
 import { validateConfig } from "./config";
 import { redisService } from "./services/redis.service";
-import { Logger } from "./utils/logger";
+import { prismaService } from "./services/prisma.service";
+import { streamProcessorService } from "./services/stream-processor.service";
 
+const STREAM_KEY = "orders:stream";
+const BLOCK_TIME_MS = 5000;
+
+let isListening = false;
+let lastProcessedId: string | null = null;
+
+/**
+ * Listen for new transactions in Redis stream
+ */
+async function listenToStream(): Promise<void> {
+  if (isListening) {
+    Logger.warn("Already listening to stream");
+    return;
+  }
+
+  isListening = true;
+  Logger.info(`🎧 Listening to stream: ${STREAM_KEY}`);
+
+  // Get the last entry ID to start from
+  if (!lastProcessedId) {
+    const lastId = await redisService.getLastStreamId(STREAM_KEY);
+    lastProcessedId = lastId || "$";
+  }
+
+  // Continuously listen for new entries
+  while (isListening) {
+    try {
+      const entries = await redisService.readStream(
+        STREAM_KEY,
+        lastProcessedId || "$",
+        BLOCK_TIME_MS
+      );
+
+      if (entries && entries.length > 0) {
+        Logger.info(`📥 Received ${entries.length} transaction(s)`);
+
+        // Process all entries in parallel
+        const processedIds = await streamProcessorService.processBatch(entries);
+
+        // Update lastProcessedId to the highest ID processed
+        if (processedIds.length > 0) {
+          processedIds.sort((a, b) => {
+            const [aTime, aSeq] = a.split("-").map(Number);
+            const [bTime, bSeq] = b.split("-").map(Number);
+            if (aTime !== bTime) return aTime - bTime;
+            return aSeq - bSeq;
+          });
+          lastProcessedId = processedIds[processedIds.length - 1];
+        }
+
+        Logger.success(`✅ Processed ${entries.length} transaction(s)`);
+      }
+    } catch (error) {
+      Logger.error("Error reading from stream", error);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+}
+
+/**
+ * Initialize services
+ */
 async function initializeServices(): Promise<void> {
   try {
     validateConfig();
     Logger.info("🔌 Initializing Trade Service...");
 
+    // Connect to database
+    await prismaService.connect();
+
     // Wait for Redis connection
-    Logger.info("⏳ Waiting for Redis connection...");
     let retries = 0;
     const maxRetries = 10;
     while (!redisService.getIsConnected() && retries < maxRetries) {
@@ -19,14 +88,14 @@ async function initializeServices(): Promise<void> {
     if (!redisService.getIsConnected()) {
       const connected = await redisService.testConnection();
       if (!connected) {
-        throw new Error("Failed to connect to Redis after retries");
+        throw new Error("Failed to connect to Redis");
       }
     }
 
-    Logger.success("✅ Redis connected");
+    Logger.success("✅ Services connected");
 
-    // Service is ready
-    Logger.success("🚀 Trade Service is ready and running");
+    // Start listening to stream
+    await listenToStream();
   } catch (error) {
     Logger.error("Failed to initialize services", error);
     process.exit(1);
@@ -47,15 +116,13 @@ process.on("unhandledRejection", (reason: unknown) => {
   process.exit(1);
 });
 
-process.on("SIGTERM", async () => {
-  Logger.info("SIGTERM received, shutting down...");
+const shutdown = async () => {
+  Logger.info("Shutting down...");
+  isListening = false;
+  await prismaService.disconnect();
   await redisService.disconnect();
   process.exit(0);
-});
+};
 
-process.on("SIGINT", async () => {
-  Logger.info("SIGINT received, shutting down...");
-  await redisService.disconnect();
-  process.exit(0);
-});
-
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);

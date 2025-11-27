@@ -464,7 +464,7 @@ export class WalletsService {
     try {
       const kanaApiKey = process.env.KANA_API_KEY;
       const kanaRest =
-        process.env.KANA_REST || 'https://perps-tradeapi.kanalabs.io';
+        process.env.KANA_REST || 'https://perps-tradeapi.kana.trade';
 
       if (!kanaApiKey) {
         throw new Error('Kana API key not configured');

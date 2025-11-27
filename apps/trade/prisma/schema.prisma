@@ -1,0 +1,128 @@
+datasource db {
+  provider = "postgresql"
+  // URL is now passed to PrismaClient constructor (Prisma 7)
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                  String  @id @default(uuid())
+  email               String  @unique
+  full_name           String?
+  avatar_url          String? // Original Google photo (never overwritten after first save)
+  selected_avatar_url String? // User's chosen avatar (Google or custom)
+  avatar_source       String? // 'google' | 'custom' - tracks which avatar is selected
+
+  // Google OAuth data
+  google_id String? @unique
+
+  // User metadata
+  display_name String?
+  username     String? @unique // Unique username chosen by user
+  bio          String?
+
+  // Social connections
+  twitter_username  String?
+  twitter_connected Boolean @default(false)
+  twitter_user_id   String?
+
+  // Airdrop tracking
+  apt_airdropped Boolean @default(false) // Track if 0.05 APT airdrop has been sent
+
+  // Timestamps
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  last_login DateTime?
+
+  // Relations
+  wallet              Wallet?
+  traderRegistrations TraderRegistration[]
+
+  @@map("users")
+}
+
+model Wallet {
+  id      String @id @default(uuid())
+  user_id String @unique // One wallet per user
+  address String @unique // Aptos wallet address (public)
+  key     String @db.Text // Encrypted private key
+
+  // Timestamps
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([address])
+  @@map("wallets")
+}
+
+model Trader {
+  id           String  @id @default(uuid())
+  address      String  @unique // Aptos wallet address
+  bot_name     String? // Bot/trader display name (separate from user username)
+  avatar_url   String? // Profile picture URL for the trader bot
+  numberOfTxns Int     @default(0)
+  totalVolume  Decimal @db.Decimal(20, 2) // Store as decimal for precision
+  pnl          Decimal @db.Decimal(20, 2)
+  roi          Decimal @db.Decimal(10, 2)
+
+  // Timestamps
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([address])
+  @@index([bot_name])
+  @@map("traders")
+}
+
+model TraderRegistration {
+  id       String @id @default(uuid())
+  user_id  String // User who submitted the registration
+  address  String // Aptos wallet address (trading wallet from extension)
+  bot_name String // Bot/trader display name
+  status   String @default("pending") // 'pending' | 'approved' | 'rejected'
+
+  // Timestamps
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id]) // One registration per user
+  @@index([user_id])
+  @@index([address])
+  @@index([status])
+  @@map("trader_registrations")
+}
+
+model CopyTradeBot {
+  id                 String  @id // 8-9 character bot ID (generated in application)
+  user_address       String // User wallet address who created this bot
+  trader_address     String? // Target trader wallet address (can be null initially)
+  allocated_amount   Decimal @db.Decimal(20, 2) // Amount allocated for copy trading
+  allocation_percent Decimal @db.Decimal(5, 2) // Percentage of user's balance allocated (0-100)
+  mode               String  @default("smart_ratio") // 'smart_ratio' | 'fixed_amount' | 'advanced'
+  status             String  @default("running") // 'running' | 'stopped'
+
+  // Stats (will be fetched from different table in future, mock for now)
+  total_trades Int     @default(0)
+  pnl          Decimal @default(0) @db.Decimal(20, 2)
+
+  // Timestamps
+  created_at DateTime  @default(now())
+  updated_at DateTime @updatedAt
+  started_at DateTime  @default(now())
+  stopped_at DateTime?
+
+  @@index([user_address])
+  @@index([trader_address])
+  @@index([status])
+  @@map("copy_trade_bots")
+}
+
