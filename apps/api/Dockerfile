@@ -35,6 +35,8 @@ COPY packages/ packages/
 # Install production dependencies
 RUN pnpm install --prod
 
+RUN pnpm add dotenv@16.4.5 --prod
+
 # Copy build output
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
