@@ -49,6 +49,13 @@ COPY . .
 
 # Build the web app using Turbo
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# Dummy env vars for Next.js static generation (real values provided at runtime)
+ENV NEXT_PUBLIC_SUPABASE_URL=placeholder-supabase-key
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder-anon-key
+# ENV NEXT_PUBLIC_API_URL=http://placeholder-api
+# ENV NEXT_PUBLIC_SITE_URL=https://placeholder.com
+
 RUN pnpm turbo run build --filter=web...
 
 # -----------------------
