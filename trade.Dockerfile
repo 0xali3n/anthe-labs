@@ -60,15 +60,14 @@ COPY --from=builder /app/apps/trade/package.json ./apps/trade/
 # Install production dependencies only (this properly resolves all deps)
 RUN pnpm install --frozen-lockfile --prod
 
-# Copy built files
-COPY --from=builder /app/apps/trade/dist ./dist
-
 # Copy Prisma schema
 COPY --from=builder /app/apps/trade/prisma ./prisma
 
-# Copy generated Prisma client from builder
-COPY --from=builder /app/node_modules/.pnpm/@prisma+client*/node_modules/@prisma/client ./node_modules/@prisma/client
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+# Generate Prisma client in runner (after fresh pnpm install)
+RUN cd apps/trade && npx prisma generate --schema=./prisma/schema.prisma
+
+# Copy built files
+COPY --from=builder /app/apps/trade/dist ./dist
 
 EXPOSE 3000
 
