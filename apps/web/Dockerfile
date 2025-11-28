@@ -10,11 +10,10 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json apps/web/
 COPY packages/ packages/
 
+RUN pnpm --filter ./apps/trade add dotenv
+
 # Install dependencies for all workspaces
 RUN pnpm install 
-
-RUN pnpm --filter ./apps/trade add dotenv
-# Copy source code for api and shared packa
 
 # Copy source code for web and shared packages
 COPY apps/web/ apps/web/

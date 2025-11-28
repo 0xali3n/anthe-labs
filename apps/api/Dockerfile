@@ -16,10 +16,11 @@ COPY apps/api/package.json apps/api/
 # Copy shared packages and their package.json files
 COPY packages/ packages/
 
+RUN pnpm --filter ./apps/trade add dotenv
 # Install dependencies for all workspaces
 RUN pnpm install 
 
-RUN pnpm --filter ./apps/trade add dotenv
+
 # Copy source code for api and shared packages
 COPY apps/api/ apps/api/
 COPY packages/ packages/
