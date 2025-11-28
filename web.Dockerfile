@@ -50,9 +50,15 @@ COPY . .
 # Build the web app using Turbo
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Dummy env vars for Next.js static generation (real values provided at runtime)
-ENV NEXT_PUBLIC_SUPABASE_URL=https://placeholder-supabase-key
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder-anon-key
+# NEXT_PUBLIC_* env vars are baked into the JS bundle at build time
+# These ARGs allow overriding at build time: docker build --build-arg NEXT_PUBLIC_API_URL=https://api.yourdomain.com/api
+ARG NEXT_PUBLIC_API_URL=https://api.anthe.io/api
+ARG NEXT_PUBLIC_SUPABASE_URL=https://placeholder-supabase-url
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder-anon-key
+
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 RUN pnpm turbo run build --filter=web...
 
