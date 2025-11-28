@@ -28,3 +28,18 @@ spec:
             - secretRef:
                 name: trade-secret
         
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trade
+  namespace: anthe-labs-mainnet
+spec:
+  selector:
+    app: trade
+  type: ClusterIP
+  ports:
+  - name: trade
+    protocol: TCP
+    port: 4001
+    targetPort: 4001
