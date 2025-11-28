@@ -35,7 +35,9 @@ COPY packages/ packages/
 # Install production dependencies
 RUN pnpm install --prod
 
-RUN pnpm add dotenv@16.4.5 --prod
+WORKDIR /app/apps/api
+RUN pnpm add dotenv@16.4.5 --prod --ignore-workspace-root-check
+WORKDIR /app
 
 # Copy build output
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
