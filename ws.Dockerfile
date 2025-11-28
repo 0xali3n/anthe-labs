@@ -53,9 +53,9 @@ COPY --from=builder /app/apps/ws/package.json ./apps/ws/
 RUN pnpm install --frozen-lockfile --prod
 
 # Copy built files
-COPY --from=builder /app/apps/ws/dist ./dist
+COPY --from=builder /app/apps/ws/dist ./apps/ws/dist
 
 EXPOSE 3000
 
-CMD ["node", "dist/server.js"]
+CMD ["node", "apps/ws/dist/server.js"]
 

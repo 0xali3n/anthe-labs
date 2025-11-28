@@ -67,9 +67,9 @@ COPY --from=builder /app/apps/trade/prisma ./apps/trade/prisma
 RUN cd apps/trade && npx prisma generate --schema=./prisma/schema.prisma
 
 # Copy built files
-COPY --from=builder /app/apps/trade/dist ./dist
+COPY --from=builder /app/apps/trade/dist ./apps/trade/dist
 
 EXPOSE 3000
 
-CMD ["node", "dist/server.js"]
+CMD ["node", "apps/trade/dist/server.js"]
 

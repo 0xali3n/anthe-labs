@@ -75,9 +75,9 @@ RUN pnpm install --frozen-lockfile --prod
 RUN cd apps/api && npx prisma generate --schema=./prisma/schema.prisma
 
 # Copy built files
-COPY --from=builder /app/apps/api/dist ./dist
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
 
 EXPOSE 3000
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "apps/api/dist/main.js"]
 
