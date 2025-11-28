@@ -180,7 +180,7 @@ export class RedisService {
       }
 
       // Result format: [[streamKey, [[entryId, [field1, value1, field2, value2, ...]], ...]]]
-      const [streamName, entries] = result[0];
+      const [, entries] = result[0];
       return entries as Array<[string, string[]]>;
     } catch (error) {
       Logger.error(`Failed to read from stream ${streamKey}`, error);
