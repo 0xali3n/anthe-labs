@@ -53,7 +53,7 @@ jobs:
 
       - name: Apply Deployment manifest (mainnet)
         run: |
-          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f apps/trade/k8s/deployment.yaml
 
       - name: Set image on Deployment (mainnet)
         env:
