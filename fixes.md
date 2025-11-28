@@ -317,11 +317,45 @@ Require stack:
 |-------------|----------------------|
 | **Local Development** | pnpm creates symlinks that point to `.pnpm/` store - works because entire structure is intact |
 | **Docker (old approach)** | `COPY node_modules` copies symlinks but they become broken in the new container |
-| **Docker (fixed)** | Run `pnpm install --prod` in runner stage to properly resolve all dependencies |
+| **Docker (fixed)** | Use `shamefully-hoist=true` + `node-linker=hoisted` in `.npmrc` to flatten dependencies |
 
-### The Fix
+### The Complete Fix (Two Parts)
 
-Instead of copying `node_modules` from the builder stage, we now run a fresh production install in the runner stage:
+#### Part 1: `.npmrc` Configuration
+
+Created `.npmrc` at repository root with hoisting settings:
+```ini
+# Hoist all dependencies to root node_modules for Docker compatibility
+# Without this, pnpm creates symlinks that break in Docker COPY
+shamefully-hoist=true
+node-linker=hoisted
+```
+
+#### Part 2: `.dockerignore` Configuration
+
+Created `.dockerignore` to prevent local node_modules from conflicting:
+```
+# Ignore node_modules - will be installed fresh in Docker
+node_modules
+**/node_modules
+
+# Ignore build outputs
+dist
+**/dist
+.next
+**/.next
+
+# Ignore turbo cache
+.turbo
+**/.turbo
+```
+
+#### Part 3: Updated Dockerfiles
+
+All backend Dockerfiles now:
+1. Copy `.npmrc` to enable hoisting
+2. Run `pnpm install --frozen-lockfile --prod` in runner stage
+3. Generate Prisma client in runner stage (for api/trade)
 
 ```dockerfile
 # -----------------------
@@ -330,12 +364,21 @@ Instead of copying `node_modules` from the builder stage, we now run a fresh pro
 FROM base AS runner
 WORKDIR /app
 
-# Copy package files for production install
-COPY --from=builder /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
+# Copy package files for production install (including .npmrc for hoisting)
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/pnpm-lock.yaml ./
+COPY --from=builder /app/pnpm-workspace.yaml ./
+COPY --from=builder /app/.npmrc ./
 COPY --from=builder /app/apps/api/package.json ./apps/api/
 
-# Install production dependencies only (this properly resolves all deps)
+# Copy Prisma schema (needed for prisma generate)
+COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
+
+# Install production dependencies only (hoisted = flat node_modules)
 RUN pnpm install --frozen-lockfile --prod
+
+# Generate Prisma client in production
+RUN cd apps/api && npx prisma generate --schema=./prisma/schema.prisma
 
 # Copy built files
 COPY --from=builder /app/apps/api/dist ./dist
@@ -343,19 +386,20 @@ COPY --from=builder /app/apps/api/dist ./dist
 
 ### Why This Works
 
-1. **Fresh install in runner stage** - pnpm creates proper symlinks in the container's filesystem
-2. **`--prod` flag** - Only installs `dependencies`, not `devDependencies` (smaller image)
-3. **`--frozen-lockfile`** - Ensures exact versions from lockfile are used
-4. **Prisma client copied separately** - Generated client is copied from builder since it's not in the lockfile
+1. **`shamefully-hoist=true`** - Hoists all dependencies to root `node_modules` (like npm/yarn)
+2. **`node-linker=hoisted`** - Uses flat node_modules structure instead of symlinks
+3. **`.dockerignore`** - Prevents local node_modules from being copied (avoids conflicts)
+4. **Fresh install in runner** - Creates proper flat structure in container
+5. **Prisma generate in runner** - Generates client after fresh install
 
 ### Applied To All Services
 
-| Service | Dockerfile | pnpm Install in Runner |
-|---------|------------|------------------------|
-| api | `api.Dockerfile` | ✅ `pnpm install --frozen-lockfile --prod` |
-| ws | `ws.Dockerfile` | ✅ `pnpm install --frozen-lockfile --prod` |
-| trade | `trade.Dockerfile` | ✅ `pnpm install --frozen-lockfile --prod` |
-| web | `web.Dockerfile` | N/A (uses Next.js standalone output) |
+| Service | Dockerfile | pnpm Install in Runner | Prisma Generate |
+|---------|------------|------------------------|-----------------|
+| api | `api.Dockerfile` | ✅ `pnpm install --frozen-lockfile --prod` | ✅ Yes |
+| ws | `ws.Dockerfile` | ✅ `pnpm install --frozen-lockfile --prod` | ❌ No |
+| trade | `trade.Dockerfile` | ✅ `pnpm install --frozen-lockfile --prod` | ✅ Yes |
+| web | `web.Dockerfile` | N/A (uses Next.js standalone output) | N/A |
 
 ---
 
@@ -364,18 +408,33 @@ COPY --from=builder /app/apps/api/dist ./dist
 All 4 Docker images build successfully:
 
 ```bash
-docker build -f api.Dockerfile -t anthe-api .     # ✅ Success (170.9s, 317MB)
-docker build -f web.Dockerfile -t anthe-web .     # ✅ Success (104.7s, 118MB)
-docker build -f ws.Dockerfile -t anthe-ws .       # ✅ Success (122.0s, 299MB)
-docker build -f trade.Dockerfile -t anthe-trade . # ✅ Success (104.2s, 310MB)
+docker build -f api.Dockerfile -t anthe-api .     # ✅ Success
+docker build -f web.Dockerfile -t anthe-web .     # ✅ Success
+docker build -f ws.Dockerfile -t anthe-ws .       # ✅ Success
+docker build -f trade.Dockerfile -t anthe-trade . # ✅ Success
 ```
 
-| Image | Size | Build Time |
-|-------|------|------------|
-| `anthe-api:latest` | 317MB | ~3 min |
-| `anthe-web:latest` | 118MB | ~2 min |
-| `anthe-ws:latest` | 299MB | ~2 min |
-| `anthe-trade:latest` | 310MB | ~2 min |
+| Image | Size |
+|-------|------|
+| `anthe-api:latest` | 441MB |
+| `anthe-web:latest` | 111MB |
+| `anthe-ws:latest` | 438MB |
+| `anthe-trade:latest` | 441MB |
+
+### Module Resolution Tests
+
+All containers pass module resolution tests:
+
+```bash
+# Test dotenv
+docker run --rm anthe-api node -e "require('dotenv'); console.log('✅ api: dotenv OK')"
+docker run --rm anthe-ws node -e "require('dotenv'); console.log('✅ ws: dotenv OK')"
+docker run --rm anthe-trade node -e "require('dotenv'); console.log('✅ trade: dotenv OK')"
+
+# Test Prisma
+docker run --rm anthe-api node -e "require('@prisma/client'); console.log('✅ api: Prisma OK')"
+docker run --rm anthe-trade node -e "require('@prisma/client'); console.log('✅ trade: Prisma OK')"
+```
 
 ---
 
@@ -477,8 +536,29 @@ docker build -f ws.Dockerfile -t anthe-ws .
 docker build -f trade.Dockerfile -t anthe-trade .
 
 # Test container locally before pushing
-docker run --rm -it anthe-api node -e "require('dotenv/config')"
+docker run --rm anthe-api node -e "require('dotenv'); console.log('OK')"
+docker run --rm anthe-api node -e "require('@prisma/client'); console.log('OK')"
 ```
+
+---
+
+## 📁 Files Created/Modified
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `.npmrc` | Created | Enable hoisting for Docker compatibility |
+| `.dockerignore` | Created | Prevent local node_modules conflicts |
+| `api.Dockerfile` | Modified | Production install with hoisting |
+| `ws.Dockerfile` | Modified | Production install with hoisting |
+| `trade.Dockerfile` | Modified | Production install with hoisting |
+| `web.Dockerfile` | Modified | Next.js standalone output |
+| `apps/api/package.json` | Modified | Fixed dotenv dependency |
+| `apps/trade/package.json` | Modified | Added @types/pg |
+| `apps/ws/package.json` | Modified | Fixed dotenv dependency |
+| `apps/web/next.config.ts` | Modified | Added standalone output |
+| `apps/web/src/app/copytrade/page.tsx` | Modified | Added Suspense boundary |
+| `apps/trade/src/services/encryption.service.ts` | Modified | Removed unused variable |
+| `apps/trade/src/services/redis.service.ts` | Modified | Fixed unused variable |
 
 ---
 
