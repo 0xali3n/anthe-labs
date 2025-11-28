@@ -42,7 +42,7 @@ RUN pnpm turbo run build --filter=trade...
 # -----------------------
 # Production / Runtime
 # -----------------------
-FROM node:22-bookworm-slim AS runner
+FROM base AS runner
 WORKDIR /app
 
 # OpenSSL needed for Prisma
@@ -53,14 +53,22 @@ RUN apt-get update \
 ENV NODE_ENV=production
 ENV PORT=3000
 
+# Copy package files for production install
+COPY --from=builder /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
+COPY --from=builder /app/apps/trade/package.json ./apps/trade/
+
+# Install production dependencies only (this properly resolves all deps)
+RUN pnpm install --frozen-lockfile --prod
+
 # Copy built files
 COPY --from=builder /app/apps/trade/dist ./dist
 
 # Copy Prisma schema
 COPY --from=builder /app/apps/trade/prisma ./prisma
 
-# Copy node_modules from builder (includes all dependencies and Prisma client)
-COPY --from=builder /app/node_modules ./node_modules
+# Copy generated Prisma client from builder
+COPY --from=builder /app/node_modules/.pnpm/@prisma+client*/node_modules/@prisma/client ./node_modules/@prisma/client
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 EXPOSE 3000
 

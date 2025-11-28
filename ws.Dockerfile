@@ -39,17 +39,21 @@ RUN pnpm turbo run build --filter=ws...
 # -----------------------
 # Production / Runtime
 # -----------------------
-FROM node:22-bookworm-slim AS runner
+FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
 
+# Copy package files for production install
+COPY --from=builder /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
+COPY --from=builder /app/apps/ws/package.json ./apps/ws/
+
+# Install production dependencies only (this properly resolves all deps)
+RUN pnpm install --frozen-lockfile --prod
+
 # Copy built files
 COPY --from=builder /app/apps/ws/dist ./dist
-
-# Copy node_modules from builder (includes all dependencies)
-COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 3000
 

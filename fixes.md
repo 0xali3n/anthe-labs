@@ -59,6 +59,52 @@ When running `docker build`:
 
 ---
 
+## 🚨 Critical: Wrong Package Name (dotenv)
+
+### Issue Discovered During EKS Deployment
+
+After deploying to EKS, the `api` service failed with:
+```
+Error: Cannot find module 'dotenv/config'
+```
+
+### Root Cause Analysis
+
+**Location:** `apps/api/package.json`
+
+| Problem | Details |
+|---------|---------|
+| **Wrong Package** | `"dot-env": "^0.0.1"` was listed in dependencies |
+| **Correct Package** | Should be `"dotenv": "^17.2.3"` |
+| **Additional Issue** | `dotenv` was in `devDependencies` instead of `dependencies` |
+
+**Why This Happened:**
+- `dot-env` is a **completely different package** (only 0.0.1 version, abandoned)
+- The code imports `dotenv/config` which requires the `dotenv` package
+- `devDependencies` are NOT installed in production (`NODE_ENV=production`)
+
+**Fix Applied:**
+```json
+{
+  "dependencies": {
+    "dotenv": "^17.2.3"  // ✅ Moved from devDependencies + fixed name
+  },
+  "devDependencies": {
+    // ❌ Removed "dotenv" from here
+    // ❌ Removed "dot-env" typo
+  }
+}
+```
+
+### Why It Worked Locally But Failed in Docker
+
+| Environment | Behavior |
+|-------------|----------|
+| **Local `pnpm dev`** | All dependencies (including devDependencies) are installed |
+| **Docker Production** | Only `dependencies` are available at runtime |
+
+---
+
 ## 📦 Missing Items That Were Added
 
 ### 1. Prisma Generate Script (API Service)
@@ -252,22 +298,110 @@ export default function Copytrade() {
 
 ---
 
+## 🔗 Critical: pnpm Symlink Issue in Docker
+
+### The Problem
+
+After deploying to EKS, all pods failed with:
+```
+Error: Cannot find module 'dotenv'
+Require stack:
+- /app/dist/server.js
+```
+
+**Root Cause:** pnpm uses a content-addressable storage with symlinks. Dependencies are stored in `node_modules/.pnpm/` and accessed via symlinks from the app's `node_modules`. When Docker copies `node_modules`, the symlinks don't resolve properly.
+
+### Why It Worked Locally But Failed in Docker
+
+| Environment | How Dependencies Work |
+|-------------|----------------------|
+| **Local Development** | pnpm creates symlinks that point to `.pnpm/` store - works because entire structure is intact |
+| **Docker (old approach)** | `COPY node_modules` copies symlinks but they become broken in the new container |
+| **Docker (fixed)** | Run `pnpm install --prod` in runner stage to properly resolve all dependencies |
+
+### The Fix
+
+Instead of copying `node_modules` from the builder stage, we now run a fresh production install in the runner stage:
+
+```dockerfile
+# -----------------------
+# Production / Runtime
+# -----------------------
+FROM base AS runner
+WORKDIR /app
+
+# Copy package files for production install
+COPY --from=builder /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
+COPY --from=builder /app/apps/api/package.json ./apps/api/
+
+# Install production dependencies only (this properly resolves all deps)
+RUN pnpm install --frozen-lockfile --prod
+
+# Copy built files
+COPY --from=builder /app/apps/api/dist ./dist
+```
+
+### Why This Works
+
+1. **Fresh install in runner stage** - pnpm creates proper symlinks in the container's filesystem
+2. **`--prod` flag** - Only installs `dependencies`, not `devDependencies` (smaller image)
+3. **`--frozen-lockfile`** - Ensures exact versions from lockfile are used
+4. **Prisma client copied separately** - Generated client is copied from builder since it's not in the lockfile
+
+### Applied To All Services
+
+| Service | Dockerfile | pnpm Install in Runner |
+|---------|------------|------------------------|
+| api | `api.Dockerfile` | ✅ `pnpm install --frozen-lockfile --prod` |
+| ws | `ws.Dockerfile` | ✅ `pnpm install --frozen-lockfile --prod` |
+| trade | `trade.Dockerfile` | ✅ `pnpm install --frozen-lockfile --prod` |
+| web | `web.Dockerfile` | N/A (uses Next.js standalone output) |
+
+---
+
 ## ✅ Final Verification
 
 All 4 Docker images build successfully:
 
 ```bash
-docker build -f api.Dockerfile -t anthe-api .     # ✅ Success
-docker build -f web.Dockerfile -t anthe-web .     # ✅ Success
-docker build -f ws.Dockerfile -t anthe-ws .       # ✅ Success
-docker build -f trade.Dockerfile -t anthe-trade . # ✅ Success
+docker build -f api.Dockerfile -t anthe-api .     # ✅ Success (170.9s, 317MB)
+docker build -f web.Dockerfile -t anthe-web .     # ✅ Success (104.7s, 118MB)
+docker build -f ws.Dockerfile -t anthe-ws .       # ✅ Success (122.0s, 299MB)
+docker build -f trade.Dockerfile -t anthe-trade . # ✅ Success (104.2s, 310MB)
 ```
+
+| Image | Size | Build Time |
+|-------|------|------------|
+| `anthe-api:latest` | 317MB | ~3 min |
+| `anthe-web:latest` | 118MB | ~2 min |
+| `anthe-ws:latest` | 299MB | ~2 min |
+| `anthe-trade:latest` | 310MB | ~2 min |
 
 ---
 
 ## 📋 Recommendations for Development Team
 
-### 1. Add Missing npm Scripts
+### 1. Check Dependencies Placement
+
+**⚠️ Critical:** Ensure runtime dependencies are in `dependencies`, NOT `devDependencies`:
+
+```json
+{
+  "dependencies": {
+    "dotenv": "^17.2.3"  // ✅ Runtime dependency - MUST be here
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"  // ✅ Dev-only - OK to be here
+  }
+}
+```
+
+**Runtime packages that MUST be in `dependencies`:**
+- `dotenv` - environment variable loading
+- `@prisma/client` - database client
+- Any package imported in production code
+
+### 2. Add Missing npm Scripts
 
 Consider adding these scripts to the respective `package.json` files:
 
@@ -313,15 +447,41 @@ Any page using these hooks **must** have a Suspense boundary:
 
 ---
 
-## 📞 Contact
+## 🔍 Troubleshooting Checklist
 
-If you encounter any Docker build issues, check:
-1. Is your local Node.js version 22+?
-2. Did you run `pnpm install` at the root?
-3. Did you run `prisma generate` for api and trade?
-4. Are there any TypeScript errors? (`pnpm build`)
+If you encounter Docker build or runtime issues, check:
+
+### Build Issues
+| Issue | Solution |
+|-------|----------|
+| Node version mismatch | Ensure local Node.js is v22+ (`node -v`) |
+| pnpm install fails | Run `pnpm install` at repository root |
+| Prisma client missing | Run `npx prisma generate` in api/ and trade/ |
+| TypeScript errors | Run `pnpm build` to check for errors |
+| Native module failures | Ensure Python3 and build-essential in Dockerfile |
+
+### Runtime Issues (EKS/Kubernetes)
+| Error | Likely Cause | Solution |
+|-------|--------------|----------|
+| `Cannot find module 'X'` | Package in devDependencies | Move to `dependencies` |
+| `Cannot find module 'dotenv/config'` | Wrong package name or missing | Check `dotenv` is in dependencies |
+| Prisma connection failed | Missing OpenSSL | Add `openssl` to runner stage |
+| Suspense boundary error | Missing Suspense wrapper | Wrap `useSearchParams()` in `<Suspense>` |
+
+### Quick Validation Commands
+```bash
+# Check all builds work locally
+docker build -f api.Dockerfile -t anthe-api .
+docker build -f web.Dockerfile -t anthe-web .
+docker build -f ws.Dockerfile -t anthe-ws .
+docker build -f trade.Dockerfile -t anthe-trade .
+
+# Test container locally before pushing
+docker run --rm -it anthe-api node -e "require('dotenv/config')"
+```
 
 ---
 
 *Document generated during Docker containerization of Anthé Labs platform.*
+*Last updated: November 28, 2024*
 
