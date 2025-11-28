@@ -52,13 +52,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 # NEXT_PUBLIC_* env vars are baked into the JS bundle at build time
 # These ARGs allow overriding at build time: docker build --build-arg NEXT_PUBLIC_API_URL=https://api.yourdomain.com/api
-ARG NEXT_PUBLIC_API_URL=https://api.anthe.io/api
-ARG NEXT_PUBLIC_SUPABASE_URL=https://placeholder-supabase-url
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder-anon-key
 
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NEXT_PUBLIC_API_URL=https://api.anthe.io/api
+ENV NEXT_PUBLIC_SUPABASE_URL=https://placeholder-supabase-key
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder-anon-key
 
 RUN pnpm turbo run build --filter=web...
 
