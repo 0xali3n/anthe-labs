@@ -34,7 +34,6 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v1
 
       - name: Replacing the Values in secretfile
-        working-directory: deployments/kubernetes-manifests
         id: replacing-secrets
         run: |
           sed -i "s|placeholder-supabase-key|${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}|g" web.Dockerfile
