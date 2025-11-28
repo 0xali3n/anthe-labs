@@ -21,8 +21,8 @@ RUN apt-get update \
 
 ENV PYTHON=/usr/bin/python3
 
-# Copy workspace config files
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+# Copy workspace config files (including .npmrc for hoisting)
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .npmrc ./
 
 # Copy package.json for trade app
 COPY apps/trade/package.json apps/trade/
@@ -53,11 +53,11 @@ RUN apt-get update \
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Copy package files for production install
-COPY --from=builder /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
+# Copy package files for production install (including .npmrc for hoisting)
+COPY --from=builder /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml /app/.npmrc ./
 COPY --from=builder /app/apps/trade/package.json ./apps/trade/
 
-# Install production dependencies only (this properly resolves all deps)
+# Install production dependencies only (this properly resolves all deps with hoisting)
 RUN pnpm install --frozen-lockfile --prod
 
 # Copy Prisma schema to apps/trade/prisma
