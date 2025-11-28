@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-      - master
-
 env:
   APP_NAME: ws
   NAMESPACE: anthe-labs-mainnet
