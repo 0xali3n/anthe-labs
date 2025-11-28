@@ -1,0 +1,27 @@
+# Ignore node_modules - will be installed fresh in Docker
+node_modules
+**/node_modules
+
+# Ignore build outputs
+dist
+**/dist
+.next
+**/.next
+
+# Ignore git
+.git
+.gitignore
+
+# Ignore IDE
+.vscode
+.idea
+
+# Ignore local env files
+.env
+.env.*
+!.env.example
+
+# Ignore turbo cache
+.turbo
+**/.turbo
+
