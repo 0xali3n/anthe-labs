@@ -12,7 +12,10 @@ COPY apps/ws/package.json apps/ws/
 COPY packages/ packages/
 
 # Install dependencies for all workspaces
-RUN pnpm install --frozen-lockfile
+RUN pnpm install 
+
+RUN pnpm --filter ./apps/trade add dotenv
+# Copy source code for api and shared packa
 
 # Copy source code for ws and shared packages
 COPY apps/ws/ apps/ws/

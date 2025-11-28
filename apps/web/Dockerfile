@@ -5,14 +5,16 @@ WORKDIR /app
 
 # Install pnpm
 RUN npm install -g pnpm
-RUN pnpm install --prod
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json apps/web/
 COPY packages/ packages/
 
 # Install dependencies for all workspaces
-RUN pnpm install --frozen-lockfile
+RUN pnpm install 
+
+RUN pnpm --filter ./apps/trade add dotenv
+# Copy source code for api and shared packa
 
 # Copy source code for web and shared packages
 COPY apps/web/ apps/web/
