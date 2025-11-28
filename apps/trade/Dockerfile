@@ -5,14 +5,16 @@ WORKDIR /app
 
 # Install pnpm
 RUN npm install -g pnpm
+RUN pnpm install --prod
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/trade/package.json apps/trade/
 COPY packages/ packages/
 
+
 # Install dependencies for all workspaces
 RUN pnpm install
-
+RUN pnpm add dotenv
 # Copy source code for trade and shared packages
 COPY apps/trade/ apps/trade/
 COPY packages/ packages/
