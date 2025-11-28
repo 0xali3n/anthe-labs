@@ -33,6 +33,12 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v1
 
+      - name: Replacing the Values in secretfile
+        id: replacing-secrets
+        run: |
+          sed -i "s|placeholder-supabase-key|${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}|g" web.Dockerfile
+          sed -i "s|placeholder-anon-key|${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}|g" web.Dockerfile
+
       - name: Build, tag and push image to ECR
         env:
           AWS_ACCOUNT_ID: 570870523275

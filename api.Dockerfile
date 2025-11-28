@@ -36,6 +36,9 @@ COPY . .
 # Generate Prisma client (required for CI/CD deployments)
 RUN cd apps/api && npx prisma generate --schema=./prisma/schema.prisma
 
+ENV NEXT_PUBLIC_SUPABASE_URL=https://placeholder-supabase-key
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder-anon-key
+
 # Build the api app using Turbo
 RUN pnpm turbo run build --filter=api...
 
