@@ -72,4 +72,3 @@ COPY --from=builder /app/apps/trade/dist ./apps/trade/dist
 EXPOSE 3000
 
 CMD ["node", "apps/trade/dist/server.js"]
-

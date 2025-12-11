@@ -80,4 +80,3 @@ COPY --from=builder /app/apps/api/dist ./apps/api/dist
 EXPOSE 3000
 
 CMD ["node", "apps/api/dist/main.js"]
-

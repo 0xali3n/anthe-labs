@@ -564,4 +564,3 @@ docker run --rm anthe-api node -e "require('@prisma/client'); console.log('OK')"
 
 *Document generated during Docker containerization of Anthé Labs platform.*
 *Last updated: November 28, 2024*
-
