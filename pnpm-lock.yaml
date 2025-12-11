@@ -68,9 +68,9 @@ importers:
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
-      dot-env:
-        specifier: ^0.0.1
-        version: 0.0.1
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.2.3
       ioredis:
         specifier: ^5.8.2
         version: 5.8.2
@@ -117,9 +117,6 @@ importers:
       '@types/supertest':
         specifier: ^6.0.2
         version: 6.0.3
-      dotenv:
-        specifier: ^17.2.3
-        version: 17.2.3
       eslint:
         specifier: ^9.18.0
         version: 9.38.0(jiti@2.6.1)
@@ -2552,9 +2549,6 @@ packages:
   doctrine@2.1.0:
     resolution: {integrity: sha512-35mSku4ZXK0vfCuHEDAwt55dg2jNajHZ1odvF+8SSr82EsZY4QmXfuWso8oEd8zRhVObSN18aM0CjSdoBX7zIw==}
     engines: {node: '>=0.10.0'}
-
-  dot-env@0.0.1:
-    resolution: {integrity: sha512-SajHtzm3v7yjMH8DW9xY+4i7Zv/cN3aMtLVy0mRMuZu8L9qRCR7CNqcl4KBbG27e5Up4BpSlEyPXXLNbSAe2DQ==}
 
   dotenv@16.0.3:
     resolution: {integrity: sha512-7GO6HghkA5fYG9TYnNxi14/7K9f5occMlp3zXAuSxn7CKCxt9xbNWG7yF8hTCSUchlfWSe3uLmlPfigevRItzQ==}
@@ -7642,8 +7636,6 @@ snapshots:
   doctrine@2.1.0:
     dependencies:
       esutils: 2.0.3
-
-  dot-env@0.0.1: {}
 
   dotenv@16.0.3: {}
 

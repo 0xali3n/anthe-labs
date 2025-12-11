@@ -21,8 +21,8 @@ RUN apt-get update \
 
 ENV PYTHON=/usr/bin/python3
 
-# Copy workspace config files
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+# Copy workspace config files (including .npmrc for hoisting)
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .npmrc ./
 
 # Copy package.json for ws app
 COPY apps/ws/package.json apps/ws/
@@ -39,19 +39,22 @@ RUN pnpm turbo run build --filter=ws...
 # -----------------------
 # Production / Runtime
 # -----------------------
-FROM node:22-bookworm-slim AS runner
+FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Copy built files
-COPY --from=builder /app/apps/ws/dist ./dist
+# Copy package files for production install (including .npmrc for hoisting)
+COPY --from=builder /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml /app/.npmrc ./
+COPY --from=builder /app/apps/ws/package.json ./apps/ws/
 
-# Copy node_modules from builder (includes all dependencies)
-COPY --from=builder /app/node_modules ./node_modules
+# Install production dependencies only (this properly resolves all deps with hoisting)
+RUN pnpm install --frozen-lockfile --prod
+
+# Copy built files
+COPY --from=builder /app/apps/ws/dist ./apps/ws/dist
 
 EXPOSE 3000
 
-CMD ["node", "dist/server.js"]
-
+CMD ["node", "apps/ws/dist/server.js"]

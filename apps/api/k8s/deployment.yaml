@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: anthe-labs-mainnet
+  labels:
+    app: api
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+        - name: api
+          image: REPLACE_WITH_IMAGE
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 4001
+              name: app
+          envFrom:
+            - secretRef:
+                name: api-secret
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: anthe-labs-mainnet
+spec:
+  selector:
+    app: api
+  type: ClusterIP
+  ports:
+  - name: api
+    protocol: TCP
+    port: 4001
+    targetPort: 4001

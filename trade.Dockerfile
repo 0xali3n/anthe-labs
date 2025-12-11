@@ -21,8 +21,8 @@ RUN apt-get update \
 
 ENV PYTHON=/usr/bin/python3
 
-# Copy workspace config files
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+# Copy workspace config files (including .npmrc for hoisting)
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .npmrc ./
 
 # Copy package.json for trade app
 COPY apps/trade/package.json apps/trade/
@@ -42,7 +42,7 @@ RUN pnpm turbo run build --filter=trade...
 # -----------------------
 # Production / Runtime
 # -----------------------
-FROM node:22-bookworm-slim AS runner
+FROM base AS runner
 WORKDIR /app
 
 # OpenSSL needed for Prisma
@@ -53,16 +53,22 @@ RUN apt-get update \
 ENV NODE_ENV=production
 ENV PORT=3000
 
+# Copy package files for production install (including .npmrc for hoisting)
+COPY --from=builder /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml /app/.npmrc ./
+COPY --from=builder /app/apps/trade/package.json ./apps/trade/
+
+# Install production dependencies only (this properly resolves all deps with hoisting)
+RUN pnpm install --frozen-lockfile --prod
+
+# Copy Prisma schema to apps/trade/prisma
+COPY --from=builder /app/apps/trade/prisma ./apps/trade/prisma
+
+# Generate Prisma client in runner (after fresh pnpm install)
+RUN cd apps/trade && npx prisma generate --schema=./prisma/schema.prisma
+
 # Copy built files
-COPY --from=builder /app/apps/trade/dist ./dist
-
-# Copy Prisma schema
-COPY --from=builder /app/apps/trade/prisma ./prisma
-
-# Copy node_modules from builder (includes all dependencies and Prisma client)
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/trade/dist ./apps/trade/dist
 
 EXPOSE 3000
 
-CMD ["node", "dist/server.js"]
-
+CMD ["node", "apps/trade/dist/server.js"]
