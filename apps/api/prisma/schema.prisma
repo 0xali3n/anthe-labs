@@ -39,6 +39,7 @@ model User {
   // Relations
   wallet              Wallet?
   traderRegistrations TraderRegistration[]
+  feedbacks           Feedback[]
 
   @@map("users")
 }
@@ -124,4 +125,22 @@ model CopyTradeBot {
   @@index([trader_address])
   @@index([status])
   @@map("copy_trade_bots")
+}
+
+model Feedback {
+  id        String   @id @default(uuid())
+  user_id   String   // User who submitted the feedback
+  title     String   // Feedback title
+  message   String   @db.Text // Feedback message
+
+  // Timestamps
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([created_at])
+  @@map("feedbacks")
 }
