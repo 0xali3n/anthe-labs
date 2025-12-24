@@ -99,14 +99,7 @@ export default function Footer() {
                   Copy Trading
                 </Link>
               </li>
-              <li>
-                <Link
-                  href="/about"
-                  className="text-slate-400 hover:text-blue-400 text-sm transition-colors duration-200 inline-block"
-                >
-                  About
-                </Link>
-              </li>
+
             </ul>
           </div>
 
@@ -140,24 +133,8 @@ export default function Footer() {
                   Feedback
                 </Link>
               </li>
-              <li>
-                <a
-                  href="https://docs.anthelabs.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-slate-400 hover:text-blue-400 text-sm transition-colors duration-200 inline-block"
-                >
-                  Documentation
-                </a>
-              </li>
-              <li>
-                <Link
-                  href="/privacy"
-                  className="text-slate-400 hover:text-blue-400 text-sm transition-colors duration-200 inline-block"
-                >
-                  Privacy Policy
-                </Link>
-              </li>
+
+
               <li>
                 <Link
                   href="/terms"
