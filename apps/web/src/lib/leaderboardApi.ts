@@ -1,5 +1,5 @@
 // Leaderboard API Client
-const LEADERBOARD_BASE_URL = "https://perpetual-leaderboard.kana.trade";
+const LEADERBOARD_BASE_URL = "https://perpetual-leaderboard.kanalabs.io";
 
 export interface LeaderboardUser {
   Rank: number;
