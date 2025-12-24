@@ -133,6 +133,14 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
+                <Link
+                  href="/feedback"
+                  className="text-slate-400 hover:text-blue-400 text-sm transition-colors duration-200 inline-block"
+                >
+                  Feedback
+                </Link>
+              </li>
+              <li>
                 <a
                   href="https://docs.anthelabs.com"
                   target="_blank"
