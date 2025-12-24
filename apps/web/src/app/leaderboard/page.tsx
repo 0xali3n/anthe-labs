@@ -126,7 +126,6 @@ export default function LeaderboardPage() {
   };
 
   const handleCopyTrade = (trader: Trader) => {
-    // Redirect to copytrade page with trader address as query parameter
     router.push(`/copytrade?address=${encodeURIComponent(trader.address)}`);
   };
 
