@@ -111,12 +111,12 @@ export default function Navbar() {
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
 
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
     };
   }, [isSignedIn, walletAddress, fetchBalance]);
 
@@ -162,17 +162,22 @@ export default function Navbar() {
         <div
           className="rounded-xl sm:rounded-2xl header-pill flex items-center justify-between px-3 sm:px-4 lg:px-5 py-2 sm:py-3"
           style={{
-            background: "linear-gradient(180deg, rgba(15, 17, 26, 0.85) 0%, rgba(11, 13, 20, 0.85) 100%)",
+            background:
+              "linear-gradient(180deg, rgba(15, 17, 26, 0.85) 0%, rgba(11, 13, 20, 0.85) 100%)",
             border: "1px solid rgba(255,255,255,0.05)",
             backdropFilter: "blur(20px) saturate(180%)",
             WebkitBackdropFilter: "blur(20px) saturate(180%)",
-            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+            boxShadow:
+              "0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
           }}
         >
           {/* Left: logo block + nav links */}
           <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 min-w-0 flex-1">
             {/* Logo capsule */}
-            <Link href="/" className="flex items-center gap-2 sm:gap-3 no-underline min-w-0">
+            <Link
+              href="/"
+              className="flex items-center gap-2 sm:gap-3 no-underline min-w-0"
+            >
               <div className="logo-pill flex items-center gap-1.5 sm:gap-2 lg:gap-3 px-2 sm:px-3 py-1 rounded-full">
                 {/* circular icon area */}
                 <div className="flex items-center justify-center mt-1 shrink-0">
@@ -196,10 +201,11 @@ export default function Navbar() {
                   <Link
                     key={link.path}
                     href={link.path}
-                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${isActive
-                      ? "text-white bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border border-blue-500/20 shadow-active-link"
-                      : "text-slate-300 hover:text-white hover:bg-white/5"
-                      }`}
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                      isActive
+                        ? "text-white bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border border-blue-500/20 shadow-active-link"
+                        : "text-slate-300 hover:text-white hover:bg-white/5"
+                    }`}
                   >
                     {link.name}
                   </Link>
@@ -313,7 +319,8 @@ export default function Navbar() {
             ref={mobileMenuRef}
             className="lg:hidden mt-2 border border-[#1F242D] rounded-xl shadow-xl overflow-hidden"
             style={{
-              background: "linear-gradient(180deg, rgba(15, 17, 26, 0.95) 0%, rgba(11, 13, 20, 0.95) 100%)",
+              background:
+                "linear-gradient(180deg, rgba(15, 17, 26, 0.95) 0%, rgba(11, 13, 20, 0.95) 100%)",
               backdropFilter: "blur(20px)",
             }}
           >
@@ -325,10 +332,11 @@ export default function Navbar() {
                     key={link.path}
                     href={link.path}
                     onClick={() => setShowMobileMenu(false)}
-                    className={`block px-4 py-2.5 text-sm font-medium transition-all duration-200 ${isActive
-                      ? "text-white bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border-l-2 border-blue-500"
-                      : "text-slate-300 hover:text-white hover:bg-white/5"
-                      }`}
+                    className={`block px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
+                      isActive
+                        ? "text-white bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border-l-2 border-blue-500"
+                        : "text-slate-300 hover:text-white hover:bg-white/5"
+                    }`}
                   >
                     {link.name}
                   </Link>

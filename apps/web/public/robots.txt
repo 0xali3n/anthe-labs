@@ -2,6 +2,12 @@
 User-agent: *
 Allow: /
 
+# Disallow private/auth pages
+Disallow: /auth/
+Disallow: /settings/
+Disallow: /dashboard/
+Disallow: /twitter-callback/
+
 # Sitemap
-Sitemap: https://anthe-labs.com/sitemap.xml
+Sitemap: https://anthe.io/sitemap.xml
 

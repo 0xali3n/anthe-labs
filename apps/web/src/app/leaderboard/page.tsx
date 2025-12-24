@@ -12,7 +12,9 @@ import {
   TrendingUp,
   Info,
   UserPlus,
+  Eye,
 } from "lucide-react";
+import TraderDetailsModal from "@/components/TraderDetailsModal";
 
 const palanquinDark = Palanquin_Dark({
   weight: ["400", "500", "600", "700"],
@@ -40,6 +42,8 @@ export default function LeaderboardPage() {
     x: number;
     y: number;
   }>({ show: false, text: "", x: 0, y: 0 });
+  const [selectedTrader, setSelectedTrader] = useState<Trader | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchTraders = async () => {
     try {
@@ -122,7 +126,6 @@ export default function LeaderboardPage() {
   };
 
   const handleCopyTrade = (trader: Trader) => {
-    // Redirect to copytrade page with trader address as query parameter
     router.push(`/copytrade?address=${encodeURIComponent(trader.address)}`);
   };
 
@@ -478,6 +481,21 @@ export default function LeaderboardPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Details Button - Below Metrics */}
+                  <div className="mt-4 pt-4 border-t border-slate-800/50">
+                    <button
+                      onClick={() => {
+                        setSelectedTrader(trader);
+                        setIsModalOpen(true);
+                      }}
+                      className="w-full px-3 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 hover:border-slate-600/50 text-slate-300 hover:text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2"
+                      title="View details"
+                    >
+                      <Eye size={14} />
+                      <span>Details</span>
+                    </button>
+                  </div>
                 </div>
               );
             })
@@ -530,7 +548,20 @@ export default function LeaderboardPage() {
             </div>
           )
         }
-      </div >
+      </div>
+
+      {/* Trader Details Modal */}
+      {selectedTrader && (
+        <TraderDetailsModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedTrader(null);
+          }}
+          traderAddress={selectedTrader.address}
+          traderName={selectedTrader.botName || formatAddress(selectedTrader.address)}
+        />
+      )}
     </div >
   );
 }

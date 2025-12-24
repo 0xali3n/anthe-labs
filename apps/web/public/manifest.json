@@ -1,7 +1,7 @@
 {
-  "name": "Anthé Labs — Copy Trading Platform on Aptos",
-  "short_name": "Anthé Labs",
-  "description": "Mirror top traders & automated bots automatically. Secure copy trading on Aptos blockchain.",
+  "name": "Anthe Labs — Automated Copy Trading Platform on Aptos",
+  "short_name": "Anthe Labs",
+  "description": "Automatically mirror top traders on Aptos with real-time copy trading. Non-custodial, secure, and audited.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#060913",
@@ -25,4 +25,3 @@
   "lang": "en-US",
   "dir": "ltr"
 }
-

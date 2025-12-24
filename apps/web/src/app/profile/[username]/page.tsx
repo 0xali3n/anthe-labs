@@ -16,6 +16,7 @@ import {
   Search,
   Calendar,
   Shield,
+  Clock,
 } from "lucide-react";
 import { getTier, TierConfig, TIER_THRESHOLDS } from "@/lib/tiers";
 
@@ -35,6 +36,70 @@ interface UserStats {
   TotalVolume: string;
   PNL: string;
   ROI: string;
+}
+
+// Data Update Timer Component
+function DataUpdateTimer() {
+  const [timeRemaining, setTimeRemaining] = useState<string>("");
+
+  useEffect(() => {
+    const calculateTimeRemaining = () => {
+      // Get current time in IST (UTC+5:30)
+      const now = new Date();
+      const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+      const ist = new Date(utc + 5.5 * 3600000);
+
+      const currentMinutes = ist.getMinutes();
+
+      let nextUpdate: Date;
+
+      if (currentMinutes < 40) {
+        // Next update is at 40th minute of current hour
+        nextUpdate = new Date(ist);
+        nextUpdate.setMinutes(40);
+        nextUpdate.setSeconds(0);
+        nextUpdate.setMilliseconds(0);
+      } else {
+        // Next update is at 40th minute of next hour
+        nextUpdate = new Date(ist);
+        nextUpdate.setHours(ist.getHours() + 1);
+        nextUpdate.setMinutes(40);
+        nextUpdate.setSeconds(0);
+        nextUpdate.setMilliseconds(0);
+      }
+
+      const diff = nextUpdate.getTime() - ist.getTime();
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      if (hours > 0) {
+        setTimeRemaining(`${hours}h ${minutes}m`);
+      } else if (minutes > 0) {
+        setTimeRemaining(`${minutes}m ${seconds}s`);
+      } else {
+        setTimeRemaining(`${seconds}s`);
+      }
+    };
+
+    // Calculate immediately
+    calculateTimeRemaining();
+
+    // Update every second
+    const interval = setInterval(calculateTimeRemaining, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/30 border border-slate-700/50 rounded-lg">
+      <Clock size={14} className="text-slate-400" />
+      <span className="text-xs text-slate-400">
+        Updates in{" "}
+        <span className="text-blue-400 font-medium">{timeRemaining}</span>
+      </span>
+    </div>
+  );
 }
 
 // Verified Badge Component with Hover Tooltip
@@ -116,7 +181,9 @@ function VerifiedBadge({ isVerified }: { isVerified: boolean }) {
               <div className="relative z-10">
                 <div className="flex items-center gap-2 mb-2">
                   <Shield size={16} className="text-[#3B82F6]" />
-                  <h4 className={`${palanquinDark.className} text-sm font-bold text-white`}>
+                  <h4
+                    className={`${palanquinDark.className} text-sm font-bold text-white`}
+                  >
                     Verified Account
                   </h4>
                 </div>
@@ -174,7 +241,11 @@ function VerifiedBadge({ isVerified }: { isVerified: boolean }) {
             <div className="relative z-10">
               <div className="flex items-center gap-2 mb-2">
                 <Shield size={16} className="text-slate-400" />
-                <h4 className={`${palanquinDark.className} text-sm font-bold text-white`}>Unverified</h4>
+                <h4
+                  className={`${palanquinDark.className} text-sm font-bold text-white`}
+                >
+                  Unverified
+                </h4>
               </div>
               <p className="text-xs text-slate-300 leading-relaxed mb-2">
                 Connect your Twitter account for verification.
@@ -292,7 +363,11 @@ function VolumeTierBadge({ tier }: { tier: TierConfig }) {
                   className="w-2 h-2 rounded-full"
                   style={{ backgroundColor: tier.color }}
                 />
-                <h4 className={`${palanquinDark.className} text-sm font-bold text-white`}>Volume Tiers</h4>
+                <h4
+                  className={`${palanquinDark.className} text-sm font-bold text-white`}
+                >
+                  Volume Tiers
+                </h4>
               </div>
               <div className="space-y-2">
                 {allTiers.map((t) => {
@@ -305,10 +380,11 @@ function VolumeTierBadge({ tier }: { tier: TierConfig }) {
                   return (
                     <div
                       key={t.name}
-                      className={`p-3 rounded-xl border transition-all duration-200 ${isCurrentTier
-                        ? "ring-2 scale-[1.02]"
-                        : "hover:bg-white/5"
-                        }`}
+                      className={`p-3 rounded-xl border transition-all duration-200 ${
+                        isCurrentTier
+                          ? "ring-2 scale-[1.02]"
+                          : "hover:bg-white/5"
+                      }`}
                       style={{
                         backgroundColor: isCurrentTier
                           ? `${t.bgColor}80`
@@ -441,7 +517,7 @@ export default function ProfilePage() {
         if (userData.wallet_address) {
           try {
             const statsResponse = await fetch(
-              `https://perpetual-leaderboard.kana.trade/fetchTopPnlUsers?period=overall&search=${userData.wallet_address}`
+              `https://perpetual-leaderboard.kanalabs.io/fetchTopPnlUsers?period=overall&search=${userData.wallet_address}`
             );
             const statsData = await statsResponse.json();
 
@@ -548,7 +624,11 @@ export default function ProfilePage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className={`${palanquinDark.className} text-2xl font-bold text-white mb-2`}>User Not Found</h1>
+          <h1
+            className={`${palanquinDark.className} text-2xl font-bold text-white mb-2`}
+          >
+            User Not Found
+          </h1>
           <p className="text-slate-400">
             The profile you're looking for doesn't exist.
           </p>
@@ -684,7 +764,9 @@ export default function ProfilePage() {
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 sm:gap-2.5 mb-1.5 flex-wrap justify-center sm:justify-start">
-                        <h1 className={`${palanquinDark.className} text-xl sm:text-2xl lg:text-2xl font-bold text-white text-center sm:text-left break-words`}>
+                        <h1
+                          className={`${palanquinDark.className} text-xl sm:text-2xl lg:text-2xl font-bold text-white text-center sm:text-left break-words`}
+                        >
                           {displayName}
                         </h1>
                         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-center sm:justify-start">
@@ -714,7 +796,9 @@ export default function ProfilePage() {
                       onClick={() => {
                         if (user.wallet_address) {
                           // Redirect to copytrade page with trader wallet address as query parameter
-                          router.push(`/copytrade?address=${encodeURIComponent(user.wallet_address)}`);
+                          router.push(
+                            `/copytrade?address=${encodeURIComponent(user.wallet_address)}`
+                          );
                         } else {
                           // If no wallet address, still redirect but without address (user can enter manually)
                           router.push("/copytrade");
@@ -765,9 +849,14 @@ export default function ProfilePage() {
       {/* Stats Section */}
       <section className="px-3 sm:px-4 lg:px-8 pb-8 sm:pb-12">
         <div className="max-w-7xl mx-auto">
-          <h2 className={`${palanquinDark.className} text-lg sm:text-xl lg:text-2xl font-bold text-white mb-3 sm:mb-4 lg:mb-6 px-1`}>
-            Statistics
-          </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3 sm:mb-4 lg:mb-6 px-1">
+            <h2
+              className={`${palanquinDark.className} text-lg sm:text-xl lg:text-2xl font-bold text-white`}
+            >
+              Statistics
+            </h2>
+            <DataUpdateTimer />
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
             {/* Total Volume */}
             <div
@@ -869,7 +958,9 @@ export default function ProfilePage() {
             className="bg-[#0b1220] border border-white/5 rounded-xl p-4 sm:p-5 lg:p-6"
             style={{ boxShadow: "0px 3px 12px rgba(0,0,0,0.25)" }}
           >
-            <h3 className={`${palanquinDark.className} text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4`}>
+            <h3
+              className={`${palanquinDark.className} text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4`}
+            >
               Share Profile
             </h3>
             <div className="flex flex-wrap gap-2 sm:gap-3">

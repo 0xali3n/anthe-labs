@@ -444,6 +444,92 @@ export class WalletsController {
   }
 
   /**
+   * Get positions for a specific address (public endpoint for leaderboard)
+   * GET /api/wallets/positions/by-address
+   *
+   * Security: Requires JWT authentication (but can query any address)
+   * Query params: address (required) - Wallet address to query
+   * Returns: Array of positions from Kana API
+   */
+  @Get('positions/by-address')
+  @UseGuards(AuthGuard)
+  async getPositionsByAddress(
+    @Query('address') address: string,
+    @Query('marketId') marketId?: string,
+  ) {
+    try {
+      if (!address) {
+        throw new HttpException(
+          { success: false, error: 'Address is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const positions = await this.walletsService.getPositions(
+        address,
+        marketId,
+      );
+
+      return {
+        success: true,
+        data: positions,
+      };
+    } catch (error: any) {
+      console.error('Error in getPositionsByAddress:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        { success: false, error: error.message || 'Internal server error' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * Get trade history for a specific address (public endpoint for leaderboard)
+   * GET /api/wallets/trade-history/by-address
+   *
+   * Security: Requires JWT authentication (but can query any address)
+   * Query params: address (required) - Wallet address to query
+   * Returns: Array of trade history from Kana API
+   */
+  @Get('trade-history/by-address')
+  @UseGuards(AuthGuard)
+  async getTradeHistoryByAddress(
+    @Query('address') address: string,
+    @Query('marketId') marketId?: string,
+  ) {
+    try {
+      if (!address) {
+        throw new HttpException(
+          { success: false, error: 'Address is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const tradeHistory = await this.walletsService.getTradeHistory(
+        address,
+        marketId,
+      );
+
+      return {
+        success: true,
+        data: tradeHistory,
+      };
+    } catch (error: any) {
+      console.error('Error in getTradeHistoryByAddress:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        { success: false, error: error.message || 'Internal server error' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
    * Check wallet balance and auto-deposit to trading account
    * POST /api/wallets/check-and-deposit
    *
