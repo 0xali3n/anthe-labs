@@ -2,16 +2,17 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import type { Metadata } from "next";
+import Script from "next/script";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://anthe.io";
 
 export const metadata: Metadata = {
   title: {
-    default: "Anthe Labs - Copy Trading Platform on Aptos",
-    template: "%s | Anthé Labs",
+    default: "Anthe Labs - Automated Copy Trading Platform on Aptos",
+    template: "%s | Anthe Labs",
   },
   description:
-    "Mirror top traders & automated bots automatically. Secure copy trading on Aptos blockchain — start in minutes. Real-time copy trading, social trading feed, smart grid bots, and analytics.",
+    "Automatically mirror top traders on Aptos with real-time copy trading. Non-custodial, secure, and audited. Smart position sizing, live analytics, and instant execution. Start copy trading in minutes.",
   keywords: [
     "copy trading",
     "Aptos",
@@ -37,31 +38,30 @@ export const metadata: Metadata = {
     telephone: false,
   },
   metadataBase: new URL(siteUrl),
-  alternates: {
-    canonical: "/",
-  },
+  // Canonical URLs are automatically set by Next.js for each page
+  // based on metadataBase and the page URL
   openGraph: {
     type: "website",
     locale: "en_US",
     url: siteUrl,
-    title: "Anthe Labs - Copy Trading Platform on Aptos",
+    title: "Anthe Labs - Automated Copy Trading Platform on Aptos",
     description:
-      "Mirror top traders & automated bots automatically. Secure copy trading on Aptos blockchain — start in minutes. Real-time copy trading, social trading feed, smart grid bots, and analytics.",
+      "Automatically mirror top traders on Aptos with real-time copy trading. Non-custodial, secure, and audited. Smart position sizing, live analytics, and instant execution.",
     siteName: "Anthe Labs",
     images: [
       {
         url: `${siteUrl}/home.png`,
         width: 1200,
         height: 630,
-        alt: "Anthe Labs - Copy Trading Platform on Aptos",
+        alt: "Anthe Labs - Automated Copy Trading Platform on Aptos Blockchain",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Anthe Labs - Copy Trading Platform on Aptos",
+    title: "Anthe Labs - Automated Copy Trading Platform on Aptos",
     description:
-      "Mirror top traders & automated bots automatically. Secure copy trading on Aptos blockchain — start in minutes.",
+      "Automatically mirror top traders on Aptos with real-time copy trading. Non-custodial, secure, and audited. Start copy trading in minutes.",
     images: [`${siteUrl}/home.png`],
     creator: "@AntheLabs",
     site: "@AntheLabs",
@@ -80,9 +80,10 @@ export const metadata: Metadata = {
   // Note: Next.js 13+ automatically uses src/app/icon.png for favicon
   // Only specify if you need to override or add additional icons
   icons: {
-    // Favicon is automatically handled by src/app/icon.png
-    // These are additional icons for PWA and older browsers
-    apple: [{ url: "/anthe-logo.png", sizes: "180x180", type: "image/png" }],
+    // Favicon: Next.js 13+ uses src/app/icon.png automatically
+    // For custom favicon, we can also specify it here
+    icon: [{ url: "/logo.png", sizes: "32x32", type: "image/png" }],
+    apple: [{ url: "/logo.png", sizes: "180x180", type: "image/png" }],
   },
   manifest: "/manifest.json",
   verification: {
@@ -144,9 +145,9 @@ export default function RootLayout({
               "@type": "Organization",
               name: "Anthe Labs",
               url: siteUrl,
-              logo: `${siteUrl}/anthe-logo.png`,
+              logo: `${siteUrl}/logo.png`,
               description:
-                "Copy Trading Platform on Aptos - Mirror top traders & automated bots automatically. Secure copy trading on Aptos blockchain.",
+                "Automated copy trading platform on Aptos blockchain. Automatically mirror top traders with real-time execution, smart position sizing, and comprehensive analytics. Non-custodial, secure, and audited.",
               sameAs: [
                 "https://twitter.com/AntheLabs",
                 "https://www.linkedin.com/company/anthe-labs/",
@@ -179,6 +180,31 @@ export default function RootLayout({
             }),
           }}
         />
+
+        {/* Google Analytics */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-189XLPG1XZ"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-189XLPG1XZ');
+          `}
+        </Script>
+
+        {/* Microsoft Clarity */}
+        <Script id="microsoft-clarity" strategy="afterInteractive">
+          {`
+            (function(c,l,a,r,i,t,y){
+                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+            })(window, document, "clarity", "script", "uqorc6dezx");
+          `}
+        </Script>
 
         <Navbar />
         <main className="flex-1 relative z-10">{children}</main>

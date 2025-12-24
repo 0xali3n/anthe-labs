@@ -137,6 +137,12 @@ pnpm run dev:trade  # Trade execution service
 - Volume tier system
 - Direct copy trade integration
 
+### Feedback System
+
+- User feedback submission (title and message)
+- Feedback history display
+- Secure storage with RLS policies
+
 ### WebSocket Service
 
 - Real-time order monitoring
@@ -244,6 +250,34 @@ anthe-labs/
 - ✅ Bot creation/management UI
 - ✅ Smart ratio allocation mode
 - ✅ Redis syncing for active subscriptions
+
+### Feedback Feature ✨
+
+- ✅ User feedback submission form
+- ✅ Feedback history with timestamps
+- ✅ Row Level Security (RLS) policies
+- ✅ Simple read/write operations
+- ✅ Footer navigation link
+
+### Leaderboard Enhancements ✨
+
+- ✅ Trader details modal with live positions and trade history
+- ✅ Details button on each trader card
+- ✅ Pagination for trade history (10 trades per page)
+- ✅ Real-time data refresh functionality
+
+### Profile Page Enhancements ✨
+
+- ✅ Data update timer showing time until next refresh (40th minute of each hour IST)
+- ✅ Professional countdown display
+
+### SEO & Metadata ✨
+
+- ✅ Sitemap.xml auto-generation (all main pages)
+- ✅ Structured data (JSON-LD) for Organization and WebSite
+- ✅ Updated robots.txt with proper crawl directives
+- ✅ Open Graph and Twitter Card metadata
+- ✅ Proper favicon configuration
 
 ---
 
