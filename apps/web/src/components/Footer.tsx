@@ -99,7 +99,6 @@ export default function Footer() {
                   Copy Trading
                 </Link>
               </li>
-
             </ul>
           </div>
 
@@ -109,14 +108,6 @@ export default function Footer() {
               Support
             </h3>
             <ul className="space-y-3">
-              <li>
-                <a
-                  href="mailto:anthefinance@gmail.com"
-                  className="text-slate-400 hover:text-blue-400 text-sm transition-colors duration-200 inline-block"
-                >
-                  anthefinance@gmail.com
-                </a>
-              </li>
               <li>
                 <Link
                   href="/contact"
@@ -133,7 +124,6 @@ export default function Footer() {
                   Feedback
                 </Link>
               </li>
-
 
               <li>
                 <Link
