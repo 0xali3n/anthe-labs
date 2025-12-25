@@ -370,6 +370,243 @@ export async function withdrawFromKana(
 }
 
 /**
+ * Get positions payload (debug only - returns raw response from Kana API)
+ * GET /api/wallets/positions-payload
+ *
+ * @param marketId - Optional market ID to filter positions
+ * @returns Raw response from Kana API
+ */
+export async function getPositionsPayload(marketId?: string): Promise<{
+  success: boolean;
+  data?: any;
+  rawResponse?: any;
+  error?: string;
+}> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      return {
+        success: false,
+        error: "No session found. Please sign in.",
+      };
+    }
+
+    const url = marketId
+      ? `/wallets/positions-payload?marketId=${marketId}`
+      : `/wallets/positions-payload`;
+
+    const response = await authenticatedRequest<{
+      success: boolean;
+      data?: any;
+      rawResponse?: any;
+      error?: string;
+    }>(url, session.access_token, {
+      method: "GET",
+    });
+
+    return response;
+  } catch (error: any) {
+    console.error("Error getting positions payload:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to get positions payload",
+    };
+  }
+}
+
+/**
+ * Get collapse position payload (debug only - doesn't submit transaction)
+ * GET /api/wallets/collapse-position-payload
+ *
+ * @param marketId - Optional market ID (if not provided, returns payload for all positions)
+ * @returns Payload data from Kana API
+ */
+export async function getCollapsePositionPayload(marketId?: string): Promise<{
+  success: boolean;
+  payload?: any;
+  rawResponse?: any;
+  error?: string;
+}> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      return {
+        success: false,
+        error: "No session found. Please sign in.",
+      };
+    }
+
+    const url = marketId
+      ? `/wallets/collapse-position-payload?marketId=${marketId}`
+      : `/wallets/collapse-position-payload`;
+
+    const response = await authenticatedRequest<{
+      success: boolean;
+      payload?: any;
+      rawResponse?: any;
+      error?: string;
+    }>(url, session.access_token, {
+      method: "GET",
+    });
+
+    return response;
+  } catch (error: any) {
+    console.error("Error getting collapse position payload:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to get collapse position payload",
+    };
+  }
+}
+
+/**
+ * Close all positions for authenticated user
+ * POST /api/wallets/close-all-positions
+ *
+ * @returns Close all positions result with transaction hash
+ */
+export async function closeAllPositions(): Promise<{
+  success: boolean;
+  txHash?: string;
+  version?: string;
+  error?: string;
+}> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      return {
+        success: false,
+        error: "No session found. Please sign in.",
+      };
+    }
+
+    const response = await authenticatedRequest<{
+      success: boolean;
+      txHash?: string;
+      version?: string;
+      error?: string;
+    }>("/wallets/close-all-positions", session.access_token, {
+      method: "POST",
+    });
+
+    return response;
+  } catch (error: any) {
+    console.error("Error closing all positions:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to close all positions",
+    };
+  }
+}
+
+/**
+ * Close position for a specific market
+ * POST /api/wallets/close-position
+ *
+ * @param marketId - Market ID (required)
+ * @param tradeSide - Trade side: true for LONG, false for SHORT (required)
+ * @param size - Position size (optional, will fetch from API if not provided)
+ * @param leverage - Leverage (optional, will fetch from position if not provided)
+ * @returns Close position result with transaction hash
+ */
+export async function closePosition(
+  marketId: string,
+  tradeSide: boolean,
+  size?: string,
+  leverage?: string
+): Promise<{
+  success: boolean;
+  txHash?: string;
+  version?: string;
+  error?: string;
+}> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      return {
+        success: false,
+        error: "No session found. Please sign in.",
+      };
+    }
+
+    const response = await authenticatedRequest<{
+      success: boolean;
+      txHash?: string;
+      version?: string;
+      error?: string;
+    }>("/wallets/close-position", session.access_token, {
+      method: "POST",
+      body: JSON.stringify({ marketId, tradeSide, size, leverage }),
+    });
+
+    return response;
+  } catch (error: any) {
+    console.error("Error closing position:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to close position",
+    };
+  }
+}
+
+/**
+ * Collapse position for a specific market or all positions
+ * POST /api/wallets/collapse-position
+ *
+ * @param marketId - Optional market ID (if not provided, collapses all positions)
+ * @returns Collapse position result with transaction hash
+ */
+export async function collapsePosition(marketId?: string): Promise<{
+  success: boolean;
+  txHash?: string;
+  version?: string;
+  error?: string;
+}> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      return {
+        success: false,
+        error: "No session found. Please sign in.",
+      };
+    }
+
+    const response = await authenticatedRequest<{
+      success: boolean;
+      txHash?: string;
+      version?: string;
+      error?: string;
+    }>("/wallets/collapse-position", session.access_token, {
+      method: "POST",
+      body: JSON.stringify({ marketId }),
+    });
+
+    return response;
+  } catch (error: any) {
+    console.error("Error collapsing position:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to collapse position",
+    };
+  }
+}
+
+/**
  * Transfer USDT from user's wallet to a destination address
  * POST /api/wallets/transfer
  *

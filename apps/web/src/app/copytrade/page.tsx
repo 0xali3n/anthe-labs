@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Palanquin_Dark, Outfit } from "next/font/google";
 import { useAuth } from "@/lib/useAuth";
-import { getUSDTBalance } from "@/lib/walletsApi";
+import { getUSDTBalance, closeAllPositions } from "@/lib/walletsApi";
 import {
   createCopyTradeBot,
   getMyCopyTradeBots,
@@ -594,6 +594,23 @@ function CopytradeContent() {
 
   const handleStopBot = async (botId: string) => {
     try {
+      setSubmitting(true);
+      setError(null);
+
+      // First, close all open positions
+      const closeResult = await closeAllPositions();
+      if (
+        !closeResult.success &&
+        closeResult.error !== "No open positions found"
+      ) {
+        setError(
+          closeResult.error || "Failed to close positions. Bot not stopped."
+        );
+        setSubmitting(false);
+        return;
+      }
+
+      // Then stop the bot
       const result = await updateCopyTradeBot(botId, {
         status: "stopped",
       });
@@ -601,8 +618,14 @@ function CopytradeContent() {
       if (result.success) {
         // Close confirmation modal
         setBotToStop(null);
-        // Refresh bots list
+        // Refresh bots list and positions
         await fetchBots();
+        // Refresh positions for all bots
+        for (const bot of runningBots) {
+          if (bot.id === botId) {
+            await refreshBotPositions(botId);
+          }
+        }
       } else {
         setError(result.error || "Failed to stop bot");
         setBotToStop(null);
@@ -610,6 +633,8 @@ function CopytradeContent() {
     } catch (err: any) {
       setError(err.message || "Failed to stop bot");
       setBotToStop(null);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -1767,10 +1792,20 @@ function CopytradeContent() {
                     </button>
                     <button
                       onClick={() => handleStopBot(botToStop.id)}
-                      className="flex-1 px-4 py-2.5 bg-transparent hover:bg-red-500/10 border border-red-500/40 hover:border-red-500/60 text-red-400 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+                      disabled={submitting}
+                      className="flex-1 px-4 py-2.5 bg-transparent hover:bg-red-500/10 border border-red-500/40 hover:border-red-500/60 text-red-400 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Power size={14} />
-                      <span>Stop Bot</span>
+                      {submitting ? (
+                        <>
+                          <Loader className="animate-spin" size={14} />
+                          <span>Closing Positions...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Power size={14} />
+                          <span>Stop Bot</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
