@@ -555,7 +555,7 @@ export default function ProfilePage() {
 
   const shareOnTwitter = () => {
     const profileUrl = `${window.location.origin}/profile/${username}`;
-    const text = `Check out ${user?.display_name || user?.username || "this trader"}'s profile on Anthé Labs!`;
+    const text = `Check out ${user?.display_name || user?.username || "this trader"}'s profile on Anthe Labs!`;
     window.open(
       `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(profileUrl)}`,
       "_blank"
@@ -564,7 +564,7 @@ export default function ProfilePage() {
 
   const shareOnTelegram = () => {
     const profileUrl = `${window.location.origin}/profile/${username}`;
-    const text = `Check out ${user?.display_name || user?.username || "this trader"}'s profile on Anthé Labs!`;
+    const text = `Check out ${user?.display_name || user?.username || "this trader"}'s profile on Anthe Labs!`;
     window.open(
       `https://t.me/share/url?url=${encodeURIComponent(profileUrl)}&text=${encodeURIComponent(text)}`,
       "_blank"
