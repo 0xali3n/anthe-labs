@@ -503,9 +503,9 @@ function CopytradeContent() {
       return;
     }
 
-    // Check minimum balance requirement (10 USDT) - only for new bots, not restarting
+    // Check minimum balance requirement (1 USDT) - only for new bots, not restarting
     if (!botToRestart) {
-      const MIN_BALANCE = 10;
+      const MIN_BALANCE = 1;
       if (balanceNum < MIN_BALANCE) {
         setError(
           `Minimum balance of ${MIN_BALANCE} USDT required to start a copy trade bot. Your current balance: ${formatCurrency(balanceNum)}`
@@ -517,8 +517,8 @@ function CopytradeContent() {
     // Check if user already has a running bot (skip check if restarting the same bot)
     const hasOtherRunningBot = botToRestart
       ? runningBots.some(
-        (bot) => bot.id !== botToRestart.id && bot.status === "running"
-      )
+          (bot) => bot.id !== botToRestart.id && bot.status === "running"
+        )
       : runningBots.length >= 1;
 
     if (hasOtherRunningBot) {
@@ -831,10 +831,11 @@ function CopytradeContent() {
                             }
                           }}
                           placeholder="0x1234..."
-                          className={`w-full pl-9 pr-3 py-2 bg-slate-900/50 border rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 transition-all font-mono ${addressError
-                            ? "border-red-500/50 focus:ring-red-500/50 focus:border-red-500/50"
-                            : "border-slate-700/50 focus:ring-blue-500/50 focus:border-blue-500/50"
-                            }`}
+                          className={`w-full pl-9 pr-3 py-2 bg-slate-900/50 border rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 transition-all font-mono ${
+                            addressError
+                              ? "border-red-500/50 focus:ring-red-500/50 focus:border-red-500/50"
+                              : "border-slate-700/50 focus:ring-blue-500/50 focus:border-blue-500/50"
+                          }`}
                         />
                         {traderAddress &&
                           isValidAptosAddress(traderAddress) && (
@@ -881,7 +882,10 @@ function CopytradeContent() {
                     <div>
                       <div className="mb-2 flex items-center gap-2">
                         <div className="w-5 h-5 rounded-full bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center flex-shrink-0">
-                          <AlertTriangle size={10} className="text-yellow-500" />
+                          <AlertTriangle
+                            size={10}
+                            className="text-yellow-500"
+                          />
                         </div>
                         <h3 className="text-xs font-semibold text-white">
                           Risk Disclaimer
@@ -891,66 +895,114 @@ function CopytradeContent() {
 
                       <div className="space-y-3 text-[10px] text-slate-400 leading-relaxed p-2.5 bg-slate-950/30 rounded-lg border border-slate-800/50 h-28 overflow-y-auto custom-scrollbar">
                         <section>
-                          <h4 className="text-slate-200 font-semibold mb-0.5">Risk & Investment Disclaimer</h4>
+                          <h4 className="text-slate-200 font-semibold mb-0.5">
+                            Risk & Investment Disclaimer
+                          </h4>
                           <p>
-                            Copy trading involves significant financial risk and may result in the loss of some or all of your capital. Past performance of any trader or strategy is not indicative of future results.
-                            The information, strategies, and trades displayed on this platform are provided for informational purposes only and do not constitute financial, investment, trading, or legal advice.
+                            Copy trading involves significant financial risk and
+                            may result in the loss of some or all of your
+                            capital. Past performance of any trader or strategy
+                            is not indicative of future results. The
+                            information, strategies, and trades displayed on
+                            this platform are provided for informational
+                            purposes only and do not constitute financial,
+                            investment, trading, or legal advice.
                           </p>
                         </section>
 
                         <section>
-                          <h4 className="text-slate-200 font-semibold mb-0.5">No Guarantee of Profits</h4>
-                          <p className="mb-0.5">By using this platform, you acknowledge that:</p>
+                          <h4 className="text-slate-200 font-semibold mb-0.5">
+                            No Guarantee of Profits
+                          </h4>
+                          <p className="mb-0.5">
+                            By using this platform, you acknowledge that:
+                          </p>
                           <ul className="list-disc pl-3 space-y-0.5">
                             <li>Copying trades does not guarantee profits</li>
                             <li>Market conditions can change rapidly</li>
-                            <li>Trades executed by copied wallets may be delayed, modified, or fail due to network congestion, smart contract behaviour, or technical issues</li>
+                            <li>
+                              Trades executed by copied wallets may be delayed,
+                              modified, or fail due to network congestion, smart
+                              contract behaviour, or technical issues
+                            </li>
                           </ul>
                         </section>
 
                         <section>
-                          <h4 className="text-slate-200 font-semibold mb-0.5">No Financial Advisory Relationship</h4>
+                          <h4 className="text-slate-200 font-semibold mb-0.5">
+                            No Financial Advisory Relationship
+                          </h4>
                           <p>
-                            This platform does not act as a broker, financial advisor, portfolio manager, or investment manager.
-                            No fiduciary relationship is created between the platform and its users.
+                            This platform does not act as a broker, financial
+                            advisor, portfolio manager, or investment manager.
+                            No fiduciary relationship is created between the
+                            platform and its users.
                           </p>
                         </section>
 
                         <section>
-                          <h4 className="text-slate-200 font-semibold mb-0.5">Technology & Smart Contract Risks</h4>
-                          <p className="mb-0.5">By using this application, you acknowledge and accept risks including but not limited to:</p>
+                          <h4 className="text-slate-200 font-semibold mb-0.5">
+                            Technology & Smart Contract Risks
+                          </h4>
+                          <p className="mb-0.5">
+                            By using this application, you acknowledge and
+                            accept risks including but not limited to:
+                          </p>
                           <ul className="list-disc pl-3 space-y-0.5">
                             <li>Smart contract vulnerabilities</li>
                             <li>Blockchain network failures or congestion</li>
                             <li>Exploits, hacks, or protocol failures</li>
                             <li>Oracle, third-party, or dependency failures</li>
                           </ul>
-                          <p className="mt-0.5">The platform is provided &ldquo;as is&rdquo; and &ldquo;as available&rdquo;, without warranties of any kind.</p>
-                        </section>
-
-                        <section>
-                          <h4 className="text-slate-200 font-semibold mb-0.5">Regulatory & Jurisdiction Notice</h4>
-                          <p>
-                            Cryptocurrency and digital asset regulations vary by jurisdiction and may change at any time.
-                            You are responsible for ensuring that your use of this platform complies with local laws and regulations, including tax obligations.
-                            The platform shall not be held liable for any regulatory action or legal consequences arising from user activity.
+                          <p className="mt-0.5">
+                            The platform is provided &ldquo;as is&rdquo; and
+                            &ldquo;as available&rdquo;, without warranties of
+                            any kind.
                           </p>
                         </section>
 
                         <section>
-                          <h4 className="text-slate-200 font-semibold mb-0.5">Limitation of Liability</h4>
+                          <h4 className="text-slate-200 font-semibold mb-0.5">
+                            Regulatory & Jurisdiction Notice
+                          </h4>
                           <p>
-                            To the maximum extent permitted by law, the platform and its team shall not be liable for any direct, indirect, incidental, or consequential losses, including loss of profits, data, or assets.
+                            Cryptocurrency and digital asset regulations vary by
+                            jurisdiction and may change at any time. You are
+                            responsible for ensuring that your use of this
+                            platform complies with local laws and regulations,
+                            including tax obligations. The platform shall not be
+                            held liable for any regulatory action or legal
+                            consequences arising from user activity.
                           </p>
                         </section>
 
                         <section>
-                          <h4 className="text-slate-200 font-semibold mb-0.5">Acceptance of Terms</h4>
-                          <p className="mb-0.5">By accessing or using this platform, you confirm that:</p>
+                          <h4 className="text-slate-200 font-semibold mb-0.5">
+                            Limitation of Liability
+                          </h4>
+                          <p>
+                            To the maximum extent permitted by law, the platform
+                            and its team shall not be liable for any direct,
+                            indirect, incidental, or consequential losses,
+                            including loss of profits, data, or assets.
+                          </p>
+                        </section>
+
+                        <section>
+                          <h4 className="text-slate-200 font-semibold mb-0.5">
+                            Acceptance of Terms
+                          </h4>
+                          <p className="mb-0.5">
+                            By accessing or using this platform, you confirm
+                            that:
+                          </p>
                           <ul className="list-disc pl-3 space-y-0.5">
                             <li>You understand the risks involved</li>
                             <li>You agree to this disclaimer</li>
-                            <li>You use the platform at your own discretion and risk</li>
+                            <li>
+                              You use the platform at your own discretion and
+                              risk
+                            </li>
                           </ul>
                         </section>
                       </div>
@@ -960,7 +1012,9 @@ function CopytradeContent() {
                           <input
                             type="checkbox"
                             checked={agreedToDisclaimer}
-                            onChange={(e) => setAgreedToDisclaimer(e.target.checked)}
+                            onChange={(e) =>
+                              setAgreedToDisclaimer(e.target.checked)
+                            }
                             className="peer h-3.5 w-3.5 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500/20 focus:ring-offset-0 transition-all cursor-pointer appearance-none border checked:bg-blue-500 checked:border-blue-500"
                           />
                           <svg
@@ -984,7 +1038,11 @@ function CopytradeContent() {
                     {/* Start Button */}
                     <button
                       type="submit"
-                      disabled={!traderAddress.trim() || submitting || !agreedToDisclaimer}
+                      disabled={
+                        !traderAddress.trim() ||
+                        submitting ||
+                        !agreedToDisclaimer
+                      }
                       className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:-translate-y-0.5"
                     >
                       {submitting ? (
@@ -1041,31 +1099,35 @@ function CopytradeContent() {
                 >
                   {/* Animated Active Background */}
                   <div
-                    className={`absolute top-1 bottom-1 rounded-full transition-all duration-300 ease-out ${activeTab === "running"
-                      ? "left-1 right-1/2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/40"
-                      : "left-1/2 right-1 bg-gradient-to-r from-slate-500/20 to-slate-600/20 border border-slate-500/40"
-                      }`}
+                    className={`absolute top-1 bottom-1 rounded-full transition-all duration-300 ease-out ${
+                      activeTab === "running"
+                        ? "left-1 right-1/2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/40"
+                        : "left-1/2 right-1 bg-gradient-to-r from-slate-500/20 to-slate-600/20 border border-slate-500/40"
+                    }`}
                   />
                   <button
                     onClick={() => setActiveTab("running")}
-                    className={`relative z-10 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${activeTab === "running"
-                      ? "text-white"
-                      : "text-slate-400 hover:text-slate-300"
-                      }`}
+                    className={`relative z-10 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
+                      activeTab === "running"
+                        ? "text-white"
+                        : "text-slate-400 hover:text-slate-300"
+                    }`}
                   >
                     <div
-                      className={`w-2 h-2 rounded-full ${activeTab === "running"
-                        ? "bg-green-400"
-                        : "bg-slate-500"
-                        }`}
+                      className={`w-2 h-2 rounded-full ${
+                        activeTab === "running"
+                          ? "bg-green-400"
+                          : "bg-slate-500"
+                      }`}
                     />
                     <span>Running</span>
                     {runningBots.length > 0 && (
                       <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-bold ${activeTab === "running"
-                          ? "bg-green-500/30 text-green-300"
-                          : "bg-slate-700/50 text-slate-500"
-                          }`}
+                        className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                          activeTab === "running"
+                            ? "bg-green-500/30 text-green-300"
+                            : "bg-slate-700/50 text-slate-500"
+                        }`}
                       >
                         {runningBots.length}
                       </span>
@@ -1073,10 +1135,11 @@ function CopytradeContent() {
                   </button>
                   <button
                     onClick={() => setActiveTab("stopped")}
-                    className={`relative z-10 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${activeTab === "stopped"
-                      ? "text-white"
-                      : "text-slate-400 hover:text-slate-300"
-                      }`}
+                    className={`relative z-10 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2 ${
+                      activeTab === "stopped"
+                        ? "text-white"
+                        : "text-slate-400 hover:text-slate-300"
+                    }`}
                   >
                     <Square
                       size={12}
@@ -1089,10 +1152,11 @@ function CopytradeContent() {
                     <span>Stopped</span>
                     {stoppedBots.length > 0 && (
                       <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-bold ${activeTab === "stopped"
-                          ? "bg-slate-500/30 text-slate-300"
-                          : "bg-slate-700/50 text-slate-500"
-                          }`}
+                        className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                          activeTab === "stopped"
+                            ? "bg-slate-500/30 text-slate-300"
+                            : "bg-slate-700/50 text-slate-500"
+                        }`}
                       >
                         {stoppedBots.length}
                       </span>
@@ -1210,10 +1274,11 @@ function CopytradeContent() {
                             >
                               <RefreshCw
                                 size={14}
-                                className={`${loadingPositions[bot.id]
-                                  ? "animate-spin"
-                                  : "group-hover:rotate-180"
-                                  } transition-transform duration-300`}
+                                className={`${
+                                  loadingPositions[bot.id]
+                                    ? "animate-spin"
+                                    : "group-hover:rotate-180"
+                                } transition-transform duration-300`}
                               />
                               <span className="hidden sm:inline">Refresh</span>
                             </button>
@@ -1327,10 +1392,11 @@ function CopytradeContent() {
                                           </td>
                                           <td className="px-2 py-4 whitespace-nowrap">
                                             <span
-                                              className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${position.side === "LONG"
-                                                ? "bg-green-500/10 text-green-400 border-green-500/20"
-                                                : "bg-red-500/10 text-red-400 border-red-500/20"
-                                                }`}
+                                              className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${
+                                                position.side === "LONG"
+                                                  ? "bg-green-500/10 text-green-400 border-green-500/20"
+                                                  : "bg-red-500/10 text-red-400 border-red-500/20"
+                                              }`}
                                             >
                                               {position.side}
                                             </span>
@@ -1368,20 +1434,22 @@ function CopytradeContent() {
                                           <td className="pl-2 pr-6 py-4 whitespace-nowrap text-right">
                                             <div className="flex flex-col items-end">
                                               <span
-                                                className={`text-sm font-bold font-mono ${position.pnl.startsWith("+")
-                                                  ? "text-green-500/70"
-                                                  : "text-red-500/70"
-                                                  }`}
+                                                className={`text-sm font-bold font-mono ${
+                                                  position.pnl.startsWith("+")
+                                                    ? "text-green-500/70"
+                                                    : "text-red-500/70"
+                                                }`}
                                               >
                                                 {position.pnl}
                                               </span>
                                               <span
-                                                className={`text-xs font-medium ${position.pnlPercent.startsWith(
-                                                  "+"
-                                                )
-                                                  ? "text-green-500/70"
-                                                  : "text-red-500/70"
-                                                  }`}
+                                                className={`text-xs font-medium ${
+                                                  position.pnlPercent.startsWith(
+                                                    "+"
+                                                  )
+                                                    ? "text-green-500/70"
+                                                    : "text-red-500/70"
+                                                }`}
                                               >
                                                 {position.pnlPercent}
                                               </span>
@@ -1582,10 +1650,11 @@ function CopytradeContent() {
             >
               <RefreshCw
                 size={14}
-                className={`${loadingTradeHistory
-                  ? "animate-spin"
-                  : "group-hover:rotate-180"
-                  } transition-transform duration-300`}
+                className={`${
+                  loadingTradeHistory
+                    ? "animate-spin"
+                    : "group-hover:rotate-180"
+                } transition-transform duration-300`}
               />
               <span className="hidden sm:inline">Refresh</span>
             </button>
@@ -1664,7 +1733,7 @@ function CopytradeContent() {
                               />
                               <div className="absolute -bottom-1 -right-1 bg-slate-900 rounded-full p-0.5">
                                 {trade.direction === "Long" ||
-                                  trade.direction === "Exit Short" ? (
+                                trade.direction === "Exit Short" ? (
                                   <TrendingUp
                                     size={14}
                                     className="text-green-400"
@@ -1682,11 +1751,12 @@ function CopytradeContent() {
                                 {trade.symbol}
                               </p>
                               <p
-                                className={`text-xs font-medium ${trade.direction === "Long" ||
+                                className={`text-xs font-medium ${
+                                  trade.direction === "Long" ||
                                   trade.direction === "Exit Short"
-                                  ? "text-green-400"
-                                  : "text-red-400"
-                                  }`}
+                                    ? "text-green-400"
+                                    : "text-red-400"
+                                }`}
                               >
                                 {trade.leverage} •{" "}
                                 {trade.direction.includes("Long")
@@ -1701,11 +1771,12 @@ function CopytradeContent() {
                         </td>
                         <td className="px-2 py-4 whitespace-nowrap">
                           <span
-                            className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${trade.direction === "Long" ||
+                            className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${
+                              trade.direction === "Long" ||
                               trade.direction === "Exit Short"
-                              ? "bg-green-500/10 text-green-400 border-green-500/20"
-                              : "bg-red-500/10 text-red-400 border-red-500/20"
-                              }`}
+                                ? "bg-green-500/10 text-green-400 border-green-500/20"
+                                : "bg-red-500/10 text-red-400 border-red-500/20"
+                            }`}
                           >
                             {trade.direction}
                           </span>
@@ -1731,10 +1802,11 @@ function CopytradeContent() {
                         </td>
                         <td className="pl-2 pr-6 py-4 whitespace-nowrap text-right">
                           <span
-                            className={`text-sm font-bold font-mono ${trade.pnl.startsWith("+")
-                              ? "text-green-500/70"
-                              : "text-red-500/70"
-                              }`}
+                            className={`text-sm font-bold font-mono ${
+                              trade.pnl.startsWith("+")
+                                ? "text-green-500/70"
+                                : "text-red-500/70"
+                            }`}
                           >
                             {trade.pnl}
                           </span>
@@ -1851,11 +1923,13 @@ function CopytradeContent() {
 // Suspense wrapper required for useSearchParams() in production builds
 export default function Copytrade() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      }
+    >
       <CopytradeContent />
     </Suspense>
   );

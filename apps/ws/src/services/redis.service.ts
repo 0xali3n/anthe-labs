@@ -92,6 +92,40 @@ export class RedisService {
     }
   }
 
+  /**
+   * Get subscriber count for a trader address
+   */
+  async getSubscriberCount(subscriberKey: string): Promise<number> {
+    if (!this.client) {
+      return 0;
+    }
+
+    try {
+      const count = await this.client.hlen(subscriberKey);
+      return count || 0;
+    } catch (error) {
+      Logger.error(`Failed to get subscriber count for ${subscriberKey}`, error);
+      return 0;
+    }
+  }
+
+  /**
+   * Check if address is in active profiles set
+   */
+  async isInActiveProfiles(address: string): Promise<boolean> {
+    if (!this.client) {
+      return false;
+    }
+
+    try {
+      const result = await this.client.sismember("profiles:active", address);
+      return result === 1;
+    } catch (error) {
+      Logger.error(`Failed to check if address is in active profiles`, error);
+      return false;
+    }
+  }
+
   async moveToActive(address: string): Promise<void> {
     if (!this.client) {
       throw new Error("Redis client not available");
