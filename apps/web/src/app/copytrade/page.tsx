@@ -116,6 +116,7 @@ function CopytradeContent() {
   const [stoppedBots, setStoppedBots] = useState<CopyTradeBot[]>([]);
   const [activeTab, setActiveTab] = useState<"running" | "stopped">("running");
   const [botToRestart, setBotToRestart] = useState<CopyTradeBot | null>(null);
+  const [botToStop, setBotToStop] = useState<CopyTradeBot | null>(null);
   const [addressError, setAddressError] = useState<string | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const modeDropdownRef = useRef<HTMLDivElement>(null);
@@ -598,13 +599,17 @@ function CopytradeContent() {
       });
 
       if (result.success) {
+        // Close confirmation modal
+        setBotToStop(null);
         // Refresh bots list
         await fetchBots();
       } else {
         setError(result.error || "Failed to stop bot");
+        setBotToStop(null);
       }
     } catch (err: any) {
       setError(err.message || "Failed to stop bot");
+      setBotToStop(null);
     }
   };
 
@@ -1487,7 +1492,7 @@ function CopytradeContent() {
                       {/* Action Buttons - Standardized */}
                       <div className="flex gap-2 mt-auto">
                         <button
-                          onClick={() => handleStopBot(bot.id)}
+                          onClick={() => setBotToStop(bot)}
                           className="w-full px-3 py-2.5 bg-transparent hover:bg-red-500/10 border border-red-500/40 hover:border-red-500/60 text-red-400 rounded-[15px] text-xs font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-md group/btn"
                         >
                           <Power
@@ -1631,6 +1636,146 @@ function CopytradeContent() {
             <p className="text-slate-400 text-sm">
               No active copy trades. Start your first one above!
             </p>
+          </div>
+        )}
+
+        {/* Stop Bot Confirmation Modal */}
+        {botToStop && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setBotToStop(null);
+              }
+            }}
+          >
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+
+            {/* Modal Content */}
+            <div
+              className="relative w-full max-w-md animate-modalSlideIn rounded-xl border border-slate-700/50 shadow-2xl overflow-hidden"
+              style={{
+                background:
+                  "linear-gradient(to bottom, #1a1d2e 0%, #151824 50%, #0f1117 100%)",
+                boxShadow:
+                  "0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05)",
+              }}
+            >
+              {/* Header Section */}
+              <div className="relative px-4 pt-4 pb-3 border-b border-slate-800/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
+                      <AlertTriangle size={16} className="text-red-400" />
+                    </div>
+                    <h2
+                      className={`${palanquinDark.className} text-base font-bold text-white`}
+                    >
+                      Stop Copy Trading Bot
+                    </h2>
+                  </div>
+                  <button
+                    onClick={() => setBotToStop(null)}
+                    className="p-1 hover:bg-slate-800/50 rounded transition-all duration-200 text-slate-400 hover:text-white"
+                    aria-label="Close modal"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-4">
+                <div className="space-y-4">
+                  {/* Confirmation Message */}
+                  <div className="bg-slate-900/50 border border-slate-700/50 rounded-lg p-3">
+                    <p className="text-sm text-slate-300 leading-relaxed">
+                      Are you sure you want to stop bot{" "}
+                      <span className="font-semibold text-white">
+                        {formatBotId(botToStop.id)}
+                      </span>
+                      ? This action will stop the bot from copying new trades.
+                    </p>
+                  </div>
+
+                  {/* Warning Note */}
+                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                    <div className="flex items-start gap-2.5">
+                      <AlertTriangle
+                        size={16}
+                        className="text-yellow-400 flex-shrink-0 mt-0.5"
+                      />
+                      <div className="flex-1">
+                        <h3 className="text-xs font-semibold text-yellow-400 mb-1">
+                          Important Notice
+                        </h3>
+                        <p className="text-[11px] text-yellow-300/90 leading-relaxed">
+                          <span className="font-semibold">Note:</span> If there
+                          are any open positions associated with this bot, they
+                          will be automatically closed using market orders when
+                          you stop the bot.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bot Details */}
+                  <div className="bg-slate-950/50 border border-slate-800/50 rounded-lg p-3">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
+                          Bot ID
+                        </span>
+                        <span className="text-xs font-medium text-slate-200">
+                          {formatBotId(botToStop.id)}
+                        </span>
+                      </div>
+                      {botToStop.traderAddress && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
+                            Trader Address
+                          </span>
+                          <span className="text-xs font-medium text-slate-200 font-mono">
+                            {formatAddress(botToStop.traderAddress)}
+                          </span>
+                        </div>
+                      )}
+                      {getOpenPositions(botToStop.id).length > 0 && (
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-800/50">
+                          <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
+                            Open Positions
+                          </span>
+                          <span className="text-xs font-medium text-red-400">
+                            {getOpenPositions(botToStop.id).length} position
+                            {getOpenPositions(botToStop.id).length !== 1
+                              ? "s"
+                              : ""}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      onClick={() => setBotToStop(null)}
+                      className="flex-1 px-4 py-2.5 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 hover:border-slate-600/50 text-slate-300 hover:text-white rounded-lg text-xs font-semibold transition-all duration-200"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => handleStopBot(botToStop.id)}
+                      className="flex-1 px-4 py-2.5 bg-transparent hover:bg-red-500/10 border border-red-500/40 hover:border-red-500/60 text-red-400 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+                    >
+                      <Power size={14} />
+                      <span>Stop Bot</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
