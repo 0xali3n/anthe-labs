@@ -133,11 +133,65 @@ async function initializeServices(): Promise<void> {
     // Subscribe to Redis channel for signals from backend
     redisService.subscribeToChannel("ws:check", (message) => {
       Logger.info(`📨 Received signal from backend: ${message}`);
-      debouncedProcessNotSynced();
+      
+      // Check if it's an unsubscribe signal
+      if (message.startsWith("unsubscribe:")) {
+        const traderAddress = message.replace("unsubscribe:", "");
+        handleUnsubscribeSignal(traderAddress);
+      } else {
+        // Regular signal for new addresses
+        debouncedProcessNotSynced();
+      }
     });
   } catch (error) {
     Logger.error("Failed to initialize services", error);
     process.exit(1);
+  }
+}
+
+/**
+ * Handle unsubscribe signal from API
+ * Checks if address should be unsubscribed (only if no subscribers remain)
+ */
+async function handleUnsubscribeSignal(traderAddress: string): Promise<void> {
+  try {
+    // Check if address is currently being monitored
+    if (!currentAddresses.has(traderAddress)) {
+      Logger.debug(`Address ${traderAddress.substring(0, 10)}... not in monitoring list, skipping unsubscribe`);
+      return;
+    }
+
+    // Check if there are any remaining subscribers for this trader address
+    const subscriberKey = `subs:profile:${traderAddress}`;
+    const subscriberCount = await redisService.getSubscriberCount(subscriberKey);
+
+    if (subscriberCount > 0) {
+      Logger.info(
+        `⚠️  Address ${traderAddress.substring(0, 10)}... still has ${subscriberCount} subscriber(s), not unsubscribing`
+      );
+      return;
+    }
+
+    // Verify address is not in active profiles (double check)
+    const isInActive = await redisService.isInActiveProfiles(traderAddress);
+    if (isInActive) {
+      Logger.warn(
+        `⚠️  Address ${traderAddress.substring(0, 10)}... still in active profiles, not unsubscribing`
+      );
+      return;
+    }
+
+    // All checks passed - safe to unsubscribe
+    Logger.info(
+      `🔍 Unsubscribing from address: ${traderAddress.substring(0, 10)}... (no subscribers remaining)`
+    );
+    orderHistoryService.removeWallet(traderAddress);
+    currentAddresses.delete(traderAddress);
+    Logger.success(
+      `✅ Successfully unsubscribed and removed wallet: ${traderAddress.substring(0, 10)}...`
+    );
+  } catch (error) {
+    Logger.error(`Error handling unsubscribe signal for ${traderAddress.substring(0, 10)}...`, error);
   }
 }
 

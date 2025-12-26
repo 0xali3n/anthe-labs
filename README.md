@@ -1,4 +1,4 @@
-# 🧠 Anthé Labs – Copytrade Platform
+# 🧠 Anthe Labs – Copytrade Platform
 
 A modern **Next.js + Nest.js (Turborepo)** project for smart copytrading automation on Aptos blockchain.
 
@@ -119,6 +119,8 @@ pnpm run dev:trade  # Trade execution service
 - Trade history with full order details and refresh button
 - Single running bot limit
 - PNL and Trades display (Coming Soon placeholder)
+- **Automatic position closing**: When stopping a bot, all open positions are automatically closed using Kana Labs API
+- **Close all positions**: Uses `placeMultipleOrders` for efficient parallel position closing
 
 ### Wallet & Deposit System
 
@@ -129,6 +131,8 @@ pnpm run dev:trade  # Trade execution service
 - Kana Labs API integration (kana.trade domain)
 - APT airdrop on first deposit (0.05 APT)
 - Gas-optimized transactions
+- **Position closing API**: Close individual or all positions using `placeMarketOrder` with 100% close direction
+- **Parallel position closing**: Optimized closing of multiple positions using `placeMultipleOrders`
 
 ### Leaderboard & Profiles
 
@@ -142,6 +146,21 @@ pnpm run dev:trade  # Trade execution service
 - User feedback submission (title and message)
 - Feedback history display
 - Secure storage with RLS policies
+
+### Media Kit & Brand Assets
+
+- Professional media kit page with downloadable logos and brand assets
+- Download functionality for all brand assets (PNG format)
+- Responsive grid layout with minimal, clean design
+- Footer navigation integration
+
+### Contact Page
+
+- Professional contact page with premium styling
+- Visible email address display (anthefinance@gmail.com)
+- Social media links (Twitter, LinkedIn, Telegram)
+- Response time information
+- Background pattern matching site design
 
 ### WebSocket Service
 
@@ -283,6 +302,28 @@ anthe-labs/
 - ✅ Google Analytics integration (G-189XLPG1XZ)
 - ✅ Microsoft Clarity integration (uqorc6dezx)
 - ✅ Consolidated SEO documentation
+- ✅ Added Media Kit and Contact pages to sitemap
+- ✅ Brand name standardization: "Anthé" → "Anthe" (SEO optimization)
+- ✅ Site URL standardized to `https://anthe.io` across all pages
+
+### Position Management & Bot Lifecycle ✨
+
+- ✅ Close position API using Kana Labs `placeMarketOrder` with `direction: true` (100% close)
+- ✅ Close all positions functionality using `placeMultipleOrders` for multiple positions
+- ✅ Automatic position closing when stopping copy trade bots
+- ✅ Parallel processing for closing multiple positions (optimized performance)
+- ✅ Integrated into copytrade page "stop bot" functionality
+- ✅ Removed blocking transaction waits for improved speed
+
+### Media Kit & Contact Pages ✨
+
+- ✅ Professional media kit page with downloadable brand assets
+- ✅ Responsive grid layout with minimal, clean design
+- ✅ Download functionality for all logo and favicon files
+- ✅ Redesigned contact page with premium styling
+- ✅ Visible email address display (anthefinance@gmail.com)
+- ✅ Footer navigation links for both pages
+- ✅ Consistent background patterns matching site design
 
 ---
 

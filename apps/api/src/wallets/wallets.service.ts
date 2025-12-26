@@ -353,6 +353,84 @@ export class WalletsService {
   }
 
   /**
+   * Get positions payload from Kana API (debug only - returns raw response)
+   * This is useful for debugging what the API returns
+   *
+   * @param walletAddress - Wallet address
+   * @param marketId - Optional market ID to filter positions
+   * @returns Raw response from Kana API
+   */
+  async getPositionsPayload(
+    walletAddress: string,
+    marketId?: string,
+  ): Promise<{
+    success: boolean;
+    data?: any;
+    rawResponse?: any;
+    error?: string;
+  }> {
+    try {
+      const kanaApiKey = process.env.KANA_API_KEY;
+      const kanaRest =
+        process.env.KANA_REST || 'https://perps-tradeapi.kana.trade';
+
+      if (!kanaApiKey) {
+        return {
+          success: false,
+          error: 'Kana API key not configured',
+        };
+      }
+
+      const params: any = {
+        userAddress: walletAddress,
+      };
+
+      if (marketId) {
+        params.marketId = marketId;
+      }
+
+      console.log(
+        `🔍 Debug: Calling Kana API getPositions with params:`,
+        params,
+      );
+      console.log(`🔍 Debug: URL: ${kanaRest}/getPositions`);
+
+      const response = await axios.get(`${kanaRest}/getPositions`, {
+        params,
+        headers: {
+          'x-api-key': kanaApiKey,
+        },
+      });
+
+      console.log(
+        `🔍 Debug: Kana API getPositions Response:`,
+        JSON.stringify(response.data, null, 2),
+      );
+
+      if (response.data.success && response.data.data) {
+        return {
+          success: true,
+          data: response.data.data,
+          rawResponse: response.data,
+        };
+      }
+
+      return {
+        success: false,
+        error: response.data.message || 'No positions data in response',
+        rawResponse: response.data,
+      };
+    } catch (error: any) {
+      console.error(`❌ Error getting positions payload:`, error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get positions payload',
+        rawResponse: error.response?.data || error.message,
+      };
+    }
+  }
+
+  /**
    * Get positions from Kana Labs API
    * Fetches open positions for a user's wallet address
    *
@@ -1110,6 +1188,689 @@ export class WalletsService {
       return {
         success: false,
         error: error.message || 'Failed to transfer USDT',
+      };
+    }
+  }
+
+  /**
+   * Get collapse position payload from Kana API (debug only - doesn't submit)
+   * This is useful for debugging what payload the API returns
+   *
+   * @param walletAddress - Wallet address
+   * @param marketId - Optional market ID (if not provided, collapses all positions)
+   * @returns Payload data from Kana API
+   */
+  async getCollapsePositionPayload(
+    walletAddress: string,
+    marketId?: string,
+  ): Promise<{
+    success: boolean;
+    payload?: any;
+    rawResponse?: any;
+    error?: string;
+  }> {
+    try {
+      const kanaApiKey = process.env.KANA_API_KEY;
+      const kanaRest =
+        process.env.KANA_REST || 'https://perps-tradeapi.kana.trade';
+
+      if (!kanaApiKey) {
+        return {
+          success: false,
+          error: 'Kana API key not configured',
+        };
+      }
+
+      // Build params - try with and without marketId, with and without userAddress
+      const params: any = {};
+
+      // Try different combinations to see what works
+      if (marketId) {
+        params.marketId = marketId;
+      }
+
+      // Based on getPositions pattern, include userAddress
+      params.userAddress = walletAddress;
+
+      console.log(`🔍 Debug: Calling Kana API with params:`, params);
+      console.log(`🔍 Debug: URL: ${kanaRest}/collapsePosition`);
+
+      const response = await axios.get(`${kanaRest}/collapsePosition`, {
+        params,
+        headers: {
+          'x-api-key': kanaApiKey,
+        },
+      });
+
+      console.log(
+        `🔍 Debug: Kana API Response:`,
+        JSON.stringify(response.data, null, 2),
+      );
+
+      if (!response.data.success) {
+        return {
+          success: false,
+          error:
+            response.data.message || 'Failed to get collapse position payload',
+          rawResponse: response.data,
+        };
+      }
+
+      return {
+        success: true,
+        payload: response.data.data,
+        rawResponse: response.data,
+      };
+    } catch (error: any) {
+      console.error(`❌ Error getting collapse position payload:`, error);
+      return {
+        success: false,
+        error: error.message || 'Failed to get collapse position payload',
+        rawResponse: error.response?.data || error.message,
+      };
+    }
+  }
+
+  /**
+   * Close all positions for a user
+   * Uses placeMultipleOrders if multiple positions exist, otherwise uses placeMarketOrder
+   *
+   * @param userId - User ID
+   * @returns Transaction hash if successful
+   */
+  async closeAllPositions(userId: string): Promise<{
+    success: boolean;
+    txHash?: string;
+    version?: string;
+    error?: string;
+  }> {
+    try {
+      // Get wallet address
+      const walletAddress = await this.getWalletAddress(userId);
+      if (!walletAddress) {
+        return {
+          success: false,
+          error: 'Wallet not found',
+        };
+      }
+
+      // Get private key for signing
+      const privateKey = await this.getPrivateKeyForSigning(userId);
+      if (!privateKey) {
+        return {
+          success: false,
+          error: 'Private key not found',
+        };
+      }
+
+      // Create account from private key
+      const account = Account.fromPrivateKey({
+        privateKey: new Ed25519PrivateKey(privateKey),
+      });
+
+      // Initialize Aptos client
+      const aptos = new Aptos(
+        new AptosConfig({ network: 'mainnet' as Network }),
+      );
+
+      // Get Kana API config
+      const kanaApiKey = process.env.KANA_API_KEY;
+      const kanaRest =
+        process.env.KANA_REST || 'https://perps-tradeapi.kana.trade';
+
+      if (!kanaApiKey) {
+        return {
+          success: false,
+          error: 'Kana API key not configured',
+        };
+      }
+
+      // Fetch all positions (do this first, no need to check balance if no positions)
+      const positions = await this.getPositions(walletAddress);
+      if (!positions || positions.length === 0) {
+        return {
+          success: true, // No positions to close is considered success
+          error: 'No open positions found',
+        };
+      }
+
+      // Group positions by marketId
+      const positionsByMarket = new Map<string, any[]>();
+      for (const pos of positions) {
+        const marketId = pos.market_id;
+        if (!positionsByMarket.has(marketId)) {
+          positionsByMarket.set(marketId, []);
+        }
+        positionsByMarket.get(marketId)!.push(pos);
+      }
+
+      // Process all markets in PARALLEL for speed
+      const marketPromises = Array.from(positionsByMarket.entries()).map(
+        async ([marketId, marketPositions]) => {
+          try {
+            if (marketPositions.length === 1) {
+              // Single position - use placeMarketOrder directly (faster than calling closePosition)
+              const pos = marketPositions[0];
+              const queryParams = new URLSearchParams();
+              queryParams.append('marketId', marketId);
+              queryParams.append('tradeSide', pos.trade_side.toString());
+              queryParams.append('direction', 'true'); // CLOSE
+              queryParams.append('size', pos.size);
+              queryParams.append('leverage', pos.leverage.toString());
+
+              const response = await axios.get(
+                `${kanaRest}/placeMarketOrder?${queryParams.toString()}`,
+                {
+                  headers: {
+                    'x-api-key': kanaApiKey,
+                  },
+                },
+              );
+
+              if (!response.data.success || !response.data.data) {
+                return {
+                  success: false,
+                  error:
+                    response.data.message ||
+                    'Failed to get close position payload',
+                };
+              }
+
+              const transactionPayload = await aptos.transaction.build.simple({
+                sender: account.accountAddress,
+                data: response.data.data,
+                options: {
+                  maxGasAmount: 15000,
+                  gasUnitPrice: 100,
+                },
+              });
+
+              const committedTxn =
+                await aptos.transaction.signAndSubmitTransaction({
+                  transaction: transactionPayload,
+                  signer: account,
+                });
+
+              // Don't wait for confirmation - return immediately after submission
+              return {
+                success: true,
+                txHash: committedTxn.hash,
+              };
+            } else {
+              // Multiple positions - use placeMultipleOrders
+              const orderTypes: boolean[] = []; // false = market order
+              const tradeSides: boolean[] = [];
+              const directions: boolean[] = []; // true = close
+              const sizes: number[] = [];
+              const leverages: number[] = [];
+              const prices: number[] = [];
+
+              for (const pos of marketPositions) {
+                orderTypes.push(false); // Market order
+                tradeSides.push(pos.trade_side);
+                directions.push(true); // Close position
+                sizes.push(parseFloat(pos.size));
+                leverages.push(parseInt(pos.leverage.toString()));
+                prices.push(parseFloat(pos.entry_price));
+              }
+
+              const response = await axios.post(
+                `${kanaRest}/placeMultipleOrders`,
+                {
+                  marketId: parseInt(marketId),
+                  orderTypes,
+                  tradeSides,
+                  directions,
+                  sizes,
+                  leverages,
+                  prices,
+                },
+                {
+                  headers: {
+                    'x-api-key': kanaApiKey,
+                    'Content-Type': 'application/json',
+                  },
+                },
+              );
+
+              if (!response.data.success || !response.data.data) {
+                return {
+                  success: false,
+                  error:
+                    response.data.message ||
+                    'Failed to get close positions payload',
+                };
+              }
+
+              const transactionPayload = await aptos.transaction.build.simple({
+                sender: account.accountAddress,
+                data: response.data.data,
+                options: {
+                  maxGasAmount: 15000,
+                  gasUnitPrice: 100,
+                },
+              });
+
+              const committedTxn =
+                await aptos.transaction.signAndSubmitTransaction({
+                  transaction: transactionPayload,
+                  signer: account,
+                });
+
+              // Don't wait for confirmation - return immediately after submission
+              return {
+                success: true,
+                txHash: committedTxn.hash,
+              };
+            }
+          } catch (error: any) {
+            return {
+              success: false,
+              error: error.message || 'Failed to close positions',
+            };
+          }
+        },
+      );
+
+      // Wait for all markets to process in parallel
+      const results = await Promise.allSettled(marketPromises);
+      const processedResults = results.map((result) =>
+        result.status === 'fulfilled'
+          ? result.value
+          : { success: false, error: 'Promise rejected' },
+      );
+
+      // Check if all succeeded
+      const allSuccess = processedResults.every((r) => r.success);
+      if (allSuccess && processedResults.length > 0) {
+        return {
+          success: true,
+          txHash: processedResults[0].txHash, // Return first tx hash
+        };
+      } else {
+        const errors = processedResults
+          .filter((r) => !r.success)
+          .map((r) => r.error)
+          .join(', ');
+        return {
+          success: false,
+          error: `Some positions failed to close: ${errors}`,
+        };
+      }
+    } catch (error: any) {
+      console.error(
+        `❌ Error closing all positions for user ${userId}:`,
+        error,
+      );
+      return {
+        success: false,
+        error: error.message || 'Failed to close all positions',
+      };
+    }
+  }
+
+  /**
+   * Close position for a specific market
+   * Closes the position using a market order with direction=true (100% close)
+   *
+   * @param userId - User ID
+   * @param marketId - Market ID (required)
+   * @param tradeSide - Trade side: true for LONG, false for SHORT
+   * @param size - Position size to close (optional, will fetch from API if not provided)
+   * @param leverage - Leverage to use (optional, will fetch from position if not provided)
+   * @returns Transaction hash if successful
+   */
+  async closePosition(
+    userId: string,
+    marketId: string,
+    tradeSide: boolean,
+    size?: string,
+    leverage?: string,
+  ): Promise<{
+    success: boolean;
+    txHash?: string;
+    version?: string;
+    error?: string;
+  }> {
+    try {
+      // Get wallet address
+      const walletAddress = await this.getWalletAddress(userId);
+      if (!walletAddress) {
+        return {
+          success: false,
+          error: 'Wallet not found',
+        };
+      }
+
+      // Get private key for signing
+      const privateKey = await this.getPrivateKeyForSigning(userId);
+      if (!privateKey) {
+        return {
+          success: false,
+          error: 'Private key not found',
+        };
+      }
+
+      // Create account from private key
+      const account = Account.fromPrivateKey({
+        privateKey: new Ed25519PrivateKey(privateKey),
+      });
+
+      // Initialize Aptos client
+      const aptos = new Aptos(
+        new AptosConfig({ network: 'mainnet' as Network }),
+      );
+
+      // Get Kana API config
+      const kanaApiKey = process.env.KANA_API_KEY;
+      const kanaRest =
+        process.env.KANA_REST || 'https://perps-tradeapi.kana.trade';
+
+      if (!kanaApiKey) {
+        return {
+          success: false,
+          error: 'Kana API key not configured',
+        };
+      }
+
+      // Check APT balance for gas fees
+      try {
+        const aptBalance = await aptos.getAccountAPTAmount({
+          accountAddress: account.accountAddress,
+        });
+        const aptBalanceInAPT = Number(aptBalance) / 100000000;
+
+        if (aptBalanceInAPT < 0.001) {
+          return {
+            success: false,
+            error: `Insufficient APT for gas fees. Required: 0.001 APT, Available: ${aptBalanceInAPT.toFixed(8)} APT.`,
+          };
+        }
+      } catch (error: any) {
+        // Continue anyway, let the transaction fail if no gas
+      }
+
+      // If size or leverage not provided, fetch from positions
+      let finalSize = size;
+      let finalLeverage = leverage;
+
+      if (!finalSize || !finalLeverage) {
+        const positions = await this.getPositions(walletAddress, marketId);
+        const position = positions.find(
+          (pos: any) =>
+            pos.market_id === marketId && pos.trade_side === tradeSide,
+        );
+
+        if (!position) {
+          return {
+            success: false,
+            error: `No ${tradeSide ? 'LONG' : 'SHORT'} position found for market ${marketId}`,
+          };
+        }
+
+        if (!finalSize) {
+          finalSize = position.size;
+        }
+        if (!finalLeverage) {
+          finalLeverage = position.leverage.toString();
+        }
+      }
+
+      // Build query parameters for placeMarketOrder
+      if (!finalSize || !finalLeverage) {
+        return {
+          success: false,
+          error: 'Size and leverage are required to close position',
+        };
+      }
+
+      const queryParams = new URLSearchParams();
+      queryParams.append('marketId', marketId);
+      queryParams.append('tradeSide', tradeSide.toString());
+      queryParams.append('direction', 'true'); // true = CLOSE position
+      queryParams.append('size', finalSize);
+      queryParams.append('leverage', finalLeverage);
+
+      console.log(
+        `🔍 Close Position: Calling Kana API placeMarketOrder with params:`,
+        {
+          marketId,
+          tradeSide: tradeSide ? 'LONG' : 'SHORT',
+          direction: 'CLOSE',
+          size: finalSize,
+          leverage: finalLeverage,
+        },
+      );
+
+      const response = await axios.get(
+        `${kanaRest}/placeMarketOrder?${queryParams.toString()}`,
+        {
+          headers: {
+            'x-api-key': kanaApiKey,
+          },
+        },
+      );
+
+      console.log(
+        `🔍 Close Position: Kana API Response:`,
+        JSON.stringify(response.data, null, 2),
+      );
+
+      if (!response.data.success) {
+        return {
+          success: false,
+          error:
+            response.data.message || 'Failed to get close position payload',
+        };
+      }
+
+      const payloadData = response.data.data;
+
+      if (!payloadData) {
+        return {
+          success: false,
+          error: 'No payload data received from Kana API',
+        };
+      }
+
+      // Build and submit transaction
+      const transactionPayload = await aptos.transaction.build.simple({
+        sender: account.accountAddress,
+        data: payloadData,
+        options: {
+          maxGasAmount: 15000,
+          gasUnitPrice: 100,
+        },
+      });
+
+      const committedTxn = await aptos.transaction.signAndSubmitTransaction({
+        transaction: transactionPayload,
+        signer: account,
+      });
+
+      const executedTxn = await aptos.waitForTransaction({
+        transactionHash: committedTxn.hash,
+      });
+
+      if (!executedTxn.success) {
+        return {
+          success: false,
+          error: 'Transaction failed on blockchain',
+        };
+      }
+
+      const version =
+        (executedTxn as any).version ||
+        (executedTxn as any).transaction?.version;
+      return {
+        success: true,
+        txHash: committedTxn.hash,
+        version: version,
+      };
+    } catch (error: any) {
+      console.error(`❌ Error closing position for user ${userId}:`, error);
+      return {
+        success: false,
+        error: error.message || 'Failed to close position',
+      };
+    }
+  }
+
+  /**
+   * Collapse position for a specific market
+   * Closes all positions for a market using market orders
+   *
+   * @param userId - User ID
+   * @param marketId - Market ID (required)
+   * @returns Transaction hash if successful
+   */
+  async collapsePosition(
+    userId: string,
+    marketId: string,
+  ): Promise<{
+    success: boolean;
+    txHash?: string;
+    version?: string;
+    error?: string;
+  }> {
+    try {
+      // Get wallet address
+      const walletAddress = await this.getWalletAddress(userId);
+      if (!walletAddress) {
+        return {
+          success: false,
+          error: 'Wallet not found',
+        };
+      }
+
+      // Get private key for signing
+      const privateKey = await this.getPrivateKeyForSigning(userId);
+      if (!privateKey) {
+        return {
+          success: false,
+          error: 'Private key not found',
+        };
+      }
+
+      // Create account from private key
+      const account = Account.fromPrivateKey({
+        privateKey: new Ed25519PrivateKey(privateKey),
+      });
+
+      // Initialize Aptos client
+      const aptos = new Aptos(
+        new AptosConfig({ network: 'mainnet' as Network }),
+      );
+
+      // Get Kana API config
+      const kanaApiKey = process.env.KANA_API_KEY;
+      const kanaRest =
+        process.env.KANA_REST || 'https://perps-tradeapi.kana.trade';
+
+      if (!kanaApiKey) {
+        return {
+          success: false,
+          error: 'Kana API key not configured',
+        };
+      }
+
+      // Check APT balance for gas fees
+      try {
+        const aptBalance = await aptos.getAccountAPTAmount({
+          accountAddress: account.accountAddress,
+        });
+        const aptBalanceInAPT = Number(aptBalance) / 100000000;
+
+        if (aptBalanceInAPT < 0.001) {
+          return {
+            success: false,
+            error: `Insufficient APT for gas fees. Required: 0.001 APT, Available: ${aptBalanceInAPT.toFixed(8)} APT.`,
+          };
+        }
+      } catch (error: any) {
+        // Continue anyway, let the transaction fail if no gas
+      }
+
+      // Get collapse position payload from Kana API
+      // marketId is required for collapse position
+      const params: any = {
+        userAddress: walletAddress,
+        marketId: marketId,
+      };
+
+      console.log(
+        `🔍 Collapse Position: Calling Kana API with params:`,
+        params,
+      );
+
+      const response = await axios.get(`${kanaRest}/collapsePosition`, {
+        params,
+        headers: {
+          'x-api-key': kanaApiKey,
+        },
+      });
+
+      console.log(
+        `🔍 Collapse Position: Kana API Response:`,
+        JSON.stringify(response.data, null, 2),
+      );
+
+      if (!response.data.success) {
+        return {
+          success: false,
+          error:
+            response.data.message || 'Failed to get collapse position payload',
+        };
+      }
+
+      const payloadData = response.data.data;
+
+      if (!payloadData) {
+        return {
+          success: false,
+          error: 'No payload data received from Kana API',
+        };
+      }
+
+      // Build and submit transaction
+      const transactionPayload = await aptos.transaction.build.simple({
+        sender: account.accountAddress,
+        data: payloadData,
+        options: {
+          maxGasAmount: 15000,
+          gasUnitPrice: 100,
+        },
+      });
+
+      const committedTxn = await aptos.transaction.signAndSubmitTransaction({
+        transaction: transactionPayload,
+        signer: account,
+      });
+
+      const executedTxn = await aptos.waitForTransaction({
+        transactionHash: committedTxn.hash,
+      });
+
+      if (!executedTxn.success) {
+        return {
+          success: false,
+          error: 'Transaction failed on blockchain',
+        };
+      }
+
+      const version =
+        (executedTxn as any).version ||
+        (executedTxn as any).transaction?.version;
+      return {
+        success: true,
+        txHash: committedTxn.hash,
+        version: version,
+      };
+    } catch (error: any) {
+      console.error(`❌ Error collapsing position for user ${userId}:`, error);
+      return {
+        success: false,
+        error: error.message || 'Failed to collapse position',
       };
     }
   }

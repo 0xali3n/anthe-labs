@@ -183,7 +183,7 @@ export default function Navbar() {
                 <div className="flex items-center justify-center mt-1 shrink-0">
                   <img
                     src="/anthe-logo.png"
-                    alt="Anthé Labs"
+                    alt="Anthe Labs"
                     className="h-8 w-auto object-contain"
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = "none";

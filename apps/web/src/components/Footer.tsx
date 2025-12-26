@@ -13,14 +13,14 @@ export default function Footer() {
             <Link href="/" className="flex items-center gap-2 mb-4 group">
               <img
                 src="/anthe-logo.png"
-                alt="Anthé Labs"
+                alt="Anthe Labs"
                 className="h-8 w-auto object-contain transition-transform duration-200 group-hover:scale-110"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = "none";
                 }}
               />
               {/* <span className="text-xl font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
-                Anthé Labs
+                Anthe Labs
               </span> */}
             </Link>
             <p className="text-slate-400 text-sm max-w-md mb-6 leading-relaxed">
@@ -33,7 +33,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-9 h-9 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center hover:bg-slate-800 hover:border-blue-500/40 hover:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-200"
-                aria-label="Follow Anthé Labs on Twitter"
+                aria-label="Follow Anthe Labs on Twitter"
               >
                 <Twitter
                   size={16}
@@ -45,7 +45,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-9 h-9 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center hover:bg-slate-800 hover:border-blue-500/40 hover:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-200"
-                aria-label="Follow Anthé Labs on LinkedIn"
+                aria-label="Follow Anthe Labs on LinkedIn"
               >
                 <Linkedin
                   size={16}
@@ -57,7 +57,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-9 h-9 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center hover:bg-slate-800 hover:border-blue-500/40 hover:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-200"
-                aria-label="Join Anthé Labs on Telegram"
+                aria-label="Join Anthe Labs on Telegram"
               >
                 <Send
                   size={16}
@@ -67,7 +67,7 @@ export default function Footer() {
               <a
                 href="mailto:anthefinance@gmail.com"
                 className="w-9 h-9 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center hover:bg-slate-800 hover:border-blue-500/40 hover:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-200"
-                aria-label="Email Anthé Labs"
+                aria-label="Email Anthe Labs"
               >
                 <Mail
                   size={16}
@@ -124,7 +124,14 @@ export default function Footer() {
                   Feedback
                 </Link>
               </li>
-
+              <li>
+                <Link
+                  href="/mediakit"
+                  className="text-slate-400 hover:text-blue-400 text-sm transition-colors duration-200 inline-block"
+                >
+                  Media Kit
+                </Link>
+              </li>
               <li>
                 <Link
                   href="/terms"
@@ -140,7 +147,7 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="border-t border-slate-800/50 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-slate-500 text-sm">
-            © {new Date().getFullYear()} Anthé Labs. All rights reserved.
+            © {new Date().getFullYear()} Anthe Labs. All rights reserved.
           </p>
           <p className="text-slate-500 text-sm">
             Built on{" "}

@@ -285,6 +285,56 @@ export class WalletsController {
   }
 
   /**
+   * Get positions payload (debug only - returns raw response from Kana API)
+   * GET /api/wallets/positions-payload
+   *
+   * Security: Requires JWT authentication
+   * Query params: marketId (optional) - Filter by market ID
+   * Returns: Raw response from Kana API
+   */
+  @Get('positions-payload')
+  @UseGuards(AuthGuard)
+  async getPositionsPayload(
+    @Request() req: any,
+    @Query('marketId') marketId?: string,
+  ) {
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        throw new HttpException(
+          { success: false, error: 'User ID is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const walletAddress = await this.walletsService.getWalletAddress(userId);
+      if (!walletAddress) {
+        throw new HttpException(
+          { success: false, error: 'Wallet not found' },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const result = await this.walletsService.getPositionsPayload(
+        walletAddress,
+        marketId,
+      );
+
+      return result;
+    } catch (error: any) {
+      console.error('Error in getPositionsPayload:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        { success: false, error: error.message || 'Internal server error' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
    * Get positions for authenticated user
    * GET /api/wallets/positions
    *
@@ -677,6 +727,199 @@ export class WalletsController {
       return result;
     } catch (error: any) {
       console.error('Error in transferUSDT:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        { success: false, error: error.message || 'Internal server error' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * Get collapse position payload (debug only - doesn't submit transaction)
+   * GET /api/wallets/collapse-position-payload
+   *
+   * Security: Requires JWT authentication
+   * Query params: marketId (optional) - If not provided, returns payload for all positions
+   * Returns: Payload data from Kana API
+   */
+  @Get('collapse-position-payload')
+  @UseGuards(AuthGuard)
+  async getCollapsePositionPayload(
+    @Request() req: any,
+    @Query('marketId') marketId?: string,
+  ) {
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        throw new HttpException(
+          { success: false, error: 'User ID is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const walletAddress = await this.walletsService.getWalletAddress(userId);
+      if (!walletAddress) {
+        throw new HttpException(
+          { success: false, error: 'Wallet not found' },
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      const result = await this.walletsService.getCollapsePositionPayload(
+        walletAddress,
+        marketId,
+      );
+
+      return result;
+    } catch (error: any) {
+      console.error('Error in getCollapsePositionPayload:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        { success: false, error: error.message || 'Internal server error' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * Close all positions for authenticated user
+   * POST /api/wallets/close-all-positions
+   *
+   * Security: Requires JWT authentication
+   * Returns: Close all positions result with transaction hash
+   */
+  @Post('close-all-positions')
+  @UseGuards(AuthGuard)
+  async closeAllPositions(@Request() req: any) {
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        throw new HttpException(
+          { success: false, error: 'User ID is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const result = await this.walletsService.closeAllPositions(userId);
+
+      return result;
+    } catch (error: any) {
+      console.error('Error in closeAllPositions:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        { success: false, error: error.message || 'Internal server error' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * Close position for a specific market
+   * POST /api/wallets/close-position
+   *
+   * Security: Requires JWT authentication
+   * Body: { marketId: string, tradeSide: boolean } - marketId and tradeSide (true=LONG, false=SHORT) are required
+   * Returns: Close position result with transaction hash
+   */
+  @Post('close-position')
+  @UseGuards(AuthGuard)
+  async closePosition(
+    @Request() req: any,
+    @Body('marketId') marketId: string,
+    @Body('tradeSide') tradeSide: boolean,
+    @Body('size') size?: string,
+    @Body('leverage') leverage?: string,
+  ) {
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        throw new HttpException(
+          { success: false, error: 'User ID is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (!marketId || typeof marketId !== 'string') {
+        throw new HttpException(
+          { success: false, error: 'Market ID is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (typeof tradeSide !== 'boolean') {
+        throw new HttpException(
+          {
+            success: false,
+            error: 'Trade side is required (true for LONG, false for SHORT)',
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const result = await this.walletsService.closePosition(
+        userId,
+        marketId,
+        tradeSide,
+        size,
+        leverage,
+      );
+
+      return result;
+    } catch (error: any) {
+      console.error('Error in closePosition:', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        { success: false, error: error.message || 'Internal server error' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * Collapse position for a specific market or all positions
+   * POST /api/wallets/collapse-position
+   *
+   * Security: Requires JWT authentication
+   * Body: { marketId?: string } - Optional, if not provided collapses all positions
+   * Returns: Collapse position result with transaction hash
+   */
+  @Post('collapse-position')
+  @UseGuards(AuthGuard)
+  async collapsePosition(
+    @Request() req: any,
+    @Body('marketId') marketId: string,
+  ) {
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        throw new HttpException(
+          { success: false, error: 'User ID is required' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // marketId is optional - if not provided, collapse all positions
+      const result = await this.walletsService.collapsePosition(
+        userId,
+        marketId,
+      );
+
+      return result;
+    } catch (error: any) {
+      console.error('Error in collapsePosition:', error);
       if (error instanceof HttpException) {
         throw error;
       }

@@ -713,6 +713,20 @@ export class OrderHistoryService {
   removeWallet(walletAddress: string): void {
     const profileAddress = this.walletToProfile.get(walletAddress);
     if (profileAddress) {
+      // Unsubscribe from WebSocket if connected
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        const unsubscribeMessage = JSON.stringify({
+          action: "unsubscribe",
+          topic: "order_history",
+          address: profileAddress,
+        });
+        this.ws.send(unsubscribeMessage);
+        Logger.info(
+          `➖ Unsubscribed from address: ${walletAddress.substring(0, 10)}... (profile: ${profileAddress.substring(0, 10)}...)`
+        );
+      }
+      
+      // Remove from maps
       this.walletToProfile.delete(walletAddress);
       this.profileToWallet.delete(profileAddress);
     }
