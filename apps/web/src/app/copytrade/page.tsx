@@ -506,7 +506,7 @@ function CopytradeContent() {
 
     // Check minimum balance requirement (1 USDT) - only for new bots, not restarting
     if (!botToRestart) {
-      const MIN_BALANCE = 0.1;
+      const MIN_BALANCE = 10;
       if (balanceNum < MIN_BALANCE) {
         setError(
           `Minimum balance of ${MIN_BALANCE} USDT required to start a copy trade bot. Your current balance: ${formatCurrency(balanceNum)}`

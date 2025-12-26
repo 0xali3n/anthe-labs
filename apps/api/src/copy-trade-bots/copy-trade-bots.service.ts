@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { WalletsService } from '../wallets/wallets.service';
 import { CreateCopyTradeBotDto } from './dto/create-copy-trade-bot.dto';
 import { UpdateCopyTradeBotDto } from './dto/update-copy-trade-bot.dto';
 
@@ -27,6 +28,7 @@ export class CopyTradeBotsService {
   constructor(
     private prisma: PrismaService,
     private redisService: RedisService,
+    private walletsService: WalletsService,
   ) {}
 
   /**
@@ -424,6 +426,39 @@ export class CopyTradeBotsService {
         oldStatus === 'running' &&
         oldTraderAddress
       ) {
+        // Bot stopped: close all positions across all market IDs
+        try {
+          // Get user ID from wallet address
+          const wallet = await this.prisma.wallet.findUnique({
+            where: { address: userAddress },
+            select: { user_id: true },
+          });
+
+          if (wallet?.user_id) {
+            this.logger.log(
+              `Closing all positions for user ${wallet.user_id} (bot stopped)`,
+            );
+            const closeResult = await this.walletsService.closeAllPositions(
+              wallet.user_id,
+            );
+            if (closeResult.success) {
+              this.logger.log(
+                `✅ All positions closed successfully. TX: ${closeResult.txHash}`,
+              );
+            } else {
+              this.logger.warn(
+                `⚠️ Failed to close positions: ${closeResult.error}`,
+              );
+            }
+          }
+        } catch (error: any) {
+          // Log error but don't fail bot stop
+          this.logger.error(
+            `Error closing positions on bot stop: ${error.message}`,
+            error.stack,
+          );
+        }
+
         // Bot stopped: remove from Redis
         await this.syncStopBot(userAddress, oldTraderAddress);
       } else if (
@@ -507,6 +542,39 @@ export class CopyTradeBotsService {
 
       // Sync to Redis before deletion if bot is running and has a trader
       if (existingBot.status === 'running' && existingBot.trader_address) {
+        // Close all positions across all market IDs before stopping bot
+        try {
+          // Get user ID from wallet address
+          const wallet = await this.prisma.wallet.findUnique({
+            where: { address: userAddress },
+            select: { user_id: true },
+          });
+
+          if (wallet?.user_id) {
+            this.logger.log(
+              `Closing all positions for user ${wallet.user_id} (bot deletion)`,
+            );
+            const closeResult = await this.walletsService.closeAllPositions(
+              wallet.user_id,
+            );
+            if (closeResult.success) {
+              this.logger.log(
+                `✅ All positions closed successfully. TX: ${closeResult.txHash}`,
+              );
+            } else {
+              this.logger.warn(
+                `⚠️ Failed to close positions: ${closeResult.error}`,
+              );
+            }
+          }
+        } catch (error: any) {
+          // Log error but don't fail bot deletion
+          this.logger.error(
+            `Error closing positions on bot deletion: ${error.message}`,
+            error.stack,
+          );
+        }
+
         await this.syncStopBot(userAddress, existingBot.trader_address);
       }
 
