@@ -1344,157 +1344,134 @@ export class WalletsService {
         positionsByMarket.get(marketId)!.push(pos);
       }
 
-      // Process all markets in PARALLEL for speed
-      const marketPromises = Array.from(positionsByMarket.entries()).map(
-        async ([marketId, marketPositions]) => {
-          try {
-            if (marketPositions.length === 1) {
-              // Single position - use placeMarketOrder directly (faster than calling closePosition)
-              const pos = marketPositions[0];
-              const queryParams = new URLSearchParams();
-              queryParams.append('marketId', marketId);
-              queryParams.append('tradeSide', pos.trade_side.toString());
-              queryParams.append('direction', 'true'); // CLOSE
-              queryParams.append('size', pos.size);
-              queryParams.append('leverage', pos.leverage.toString());
+      // Get all unique market IDs
+      const marketIds = Array.from(positionsByMarket.keys());
 
-              const response = await axios.get(
-                `${kanaRest}/placeMarketOrder?${queryParams.toString()}`,
-                {
-                  headers: {
-                    'x-api-key': kanaApiKey,
-                  },
-                },
-              );
+      // Collect ALL positions from ALL markets for placeMultipleOrders
+      // Since placeMultipleOrders only works for one market at a time,
+      // we'll process each market separately but collect all orders first
+      const allMarketResults: Array<{
+        marketId: string;
+        success: boolean;
+        txHash?: string;
+        error?: string;
+      }> = [];
 
-              if (!response.data.success || !response.data.data) {
-                return {
-                  success: false,
-                  error:
-                    response.data.message ||
-                    'Failed to get close position payload',
-                };
-              }
+      // Process each market - use placeMultipleOrders for all positions in that market
+      for (const marketId of marketIds) {
+        const marketPositions = positionsByMarket.get(marketId)!;
 
-              const transactionPayload = await aptos.transaction.build.simple({
-                sender: account.accountAddress,
-                data: response.data.data,
-                options: {
-                  maxGasAmount: 15000,
-                  gasUnitPrice: 100,
-                },
-              });
+        try {
+          // Build arrays for placeMultipleOrders (all positions in this market)
+          const orderTypes: boolean[] = []; // false = market order
+          const tradeSides: boolean[] = [];
+          const directions: boolean[] = []; // true = close
+          const sizes: number[] = [];
+          const leverages: number[] = [];
+          const prices: number[] = [];
 
-              const committedTxn =
-                await aptos.transaction.signAndSubmitTransaction({
-                  transaction: transactionPayload,
-                  signer: account,
-                });
-
-              // Don't wait for confirmation - return immediately after submission
-              return {
-                success: true,
-                txHash: committedTxn.hash,
-              };
-            } else {
-              // Multiple positions - use placeMultipleOrders
-              const orderTypes: boolean[] = []; // false = market order
-              const tradeSides: boolean[] = [];
-              const directions: boolean[] = []; // true = close
-              const sizes: number[] = [];
-              const leverages: number[] = [];
-              const prices: number[] = [];
-
-              for (const pos of marketPositions) {
-                orderTypes.push(false); // Market order
-                tradeSides.push(pos.trade_side);
-                directions.push(true); // Close position
-                sizes.push(parseFloat(pos.size));
-                leverages.push(parseInt(pos.leverage.toString()));
-                prices.push(parseFloat(pos.entry_price));
-              }
-
-              const response = await axios.post(
-                `${kanaRest}/placeMultipleOrders`,
-                {
-                  marketId: parseInt(marketId),
-                  orderTypes,
-                  tradeSides,
-                  directions,
-                  sizes,
-                  leverages,
-                  prices,
-                },
-                {
-                  headers: {
-                    'x-api-key': kanaApiKey,
-                    'Content-Type': 'application/json',
-                  },
-                },
-              );
-
-              if (!response.data.success || !response.data.data) {
-                return {
-                  success: false,
-                  error:
-                    response.data.message ||
-                    'Failed to get close positions payload',
-                };
-              }
-
-              const transactionPayload = await aptos.transaction.build.simple({
-                sender: account.accountAddress,
-                data: response.data.data,
-                options: {
-                  maxGasAmount: 15000,
-                  gasUnitPrice: 100,
-                },
-              });
-
-              const committedTxn =
-                await aptos.transaction.signAndSubmitTransaction({
-                  transaction: transactionPayload,
-                  signer: account,
-                });
-
-              // Don't wait for confirmation - return immediately after submission
-              return {
-                success: true,
-                txHash: committedTxn.hash,
-              };
-            }
-          } catch (error: any) {
-            return {
-              success: false,
-              error: error.message || 'Failed to close positions',
-            };
+          for (const pos of marketPositions) {
+            orderTypes.push(false); // Market order
+            tradeSides.push(pos.trade_side);
+            directions.push(true); // Close position
+            sizes.push(parseFloat(pos.size));
+            leverages.push(parseInt(pos.leverage.toString()));
+            prices.push(parseFloat(pos.entry_price));
           }
-        },
-      );
 
-      // Wait for all markets to process in parallel
-      const results = await Promise.allSettled(marketPromises);
-      const processedResults = results.map((result) =>
-        result.status === 'fulfilled'
-          ? result.value
-          : { success: false, error: 'Promise rejected' },
-      );
+          console.log(
+            `📊 Closing ${marketPositions.length} position(s) in market ${marketId}`,
+          );
 
-      // Check if all succeeded
-      const allSuccess = processedResults.every((r) => r.success);
-      if (allSuccess && processedResults.length > 0) {
+          const response = await axios.post(
+            `${kanaRest}/placeMultipleOrders`,
+            {
+              marketId: parseInt(marketId),
+              orderTypes,
+              tradeSides,
+              directions,
+              sizes,
+              leverages,
+              prices,
+            },
+            {
+              headers: {
+                'x-api-key': kanaApiKey,
+                'Content-Type': 'application/json',
+              },
+            },
+          );
+
+          if (!response.data.success || !response.data.data) {
+            allMarketResults.push({
+              marketId,
+              success: false,
+              error:
+                response.data.message ||
+                'Failed to get close positions payload',
+            });
+            continue;
+          }
+
+          const transactionPayload = await aptos.transaction.build.simple({
+            sender: account.accountAddress,
+            data: response.data.data,
+            options: {
+              maxGasAmount: 15000,
+              gasUnitPrice: 100,
+            },
+          });
+
+          const committedTxn =
+            await aptos.transaction.signAndSubmitTransaction({
+              transaction: transactionPayload,
+              signer: account,
+            });
+
+          allMarketResults.push({
+            marketId,
+            success: true,
+            txHash: committedTxn.hash,
+          });
+
+          console.log(
+            `✅ Market ${marketId}: Closed ${marketPositions.length} position(s). TX: ${committedTxn.hash}`,
+          );
+        } catch (error: any) {
+          allMarketResults.push({
+            marketId,
+            success: false,
+            error: error.message || 'Failed to close positions',
+          });
+          console.error(
+            `❌ Error closing positions for market ${marketId}:`,
+            error.message,
+          );
+        }
+      }
+
+      // Check results
+      const successful = allMarketResults.filter((r) => r.success);
+      const failed = allMarketResults.filter((r) => !r.success);
+
+      if (successful.length > 0) {
+        console.log(
+          `✅ Successfully closed positions in ${successful.length}/${marketIds.length} market(s)`,
+        );
+        if (failed.length > 0) {
+          console.warn(
+            `⚠️ Failed to close positions in ${failed.length} market(s): ${failed.map((f) => f.marketId).join(', ')}`,
+          );
+        }
         return {
           success: true,
-          txHash: processedResults[0].txHash, // Return first tx hash
+          txHash: successful[0].txHash, // Return first successful tx hash
         };
       } else {
-        const errors = processedResults
-          .filter((r) => !r.success)
-          .map((r) => r.error)
-          .join(', ');
+        const errors = failed.map((f) => `${f.marketId}: ${f.error}`).join(', ');
         return {
           success: false,
-          error: `Some positions failed to close: ${errors}`,
+          error: `Failed to close positions in all markets: ${errors}`,
         };
       }
     } catch (error: any) {

@@ -161,7 +161,7 @@ export class OrderHistoryService {
     // Batch send subscriptions for lower latency
     for (const profileAddress of this.walletToProfile.values()) {
       const subscriptionMessage = JSON.stringify({
-        topic: "order_history",
+        topic: "order_history_v2",
         address: profileAddress,
         from_timestamp: timestamp,
       });
@@ -171,8 +171,9 @@ export class OrderHistoryService {
 
   private handleMessage(message: string): void {
     // Fast path: check message type before parsing
+    // Only process order_history_v2 (skip snapshots)
     if (
-      !message.includes('"message":"order_history"') ||
+      !message.includes('"message":"order_history_v2"') ||
       !message.includes('"data"')
     ) {
       return;
@@ -181,14 +182,33 @@ export class OrderHistoryService {
     try {
       const data = JSON.parse(message) as {
         message?: string;
-        data?: OrderData[];
+        type?: string;
+        data?: OrderData | OrderData[];
       };
 
-      if (data.message === "order_history" && data.data?.length) {
-        // Process orders (now async to check Redis)
-        this.processOrders(data.data).catch((error) => {
-          Logger.error("Error processing orders", error);
-        });
+      // Skip snapshot messages - only process new orders
+      if (data.type === "snapshot") {
+        Logger.debug("Skipping snapshot message");
+        return;
+      }
+
+      if (data.message === "order_history_v2" && data.data) {
+        // Handle both single object and array formats
+        let orders: OrderData[] = [];
+        
+        if (Array.isArray(data.data)) {
+          orders = data.data;
+        } else {
+          // Single object - convert to array
+          orders = [data.data];
+        }
+        
+        if (orders.length > 0) {
+          // Process orders (now async to check Redis)
+          this.processOrders(orders).catch((error) => {
+            Logger.error("Error processing orders", error);
+          });
+        }
       }
     } catch (error) {
       Logger.error("Error parsing WebSocket message", error);
@@ -701,7 +721,7 @@ export class OrderHistoryService {
       if (profileAddress) {
         this.ws.send(
           JSON.stringify({
-            topic: "order_history",
+            topic: "order_history_v2",
             address: profileAddress,
             from_timestamp: Math.floor(Date.now() / 1000),
           })
@@ -717,7 +737,7 @@ export class OrderHistoryService {
       if (this.ws?.readyState === WebSocket.OPEN) {
         const unsubscribeMessage = JSON.stringify({
           action: "unsubscribe",
-          topic: "order_history",
+          topic: "order_history_v2",
           address: profileAddress,
         });
         this.ws.send(unsubscribeMessage);
