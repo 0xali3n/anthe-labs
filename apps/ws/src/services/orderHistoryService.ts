@@ -195,14 +195,14 @@ export class OrderHistoryService {
       if (data.message === "order_history_v2" && data.data) {
         // Handle both single object and array formats
         let orders: OrderData[] = [];
-        
+
         if (Array.isArray(data.data)) {
           orders = data.data;
         } else {
           // Single object - convert to array
           orders = [data.data];
         }
-        
+
         if (orders.length > 0) {
           // Process orders (now async to check Redis)
           this.processOrders(orders).catch((error) => {
@@ -279,12 +279,13 @@ export class OrderHistoryService {
 
         // Convert order to optimized format for trade service
         const orderType = order.order_type;
-        
+
         // Get wallet address from profile address (order.address is profile address)
         // We need to push WALLET address to Redis, not profile address
         const profileAddress = order.address;
-        const walletAddress = this.profileToWallet.get(profileAddress) || profileAddress;
-        
+        const walletAddress =
+          this.profileToWallet.get(profileAddress) || profileAddress;
+
         // Map order_type (1-8) to optimized format
         // Order types: 1=OPEN_LONG, 2=OPEN_SHORT, 3=INCREASE_LONG, 4=INCREASE_SHORT,
         //              5=DECREASE_LONG, 6=DECREASE_SHORT, 7=CLOSE_LONG, 8=CLOSE_SHORT
@@ -299,13 +300,15 @@ export class OrderHistoryService {
           marketId: order.market_id,
           size: order.size,
           leverage: String(order.leverage),
-          
+
           // Optional fields
           ...(order.price && { price: order.price }),
           ...(order.order_value && { order_value: order.order_value }),
           ...(order.order_id && { order_id: String(order.order_id) }),
           ...(order.timestamp && { timestamp: String(order.timestamp) }),
-          ...(order.transaction_version && { transaction_version: String(order.transaction_version) }),
+          ...(order.transaction_version && {
+            transaction_version: String(order.transaction_version),
+          }),
         };
 
         // Log optimized format being pushed to Redis
@@ -330,7 +333,7 @@ export class OrderHistoryService {
         } else if (orderType >= 1 && orderType <= 4) {
           try {
             // Get wallet address from profile address
-            // getProfileBalanceSnapshot requires WALLET address, not profile address
+            // getNetProfileBalance requires WALLET address, not profile address
             const walletAddress = this.profileToWallet.get(order.address);
 
             if (!walletAddress) {
@@ -490,7 +493,7 @@ export class OrderHistoryService {
   /**
    * Convert order to optimized format for trade service
    * Maps order_type (1-8) to orderType, tradeSide, and direction
-   * 
+   *
    * Order Types:
    * 1 = OPEN_LONG
    * 2 = OPEN_SHORT
@@ -507,47 +510,56 @@ export class OrderHistoryService {
     direction: string; // "false" (open/increase) or "true" (close/decrease)
   } {
     const orderType = order.order_type;
-    
+
     // Determine tradeSide (long/short)
     // Types 1,3,5,7 = LONG (true)
     // Types 2,4,6,8 = SHORT (false)
-    const tradeSide = (orderType === 1 || orderType === 3 || orderType === 5 || orderType === 7) 
-      ? "true" 
-      : "false";
-    
+    const tradeSide =
+      orderType === 1 || orderType === 3 || orderType === 5 || orderType === 7
+        ? "true"
+        : "false";
+
     // Determine direction (open/close)
     // Types 1,2,3,4 = OPEN/INCREASE (false = open position)
     // Types 5,6,7,8 = DECREASE/CLOSE (true = close position)
-    const direction = (orderType >= 5 && orderType <= 8) 
-      ? "true" 
-      : "false";
-    
+    const direction = orderType >= 5 && orderType <= 8 ? "true" : "false";
+
     // Determine orderType (MARKET, LIMIT, or STOP)
     // Priority: Check is_market_order field first, then price field, then stop fields
     let orderTypeStr = "MARKET"; // Default to MARKET
-    
+
     // Check for is_market_order field (most reliable)
     if ((order as any).is_market_order !== undefined) {
-      const isMarket = (order as any).is_market_order === true || 
-                       (order as any).is_market_order === "true" || 
-                       (order as any).is_market_order === 1 ||
-                       (order as any).is_market_order === "1";
+      const isMarket =
+        (order as any).is_market_order === true ||
+        (order as any).is_market_order === "true" ||
+        (order as any).is_market_order === 1 ||
+        (order as any).is_market_order === "1";
       orderTypeStr = isMarket ? "MARKET" : "LIMIT";
     }
     // Check for stop-related fields
-    else if ((order as any).stop_price || (order as any).trigger_price || (order as any).stopPrice) {
+    else if (
+      (order as any).stop_price ||
+      (order as any).trigger_price ||
+      (order as any).stopPrice
+    ) {
       orderTypeStr = "STOP";
     }
     // Check if price field exists and is valid (indicates LIMIT order)
-    else if (order.price && order.price !== "0" && order.price !== "" && parseFloat(order.price) > 0) {
+    else if (
+      order.price &&
+      order.price !== "0" &&
+      order.price !== "" &&
+      parseFloat(order.price) > 0
+    ) {
       orderTypeStr = "LIMIT";
     }
     // Default to MARKET if we can't determine
-    
+
     Logger.debug(
       `Converted order_type ${orderType} to: orderType=${orderTypeStr}, tradeSide=${tradeSide}, direction=${direction}`
     );
-    
+
     return {
       orderType: orderTypeStr,
       tradeSide,
@@ -623,7 +635,7 @@ export class OrderHistoryService {
    */
   private async getProfileBalance(walletAddress: string): Promise<number> {
     try {
-      const url = `${config.kanaRestUrl}/getProfileBalanceSnapshot?userAddress=${walletAddress}`;
+      const url = `${config.kanaRestUrl}/getNetProfileBalance?userAddress=${walletAddress}`;
       const response = await fetch(url, {
         headers: {
           "x-api-key": config.kanaApiKey,
@@ -745,7 +757,7 @@ export class OrderHistoryService {
           `➖ Unsubscribed from address: ${walletAddress.substring(0, 10)}... (profile: ${profileAddress.substring(0, 10)}...)`
         );
       }
-      
+
       // Remove from maps
       this.walletToProfile.delete(walletAddress);
       this.profileToWallet.delete(profileAddress);

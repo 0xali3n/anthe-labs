@@ -594,17 +594,14 @@ export class WalletsService {
         throw new Error('Kana API key not configured');
       }
 
-      const response = await axios.get(
-        `${kanaRest}/getProfileBalanceSnapshot`,
-        {
-          params: {
-            userAddress: walletAddress,
-          },
-          headers: {
-            'x-api-key': kanaApiKey,
-          },
+      const response = await axios.get(`${kanaRest}/getNetProfileBalance`, {
+        params: {
+          userAddress: walletAddress,
         },
-      );
+        headers: {
+          'x-api-key': kanaApiKey,
+        },
+      });
 
       if (response.data.success && response.data.data !== undefined) {
         return Number(response.data.data);
@@ -1422,11 +1419,12 @@ export class WalletsService {
             },
           });
 
-          const committedTxn =
-            await aptos.transaction.signAndSubmitTransaction({
+          const committedTxn = await aptos.transaction.signAndSubmitTransaction(
+            {
               transaction: transactionPayload,
               signer: account,
-            });
+            },
+          );
 
           allMarketResults.push({
             marketId,
@@ -1468,7 +1466,9 @@ export class WalletsService {
           txHash: successful[0].txHash, // Return first successful tx hash
         };
       } else {
-        const errors = failed.map((f) => `${f.marketId}: ${f.error}`).join(', ');
+        const errors = failed
+          .map((f) => `${f.marketId}: ${f.error}`)
+          .join(', ');
         return {
           success: false,
           error: `Failed to close positions in all markets: ${errors}`,

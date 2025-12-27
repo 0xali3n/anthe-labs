@@ -114,7 +114,7 @@ export class OrderExecutionService {
   private async getTradingBalance(walletAddress: string): Promise<number> {
     try {
       const response = await axios.get(
-        `${KANA_REST_URL}/getProfileBalanceSnapshot`,
+        `${KANA_REST_URL}/getNetProfileBalance`,
         {
           params: {
             userAddress: walletAddress,
@@ -191,12 +191,15 @@ export class OrderExecutionService {
       // tradeSide: true = LONG, false = SHORT
       // Position has: trade_side (boolean), size (string), market_id (string)
       for (const position of positions) {
-        const positionMarketId = String(position.market_id || position.marketId || "");
-        const positionTradeSide = position.trade_side !== undefined 
-          ? position.trade_side 
-          : position.side 
-          ? position.side.toUpperCase() === "LONG"
-          : null;
+        const positionMarketId = String(
+          position.market_id || position.marketId || ""
+        );
+        const positionTradeSide =
+          position.trade_side !== undefined
+            ? position.trade_side
+            : position.side
+              ? position.side.toUpperCase() === "LONG"
+              : null;
 
         // Match market ID and trade side
         if (positionMarketId === marketId && positionTradeSide === tradeSide) {
@@ -249,10 +252,11 @@ export class OrderExecutionService {
     payloadData: any
   ): Promise<ExecutionResult> {
     const accountAddress = account.accountAddress.toString();
-    
+
     // Get or create queue for this account
-    const previousPromise = this.accountQueues.get(accountAddress) || Promise.resolve();
-    
+    const previousPromise =
+      this.accountQueues.get(accountAddress) || Promise.resolve();
+
     // Create new promise that waits for previous transaction to complete
     const currentPromise = previousPromise
       .then(async () => {
@@ -269,24 +273,26 @@ export class OrderExecutionService {
           Logger.info(`🔐 Signing and submitting transaction...`);
           Logger.info(`  Sender: ${account.accountAddress.toString()}`);
           Logger.info(`  Gas: maxGasAmount=10000, gasUnitPrice=100`);
-          
-          const committedTxn = await aptos.transaction.signAndSubmitTransaction({
-            transaction: transactionPayload,
-            signer: account,
-          });
+
+          const committedTxn = await aptos.transaction.signAndSubmitTransaction(
+            {
+              transaction: transactionPayload,
+              signer: account,
+            }
+          );
 
           Logger.info(`📤 Transaction submitted: ${committedTxn.hash}`);
           Logger.info(`⏳ Waiting for confirmation...`);
 
           // Wait for transaction with timeout
-          const executedTxn = await Promise.race([
+          const executedTxn = (await Promise.race([
             aptos.waitForTransaction({
               transactionHash: committedTxn.hash,
             }),
             new Promise((_, reject) =>
               setTimeout(() => reject(new Error("Transaction timeout")), 30000)
             ),
-          ]) as any;
+          ])) as any;
 
           if (!executedTxn.success) {
             const errorMessage =
@@ -296,9 +302,11 @@ export class OrderExecutionService {
               "Transaction failed";
 
             // Categorize error
-            if (errorMessage.includes("E_INSUFFICIENT_BALANCE") || 
-                errorMessage.includes("E_TRADE_SIZE_EXCEEDS") ||
-                errorMessage.includes("E_LEVERAGE_MISMATCH")) {
+            if (
+              errorMessage.includes("E_INSUFFICIENT_BALANCE") ||
+              errorMessage.includes("E_TRADE_SIZE_EXCEEDS") ||
+              errorMessage.includes("E_LEVERAGE_MISMATCH")
+            ) {
               return {
                 success: false,
                 error: `Business logic error: ${errorMessage}`,
@@ -314,11 +322,15 @@ export class OrderExecutionService {
           };
         } catch (error: any) {
           // Handle "already in mempool" error - wait and retry once
-          if (error.message?.includes("already in mempool") || 
-              error.message?.includes("invalid_transaction_update")) {
-            Logger.warn(`Transaction conflict for ${accountAddress.substring(0, 10)}..., waiting...`);
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
+          if (
+            error.message?.includes("already in mempool") ||
+            error.message?.includes("invalid_transaction_update")
+          ) {
+            Logger.warn(
+              `Transaction conflict for ${accountAddress.substring(0, 10)}..., waiting...`
+            );
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
             // Retry once after delay
             try {
               const transactionPayload = await aptos.transaction.build.simple({
@@ -330,10 +342,11 @@ export class OrderExecutionService {
                 },
               });
 
-              const committedTxn = await aptos.transaction.signAndSubmitTransaction({
-                transaction: transactionPayload,
-                signer: account,
-              });
+              const committedTxn =
+                await aptos.transaction.signAndSubmitTransaction({
+                  transaction: transactionPayload,
+                  signer: account,
+                });
 
               const executedTxn = await aptos.waitForTransaction({
                 transactionHash: committedTxn.hash,
@@ -343,7 +356,10 @@ export class OrderExecutionService {
                 const txResult = executedTxn as any;
                 return {
                   success: false,
-                  error: txResult.vm_status || txResult.message || "Transaction failed after retry",
+                  error:
+                    txResult.vm_status ||
+                    txResult.message ||
+                    "Transaction failed after retry",
                 };
               }
 
@@ -374,7 +390,7 @@ export class OrderExecutionService {
 
     // Update queue
     this.accountQueues.set(accountAddress, currentPromise);
-    
+
     return currentPromise;
   }
 
@@ -401,8 +417,12 @@ export class OrderExecutionService {
       Logger.info(`  Method       : GET`);
       Logger.info(`  Parameters   :`);
       Logger.info(`    - marketId  : ${params.marketId}`);
-      Logger.info(`    - tradeSide : ${params.tradeSide} (${params.tradeSide ? "LONG" : "SHORT"})`);
-      Logger.info(`    - direction : ${params.direction} (${params.direction ? "CLOSE" : "OPEN"})`);
+      Logger.info(
+        `    - tradeSide : ${params.tradeSide} (${params.tradeSide ? "LONG" : "SHORT"})`
+      );
+      Logger.info(
+        `    - direction : ${params.direction} (${params.direction ? "CLOSE" : "OPEN"})`
+      );
       Logger.info(`    - size      : ${params.size}`);
       Logger.info(`    - leverage  : ${params.leverage}`);
       Logger.info(`  Query String : ${queryParams.toString()}`);
@@ -419,7 +439,9 @@ export class OrderExecutionService {
       );
 
       if (!response.data.success || !response.data.data) {
-        Logger.error(`❌ API Error: ${response.data.message || "Failed to get market order payload"}`);
+        Logger.error(
+          `❌ API Error: ${response.data.message || "Failed to get market order payload"}`
+        );
         return {
           success: false,
           error: response.data.message || "Failed to get market order payload",
@@ -428,7 +450,9 @@ export class OrderExecutionService {
 
       Logger.info(`✅ API Response received:`);
       Logger.info(`  Function: ${response.data.data.function || "N/A"}`);
-      Logger.info(`  Function Arguments: ${JSON.stringify(response.data.data.functionArguments || []).substring(0, 200)}...`);
+      Logger.info(
+        `  Function Arguments: ${JSON.stringify(response.data.data.functionArguments || []).substring(0, 200)}...`
+      );
       Logger.info("");
 
       return this.submitTransaction(account, response.data.data);
@@ -478,8 +502,12 @@ export class OrderExecutionService {
       Logger.info(`  Method       : GET`);
       Logger.info(`  Parameters   :`);
       Logger.info(`    - marketId    : ${params.marketId}`);
-      Logger.info(`    - tradeSide   : ${params.tradeSide} (${params.tradeSide ? "LONG" : "SHORT"})`);
-      Logger.info(`    - direction   : ${params.direction} (${params.direction ? "CLOSE" : "OPEN"})`);
+      Logger.info(
+        `    - tradeSide   : ${params.tradeSide} (${params.tradeSide ? "LONG" : "SHORT"})`
+      );
+      Logger.info(
+        `    - direction   : ${params.direction} (${params.direction ? "CLOSE" : "OPEN"})`
+      );
       Logger.info(`    - size        : ${params.size}`);
       Logger.info(`    - price       : ${params.price}`);
       Logger.info(`    - leverage    : ${params.leverage}`);
@@ -500,7 +528,9 @@ export class OrderExecutionService {
       );
 
       if (!response.data.success || !response.data.data) {
-        Logger.error(`❌ API Error: ${response.data.message || "Failed to get limit order payload"}`);
+        Logger.error(
+          `❌ API Error: ${response.data.message || "Failed to get limit order payload"}`
+        );
         return {
           success: false,
           error: response.data.message || "Failed to get limit order payload",
@@ -509,7 +539,9 @@ export class OrderExecutionService {
 
       Logger.info(`✅ API Response received:`);
       Logger.info(`  Function: ${response.data.data.function || "N/A"}`);
-      Logger.info(`  Function Arguments: ${JSON.stringify(response.data.data.functionArguments || []).substring(0, 200)}...`);
+      Logger.info(
+        `  Function Arguments: ${JSON.stringify(response.data.data.functionArguments || []).substring(0, 200)}...`
+      );
       Logger.info("");
 
       return this.submitTransaction(account, response.data.data);
@@ -562,7 +594,7 @@ export class OrderExecutionService {
 
       // Calculate size based on order direction
       let finalSize = params.size;
-      
+
       if (params.direction) {
         // CLOSE order - use 100% of user's current position
         const userPositionSize = await this.getUserPositionSize(
@@ -573,15 +605,23 @@ export class OrderExecutionService {
 
         if (userPositionSize > 0) {
           finalSize = userPositionSize;
-          
+
           Logger.info("\n" + "=".repeat(80));
-          Logger.info(`🔒 CLOSE ORDER - POSITION SIZE for ${userAddress.substring(0, 10)}...`);
+          Logger.info(
+            `🔒 CLOSE ORDER - POSITION SIZE for ${userAddress.substring(0, 10)}...`
+          );
           Logger.info("=".repeat(80));
           Logger.info(`  Order Type           : CLOSE`);
           Logger.info(`  Market ID            : ${params.marketId}`);
-          Logger.info(`  Trade Side           : ${params.tradeSide ? "LONG" : "SHORT"}`);
-          Logger.info(`  User Position Size   : ${userPositionSize.toFixed(6)}`);
-          Logger.info(`  Closing 100%         : ${userPositionSize.toFixed(6)}`);
+          Logger.info(
+            `  Trade Side           : ${params.tradeSide ? "LONG" : "SHORT"}`
+          );
+          Logger.info(
+            `  User Position Size   : ${userPositionSize.toFixed(6)}`
+          );
+          Logger.info(
+            `  Closing 100%         : ${userPositionSize.toFixed(6)}`
+          );
           Logger.info(`  Original Size        : ${params.size}`);
           Logger.info(`  Final Size (used)    : ${finalSize.toFixed(6)}`);
           Logger.info("=".repeat(80) + "\n");
@@ -602,21 +642,37 @@ export class OrderExecutionService {
             params.price,
             params.leverage
           );
-          
+
           Logger.info("\n" + "=".repeat(80));
-          Logger.info(`💡 SMART RATIO CALCULATION for ${userAddress.substring(0, 10)}...`);
+          Logger.info(
+            `💡 SMART RATIO CALCULATION for ${userAddress.substring(0, 10)}...`
+          );
           Logger.info("=".repeat(80));
           Logger.info(`  Order Type           : OPEN`);
-          Logger.info(`  User Trading Balance : ${tradingBalance.toFixed(2)} USDT`);
+          Logger.info(
+            `  User Trading Balance : ${tradingBalance.toFixed(2)} USDT`
+          );
           Logger.info(`  Percentage           : ${params.percentage}%`);
           Logger.info(`  Leverage             : ${params.leverage}x`);
           Logger.info(`  Price                : ${params.price}`);
-          Logger.info(`  ──────────────────────────────────────────────────────────`);
-          Logger.info(`  Step 1 - Value       : ${tradingBalance.toFixed(2)} × ${params.percentage}% / 100`);
-          Logger.info(`  Calculated Value     : ${calculatedValue.toFixed(6)} USDT`);
-          Logger.info(`  Step 2 - Leverage    : ${calculatedValue.toFixed(6)} × ${params.leverage}`);
-          Logger.info(`  Leveraged Value      : ${leveragedValue.toFixed(6)} USDT`);
-          Logger.info(`  Step 3 - Size        : ${leveragedValue.toFixed(6)} / ${params.price}`);
+          Logger.info(
+            `  ──────────────────────────────────────────────────────────`
+          );
+          Logger.info(
+            `  Step 1 - Value       : ${tradingBalance.toFixed(2)} × ${params.percentage}% / 100`
+          );
+          Logger.info(
+            `  Calculated Value     : ${calculatedValue.toFixed(6)} USDT`
+          );
+          Logger.info(
+            `  Step 2 - Leverage    : ${calculatedValue.toFixed(6)} × ${params.leverage}`
+          );
+          Logger.info(
+            `  Leveraged Value      : ${leveragedValue.toFixed(6)} USDT`
+          );
+          Logger.info(
+            `  Step 3 - Size        : ${leveragedValue.toFixed(6)} / ${params.price}`
+          );
           Logger.info(`  Calculated Size      : ${finalSize.toFixed(6)}`);
           Logger.info(`  Original Size        : ${params.size}`);
           Logger.info(`  Final Size (used)    : ${finalSize.toFixed(6)}`);
@@ -656,4 +712,3 @@ export class OrderExecutionService {
 }
 
 export const orderExecutionService = new OrderExecutionService();
-

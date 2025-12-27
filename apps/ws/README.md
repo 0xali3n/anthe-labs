@@ -181,7 +181,7 @@ The service calculates and stores a `percentage` field for each order based on t
 
 **Calculation Method:**
 
-1. Fetches user balance from `getProfileBalanceSnapshot` API (requires wallet address)
+1. Fetches user balance from `getNetProfileBalance` API (requires wallet address)
 2. Calculates:
    - `user_trade = order_value / leverage`
    - `user_real_balance = balance + user_trade`
@@ -238,7 +238,7 @@ The service integrates with Kana Labs REST API:
 
 ### 2. Get Profile Balance Snapshot
 
-- **Endpoint**: `GET /getProfileBalanceSnapshot?userAddress={walletAddress}`
+- **Endpoint**: `GET /getNetProfileBalance?userAddress={walletAddress}`
 - **Purpose**: Fetches user's trading account balance
 - **Used**: For order types 1-4 percentage calculation
 - **Note**: Requires **wallet address**, not profile address
@@ -302,7 +302,7 @@ The service integrates with Kana Labs REST API:
 5. Calculate percentage based on order type:
    - Types 1-4:
      * Get wallet address from profile address
-     * Fetch balance from getProfileBalanceSnapshot API
+     * Fetch balance from getNetProfileBalance API
      * Calculate: percentage = (user_trade / user_real_balance) * 100
    - Types 5-6:
      * Get wallet address from profile address
