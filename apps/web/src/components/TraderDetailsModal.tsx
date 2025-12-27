@@ -446,14 +446,13 @@ export default function TraderDetailsModal({
                                     className="rounded-full"
                                   />
                                   <div className="absolute -bottom-1 -right-1 bg-slate-900 rounded-full p-0.5">
-                                    {trade.direction === "Long" ||
-                                    trade.direction === "Exit Short" ? (
-                                      <TrendingUp size={14} className="text-green-400" />
-                                    ) : (
+                                    {trade.direction.includes("Exit") ? (
                                       <TrendingUp
                                         size={14}
                                         className="text-red-400 transform rotate-180"
                                       />
+                                    ) : (
+                                      <TrendingUp size={14} className="text-green-400" />
                                     )}
                                   </div>
                                 </div>
@@ -470,10 +469,9 @@ export default function TraderDetailsModal({
                             <td className="px-2 py-4 whitespace-nowrap">
                               <span
                                 className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${
-                                  trade.direction === "Long" ||
-                                  trade.direction === "Exit Short"
-                                    ? "bg-green-500/10 text-green-400 border-green-500/20"
-                                    : "bg-red-500/10 text-red-400 border-red-500/20"
+                                  trade.direction.includes("Exit")
+                                    ? "bg-red-500/10 text-red-400 border-red-500/20"
+                                    : "bg-green-500/10 text-green-400 border-green-500/20"
                                 }`}
                               >
                                 {trade.direction}
