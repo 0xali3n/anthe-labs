@@ -142,18 +142,10 @@ export default function Navbar() {
   async function signInGoogle() {
     setSigningIn(true);
     try {
-      // 🔁 SWITCH MANUALLY
-
-      // ✅ Local development
-      //const redirectTo = "http://localhost:4000";
-
-      // ✅ Production
-      const redirectTo = "https://anthe.io/auth/callback";
-
       await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo,
+          redirectTo: `${window.location.origin}`,
         },
       });
     } catch (error) {
