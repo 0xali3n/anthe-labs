@@ -1331,14 +1331,48 @@ export class WalletsService {
         };
       }
 
-      // Group positions by marketId
+      // Group positions by marketId (validate and filter invalid positions)
       const positionsByMarket = new Map<string, any[]>();
       for (const pos of positions) {
-        const marketId = pos.market_id;
+        // Validate required fields
+        if (
+          !pos.market_id ||
+          pos.market_id === null ||
+          pos.market_id === undefined ||
+          pos.trade_side === undefined ||
+          pos.trade_side === null ||
+          !pos.size ||
+          pos.leverage === undefined ||
+          pos.leverage === null ||
+          !pos.entry_price
+        ) {
+          console.warn(
+            `⚠️ Skipping invalid position: missing required fields`,
+            pos,
+          );
+          continue;
+        }
+
+        const marketId = String(pos.market_id).trim();
+        if (!marketId || marketId === 'null' || marketId === 'undefined') {
+          console.warn(
+            `⚠️ Skipping position with invalid market_id: ${pos.market_id}`,
+          );
+          continue;
+        }
+
         if (!positionsByMarket.has(marketId)) {
           positionsByMarket.set(marketId, []);
         }
         positionsByMarket.get(marketId)!.push(pos);
+      }
+
+      // Check if we have any valid positions after filtering
+      if (positionsByMarket.size === 0) {
+        return {
+          success: false,
+          error: 'No valid positions found to close',
+        };
       }
 
       // Get all unique market IDs
@@ -1359,6 +1393,17 @@ export class WalletsService {
         const marketPositions = positionsByMarket.get(marketId)!;
 
         try {
+          // Validate market ID is a valid number
+          const marketIdNum = parseInt(marketId, 10);
+          if (isNaN(marketIdNum)) {
+            allMarketResults.push({
+              marketId,
+              success: false,
+              error: `Invalid market ID: ${marketId}`,
+            });
+            continue;
+          }
+
           // Build arrays for placeMultipleOrders (all positions in this market)
           const orderTypes: boolean[] = []; // false = market order
           const tradeSides: boolean[] = [];
@@ -1366,30 +1411,71 @@ export class WalletsService {
           const sizes: number[] = [];
           const leverages: number[] = [];
           const prices: number[] = [];
+          const takeProfits: number[] = []; // Optional: 0 = no take profit
+          const stopLosses: number[] = []; // Optional: 0 = no stop loss
 
           for (const pos of marketPositions) {
+            // Validate position data before adding
+            const size = parseFloat(pos.size);
+            const leverage = Number(pos.leverage); // leverage is already a number
+            const price = parseFloat(pos.entry_price);
+
+            if (isNaN(size) || size <= 0) {
+              console.warn(
+                `⚠️ Skipping position with invalid size: ${pos.size}`,
+              );
+              continue;
+            }
+            if (isNaN(leverage) || leverage <= 0) {
+              console.warn(
+                `⚠️ Skipping position with invalid leverage: ${pos.leverage}`,
+              );
+              continue;
+            }
+            if (isNaN(price) || price <= 0) {
+              console.warn(
+                `⚠️ Skipping position with invalid entry_price: ${pos.entry_price}`,
+              );
+              continue;
+            }
+
             orderTypes.push(false); // Market order
-            tradeSides.push(pos.trade_side);
+            tradeSides.push(Boolean(pos.trade_side));
             directions.push(true); // Close position
-            sizes.push(parseFloat(pos.size));
-            leverages.push(parseInt(pos.leverage.toString()));
-            prices.push(parseFloat(pos.entry_price));
+            sizes.push(size);
+            leverages.push(Math.floor(leverage)); // Ensure integer
+            prices.push(price);
+            takeProfits.push(0); // No take profit for closing positions
+            stopLosses.push(0); // No stop loss for closing positions
+          }
+
+          // Check if we have any valid orders after validation
+          if (orderTypes.length === 0) {
+            allMarketResults.push({
+              marketId,
+              success: false,
+              error: 'No valid positions to close after validation',
+            });
+            continue;
           }
 
           console.log(
-            `📊 Closing ${marketPositions.length} position(s) in market ${marketId}`,
+            `📊 Closing ${orderTypes.length} position(s) in market ${marketId}`,
           );
 
           const response = await axios.post(
             `${kanaRest}/placeMultipleOrders`,
             {
-              marketId: parseInt(marketId),
+              marketId: marketIdNum,
               orderTypes,
               tradeSides,
               directions,
               sizes,
               leverages,
               prices,
+              restriction: 0, // Optional: 0 = NO_RESTRICTION (applies to all orders)
+              takeProfits, // Optional array: defaults to 0 for each order
+              stopLosses, // Optional array: defaults to 0 for each order
             },
             {
               headers: {
@@ -1414,7 +1500,7 @@ export class WalletsService {
             sender: account.accountAddress,
             data: response.data.data,
             options: {
-              maxGasAmount: 15000,
+              maxGasAmount: 10000, // Optimized: lower gas amount (same as trade service)
               gasUnitPrice: 100,
             },
           });
@@ -1426,6 +1512,8 @@ export class WalletsService {
             },
           );
 
+          // Submit without waiting for verification (non-blocking, optimized)
+          // Transaction is submitted to mempool and will be processed asynchronously
           allMarketResults.push({
             marketId,
             success: true,
@@ -1433,8 +1521,14 @@ export class WalletsService {
           });
 
           console.log(
-            `✅ Market ${marketId}: Closed ${marketPositions.length} position(s). TX: ${committedTxn.hash}`,
+            `✅ Market ${marketId}: Closed ${orderTypes.length} position(s). TX: ${committedTxn.hash} (submitted, not waiting for confirmation)`,
           );
+
+          // Small delay between submissions to prevent sequence number issues
+          // This gives the mempool time to process the previous transaction
+          if (marketIds.indexOf(marketId) < marketIds.length - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 500)); // 500ms delay
+          }
         } catch (error: any) {
           allMarketResults.push({
             marketId,
