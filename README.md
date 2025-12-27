@@ -121,6 +121,8 @@ pnpm run dev:trade  # Trade execution service
 - PNL and Trades display (Coming Soon placeholder)
 - **Automatic position closing**: When stopping a bot, all open positions are automatically closed using Kana Labs API
 - **Close all positions**: Uses `placeMultipleOrders` for efficient parallel position closing
+- **Premium navigation**: Arrow key and button navigation for stopped bots with smooth scrolling
+- **Clean UI**: Hidden scrollbar with professional arrow button controls
 
 ### Wallet & Deposit System
 
@@ -237,6 +239,18 @@ anthe-labs/
 - ✅ Fee column in trade history
 - ✅ Proper order type mapping (Long, Short, Exit Long, Exit Short)
 - ✅ Parallel API calls for optimal performance
+
+### Copy Trade Page Navigation Enhancements ✨
+
+- ✅ Arrow key navigation (Left/Right) for horizontal scrolling of stopped bots
+- ✅ Premium left and right arrow buttons at container edges
+- ✅ Hidden scrollbar for clean, professional UI
+- ✅ Dynamic arrow visibility based on scroll position
+- ✅ Smooth scrolling animations with card-width-based navigation
+- ✅ Responsive arrow positioning (mobile/desktop optimized)
+- ✅ Premium button styling with gradient backgrounds, shadows, and hover effects
+- ✅ Icon animations on hover (translate effects)
+- ✅ Scroll position tracking with resize event handling
 
 ### Code Cleanup & Optimization ✨
 
