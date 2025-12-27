@@ -588,17 +588,21 @@ export default function ProfilePage() {
     }
   };
 
-  const shareOnTwitter = () => {
-    // Format stats values
-    const volume = stats?.TotalVolume
-      ? `$${parseFloat(stats.TotalVolume).toLocaleString()}`
-      : "$0";
-    const pnl = stats?.PNL
-      ? `$${parseFloat(stats.PNL).toLocaleString()}`
-      : "$0";
-    const roi = stats?.ROI ? `${parseFloat(stats.ROI).toFixed(2)}%` : "0.00%";
+  // Shared function to get formatted stats
+  const getFormattedStats = () => {
+    return {
+      volume: stats?.TotalVolume
+        ? `$${parseFloat(stats.TotalVolume).toLocaleString()}`
+        : "$0",
+      pnl: stats?.PNL ? `$${parseFloat(stats.PNL).toLocaleString()}` : "$0",
+      roi: stats?.ROI ? `${parseFloat(stats.ROI).toFixed(2)}%` : "0.00%",
+    };
+  };
 
-    // Define 4 templates
+  // Shared function to get random template
+  const getRandomTemplate = () => {
+    const { volume, pnl, roi } = getFormattedStats();
+
     const templates = [
       // Option 1 (Most Natural)
       `Check my metrics on Anthe Labs 🚀
@@ -607,7 +611,8 @@ export default function ProfilePage() {
 💹 PnL: ${pnl}
 📈 ROI: ${roi}
 
-Join me — trade on @AntheLabs https://anthe.io`,
+Join me — trade on @AntheLabs
+https://anthe.io`,
       // Option 2 (Slightly Cleaner)
       `Tracking my trades on Anthe Labs 👀
 
@@ -615,7 +620,8 @@ Join me — trade on @AntheLabs https://anthe.io`,
 💹 PnL: ${pnl}
 📈 ROI: ${roi}
 
-Join me — trade on @AntheLabs https://anthe.io`,
+Join me — trade on @AntheLabs 
+https://anthe.io`,
       // Option 3 (Minimal / Premium)
       `Sharing my trading journey on Anthe Labs 🔥
       
@@ -623,7 +629,8 @@ Join me — trade on @AntheLabs https://anthe.io`,
 💹 PnL: ${pnl}
 📈 ROI: ${roi}
 
-Join me — trade on @AntheLabs https://anthe.io`,
+Join me — trade on @AntheLabs 
+https://anthe.io`,
       // Option 4 (Social / Creator Style)
       `All my trading metrics, live on Anthe Labs ⚡
       
@@ -631,24 +638,43 @@ Join me — trade on @AntheLabs https://anthe.io`,
 💹 PnL: ${pnl}
 📈 ROI: ${roi}
 
-Join me — trade on @AntheLabs https://anthe.io`,
+Join me — trade on @AntheLabs 
+https://anthe.io`,
     ];
 
-    // Randomly select a template
-    const randomTemplate =
-      templates[Math.floor(Math.random() * templates.length)];
+    return templates[Math.floor(Math.random() * templates.length)];
+  };
 
+  // Copy notification state
+  const [showCopyNotification, setShowCopyNotification] = useState(false);
+
+  // Copy template to clipboard
+  const copyToClipboard = async (template?: string) => {
+    try {
+      const textToCopy = template || getRandomTemplate();
+      await navigator.clipboard.writeText(textToCopy);
+      setShowCopyNotification(true);
+      setTimeout(() => setShowCopyNotification(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy:", error);
+    }
+  };
+
+  const shareOnTwitter = () => {
+    const template = getRandomTemplate();
+    copyToClipboard(template); // Copy to clipboard first
     window.open(
-      `https://twitter.com/intent/tweet?text=${encodeURIComponent(randomTemplate)}`,
+      `https://twitter.com/intent/tweet?text=${encodeURIComponent(template)}`,
       "_blank"
     );
   };
 
   const shareOnTelegram = () => {
+    const template = getRandomTemplate();
+    copyToClipboard(template); // Copy to clipboard first
     const profileUrl = `${window.location.origin}/profile/${username}`;
-    const text = `Check out ${user?.display_name || user?.username || "this trader"}'s profile on Anthe Labs!`;
     window.open(
-      `https://t.me/share/url?url=${encodeURIComponent(profileUrl)}&text=${encodeURIComponent(text)}`,
+      `https://t.me/share/url?url=${encodeURIComponent(template)}`,
       "_blank"
     );
   };
@@ -1252,8 +1278,27 @@ Join me — trade on @AntheLabs https://anthe.io`,
                 >
                   <Send size={18} className="text-slate-400 hover:text-white" />
                 </button>
+                <button
+                  onClick={() => copyToClipboard()}
+                  className="p-2 hover:bg-slate-800/50 rounded-lg transition-colors border border-slate-700/50"
+                  title="Copy to clipboard"
+                >
+                  <Copy size={18} className="text-slate-400 hover:text-white" />
+                </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Copy Notification Toast */}
+      {showCopyNotification && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[60] animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="bg-[#0a0c12] border border-slate-700/50 rounded-lg px-4 py-3 shadow-2xl flex items-center gap-2">
+            <Check size={18} className="text-green-400" />
+            <span className="text-white text-sm font-medium">
+              Copied to clipboard!
+            </span>
           </div>
         </div>
       )}
