@@ -17,8 +17,11 @@ import {
   Calendar,
   Shield,
   Clock,
+  Download,
+  X,
 } from "lucide-react";
 import { getTier, TierConfig, TIER_THRESHOLDS } from "@/lib/tiers";
+import { generateStatsImage } from "@/lib/generateStatsImage";
 
 const palanquinDark = Palanquin_Dark({
   weight: ["400", "700"],
@@ -458,6 +461,9 @@ export default function ProfilePage() {
   >([]);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const [showImagePreview, setShowImagePreview] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   // Load all usernames on mount
   useEffect(() => {
@@ -505,6 +511,35 @@ export default function ProfilePage() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showAutocomplete]);
+
+  // Cleanup preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (previewImageUrl) {
+        URL.revokeObjectURL(previewImageUrl);
+      }
+    };
+  }, [previewImageUrl]);
+
+  // Handle ESC key to close preview
+  useEffect(() => {
+    if (!showImagePreview) return;
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (previewImageUrl) {
+          URL.revokeObjectURL(previewImageUrl);
+        }
+        setPreviewImageUrl(null);
+        setShowImagePreview(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [showImagePreview, previewImageUrl]);
 
   useEffect(() => {
     async function fetchData() {
@@ -616,6 +651,71 @@ Join me — trade on @AntheLabs https://anthe.io`,
       `https://t.me/share/url?url=${encodeURIComponent(profileUrl)}&text=${encodeURIComponent(text)}`,
       "_blank"
     );
+  };
+
+  const handleDownloadStatsImage = async () => {
+    try {
+      setIsGeneratingImage(true);
+      // Format stats
+      const volume = stats?.TotalVolume
+        ? `$${parseFloat(stats.TotalVolume).toLocaleString()}`
+        : "$0";
+      const pnl = stats?.PNL
+        ? `$${parseFloat(stats.PNL).toLocaleString()}`
+        : "$0";
+      const roi = stats?.ROI ? `${parseFloat(stats.ROI).toFixed(2)}%` : "0.00%";
+      const trades = stats?.NumberOfTxns?.toLocaleString() || "0";
+
+      // Get user display info
+      const displayName =
+        user?.display_name || user?.full_name || user?.username || "User";
+      const avatarUrl =
+        user?.selected_avatar_url ||
+        user?.avatar_url ||
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6366f1&color=fff`;
+
+      // Generate image blob
+      const blob = await generateStatsImage({
+        stats: {
+          totalVolume: volume,
+          pnl: pnl,
+          roi: roi,
+          numberOfTxns: trades,
+          walletAddress: user?.wallet_address,
+          username: username,
+          displayName: displayName,
+          avatarUrl: avatarUrl,
+        },
+      });
+
+      // Create preview URL
+      const url = URL.createObjectURL(blob);
+      setPreviewImageUrl(url);
+      setShowImagePreview(true);
+      setIsGeneratingImage(false);
+    } catch (error) {
+      console.error("Failed to generate stats image:", error);
+      setIsGeneratingImage(false);
+    }
+  };
+
+  const handleDownloadFromPreview = () => {
+    if (!previewImageUrl) return;
+
+    const a = document.createElement("a");
+    a.href = previewImageUrl;
+    a.download = `anthe-labs-stats-${username}-${Date.now()}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const handleClosePreview = () => {
+    if (previewImageUrl) {
+      URL.revokeObjectURL(previewImageUrl);
+    }
+    setPreviewImageUrl(null);
+    setShowImagePreview(false);
   };
 
   const handleUsernameSelect = (selectedUsername: string) => {
@@ -1010,6 +1110,32 @@ Join me — trade on @AntheLabs https://anthe.io`,
             >
               Share Profile
             </h3>
+            <div className="flex flex-col gap-3 mb-4">
+              <button
+                onClick={handleDownloadStatsImage}
+                disabled={isGeneratingImage}
+                className={`w-full flex items-center justify-center gap-2 px-5 py-3 bg-transparent border-2 border-[#3B82F6] rounded-lg hover:bg-[#3B82F6]/10 hover:border-[#3B82F6]/80 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${outfit.className}`}
+              >
+                {isGeneratingImage ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-[#3B82F6]/30 border-t-[#3B82F6] rounded-full animate-spin" />
+                    <span className="text-sm sm:text-base text-[#3B82F6] font-semibold">
+                      Generating...
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Download size={18} className="text-[#3B82F6]" />
+                    <span className="text-sm sm:text-base text-[#3B82F6] font-semibold">
+                      Download image
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
+            <div className="text-center text-xs text-slate-400 mb-3">
+              Or share to
+            </div>
             <div className="flex flex-wrap gap-2 sm:gap-3">
               <button
                 onClick={shareOnTwitter}
@@ -1053,6 +1179,84 @@ Join me — trade on @AntheLabs https://anthe.io`,
           </div>
         </div>
       </section>
+
+      {/* Image Preview Modal - Clean & Professional */}
+      {showImagePreview && previewImageUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/20 backdrop-blur-lg p-4 overflow-y-auto pt-24 sm:pt-28"
+          onClick={handleClosePreview}
+        >
+          <div
+            className="relative bg-[#0a0c12] border border-slate-700/40 rounded-xl w-full max-w-[600px] p-5 mx-auto shadow-2xl"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(10, 12, 18, 0.98) 0%, rgba(6, 9, 19, 0.98) 100%)",
+              boxShadow:
+                "0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(59, 130, 246, 0.1)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={handleClosePreview}
+              className="absolute top-3 right-3 p-1.5 bg-transparent hover:bg-slate-800/50 rounded-lg transition-colors z-10"
+            >
+              <X size={18} className="text-slate-400 hover:text-white" />
+            </button>
+
+            {/* Modal Header */}
+            <div className="flex items-start justify-between mb-4 pr-8">
+              <h3
+                className={`${palanquinDark.className} text-lg font-bold text-white`}
+              >
+                Share Performance
+              </h3>
+            </div>
+
+            {/* Image Preview - Properly contained, matches canvas edge */}
+            <div className="mb-4 overflow-hidden rounded-lg bg-[#050709]">
+              <img
+                src={previewImageUrl}
+                alt="Stats preview"
+                className="w-full h-auto block"
+              />
+            </div>
+
+            {/* Download Button */}
+            <button
+              onClick={handleDownloadFromPreview}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#3B82F6] hover:bg-[#3B82F6]/90 text-white rounded-lg font-semibold transition-colors ${outfit.className}`}
+            >
+              <Download size={16} />
+              <span>Download image</span>
+            </button>
+
+            {/* Share Options */}
+            <div className="mt-3 text-center">
+              <p className="text-xs text-slate-400 mb-2">Or share to</p>
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={shareOnTwitter}
+                  className="p-2 hover:bg-slate-800/50 rounded-lg transition-colors border border-slate-700/50"
+                  title="Share on X"
+                >
+                  <Twitter
+                    size={18}
+                    className="text-slate-400 hover:text-white"
+                  />
+                </button>
+                <button
+                  onClick={shareOnTelegram}
+                  className="p-2 hover:bg-slate-800/50 rounded-lg transition-colors border border-slate-700/50"
+                  title="Share on Telegram"
+                >
+                  <Send size={18} className="text-slate-400 hover:text-white" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
