@@ -139,14 +139,21 @@ export default function Navbar() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showMobileMenu]);
-
   async function signInGoogle() {
     setSigningIn(true);
     try {
+      // 🔁 SWITCH MANUALLY
+
+      // ✅ Local development
+      //const redirectTo = "http://localhost:4000";
+
+      // ✅ Production
+      const redirectTo = "https://anthe.io/auth/callback";
+
       await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}`,
+          redirectTo,
         },
       });
     } catch (error) {
