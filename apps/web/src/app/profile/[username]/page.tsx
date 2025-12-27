@@ -554,10 +554,57 @@ export default function ProfilePage() {
   };
 
   const shareOnTwitter = () => {
-    const profileUrl = `${window.location.origin}/profile/${username}`;
-    const text = `Check out ${user?.display_name || user?.username || "this trader"}'s profile on Anthe Labs!`;
+    // Format stats values
+    const volume = stats?.TotalVolume
+      ? `$${parseFloat(stats.TotalVolume).toLocaleString()}`
+      : "$0";
+    const pnl = stats?.PNL
+      ? `$${parseFloat(stats.PNL).toLocaleString()}`
+      : "$0";
+    const roi = stats?.ROI ? `${parseFloat(stats.ROI).toFixed(2)}%` : "0.00%";
+
+    // Define 4 templates
+    const templates = [
+      // Option 1 (Most Natural)
+      `Check my metrics on Anthe Labs 🚀
+
+📊 Volume: ${volume}
+💹 PnL: ${pnl}
+📈 ROI: ${roi}
+
+Join me — trade on @AntheLabs https://anthe.io`,
+      // Option 2 (Slightly Cleaner)
+      `Tracking my trades on Anthe Labs 👀
+
+📊 Volume: ${volume}
+💹 PnL: ${pnl}
+📈 ROI: ${roi}
+
+Join me — trade on @AntheLabs https://anthe.io`,
+      // Option 3 (Minimal / Premium)
+      `Sharing my trading journey on Anthe Labs 🔥
+      
+📊 Volume: ${volume}
+💹 PnL: ${pnl}
+📈 ROI: ${roi}
+
+Join me — trade on @AntheLabs https://anthe.io`,
+      // Option 4 (Social / Creator Style)
+      `All my trading metrics, live on Anthe Labs ⚡
+      
+📊 Volume: ${volume}
+💹 PnL: ${pnl}
+📈 ROI: ${roi}
+
+Join me — trade on @AntheLabs https://anthe.io`,
+    ];
+
+    // Randomly select a template
+    const randomTemplate =
+      templates[Math.floor(Math.random() * templates.length)];
+
     window.open(
-      `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(profileUrl)}`,
+      `https://twitter.com/intent/tweet?text=${encodeURIComponent(randomTemplate)}`,
       "_blank"
     );
   };
