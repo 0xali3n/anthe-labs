@@ -257,13 +257,14 @@ export async function generateStatsImage({
 
         row1Cards.forEach((card, index) => {
           const x = padding.left + index * (cardWidth + cardSpacing);
-          drawPremiumCard(x, gridY, cardWidth, cardHeight, card.label, card.value, card.color);
+          drawPremiumCard(ctx, x, gridY, cardWidth, cardHeight, card.label, card.value, card.color);
         });
 
         // Row 2: PnL, Total Volume
         gridY += cardHeight + cardSpacing;
         const pnlValue = parseFloat(stats.pnl.replace("$", "").replace(/,/g, ""));
         drawPremiumCard(
+          ctx,
           padding.left,
           gridY,
           cardWidth,
@@ -274,6 +275,7 @@ export async function generateStatsImage({
         );
 
         drawPremiumCard(
+          ctx,
           padding.left + cardWidth + cardSpacing,
           gridY,
           cardWidth,
@@ -343,6 +345,7 @@ export async function generateStatsImage({
       });
 
       function drawRoundedRect(
+        ctx: CanvasRenderingContext2D,
         x: number,
         y: number,
         width: number,
@@ -363,6 +366,7 @@ export async function generateStatsImage({
       }
 
       function drawPremiumCard(
+        ctx: CanvasRenderingContext2D,
         x: number,
         y: number,
         width: number,
@@ -380,7 +384,7 @@ export async function generateStatsImage({
         ctx.shadowOffsetY = 8;
 
         // Premium card background with rounded corners
-        drawRoundedRect(x, y, width, height, 18);
+        drawRoundedRect(ctx, x, y, width, height, 18);
         
         // Enhanced darker card gradient - Premium aesthetic
         const cardGradient = ctx.createLinearGradient(x, y, x, y + height);
