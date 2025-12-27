@@ -19,6 +19,22 @@ export class PrismaService
     return super.user;
   }
 
+  get feedback() {
+    return this['feedback'];
+  }
+
+  get trader() {
+    return super.trader;
+  }
+
+  get traderRegistration() {
+    return super.traderRegistration;
+  }
+
+  get copyTradeBot() {
+    return super.copyTradeBot;
+  }
+
   constructor() {
     // Ensure DATABASE_URL has pgbouncer=true for Supabase connection pooling
     // This disables prepared statements which are incompatible with PgBouncer
