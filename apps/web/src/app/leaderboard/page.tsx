@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getTraders, type Trader } from "@/lib/tradersApi";
+import { useAuth } from "@/lib/useAuth";
 import { Palanquin_Dark, Outfit } from "next/font/google";
 import {
   AlertCircle,
@@ -13,6 +14,7 @@ import {
   Info,
   UserPlus,
   Eye,
+  X,
 } from "lucide-react";
 import TraderDetailsModal from "@/components/TraderDetailsModal";
 
@@ -30,6 +32,7 @@ type SortOption = "pnl" | "roi" | "volume" | "trades";
 
 export default function LeaderboardPage() {
   const router = useRouter();
+  const { isSignedIn } = useAuth();
   const [traders, setTraders] = useState<Trader[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +47,7 @@ export default function LeaderboardPage() {
   }>({ show: false, text: "", x: 0, y: 0 });
   const [selectedTrader, setSelectedTrader] = useState<Trader | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showSignInAlert, setShowSignInAlert] = useState(false);
 
   const fetchTraders = async () => {
     try {
@@ -486,8 +490,13 @@ export default function LeaderboardPage() {
                   <div className="mt-4 pt-4 border-t border-slate-800/50">
                     <button
                       onClick={() => {
-                        setSelectedTrader(trader);
-                        setIsModalOpen(true);
+                        if (isSignedIn) {
+                          setSelectedTrader(trader);
+                          setIsModalOpen(true);
+                        } else {
+                          setShowSignInAlert(true);
+                          setTimeout(() => setShowSignInAlert(false), 3000);
+                        }
                       }}
                       className="w-full px-3 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 hover:border-slate-600/50 text-slate-300 hover:text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2"
                       title="View details"
@@ -549,6 +558,29 @@ export default function LeaderboardPage() {
           )
         }
       </div>
+
+      {/* Sign In Alert */}
+      {showSignInAlert && (
+        <div className="fixed bottom-4 right-4 z-50 animate-in slide-in-from-bottom-5">
+          <div className="bg-slate-900/95 border border-slate-700 rounded-lg p-4 shadow-xl flex items-center gap-3 max-w-sm">
+            <AlertCircle size={20} className="text-yellow-400 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-white font-medium text-sm mb-1">
+                Sign In Required
+              </p>
+              <p className="text-slate-400 text-xs">
+                Please sign in first to view trader details
+              </p>
+            </div>
+            <button
+              onClick={() => setShowSignInAlert(false)}
+              className="text-slate-400 hover:text-white transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Trader Details Modal */}
       {selectedTrader && (

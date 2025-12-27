@@ -886,12 +886,12 @@ export default function Home() {
                   className="group-hover:translate-x-1 transition-transform"
                 /> */}
               </Link>
-              <Link
-                href="/about"
+              {/* <Link
+                href="/"
                 className={`px-8 py-4 bg-transparent border border-slate-700 hover:border-blue-500/50 text-white rounded-lg text-lg font-semibold transition-all duration-300 hover:bg-slate-900/30 ${outfit.className}`}
               >
-                See Demo
-              </Link>
+                Blog
+              </Link> */}
             </div>
 
             {/* Micro-trust line */}

@@ -39,6 +39,8 @@ import {
   X,
   RefreshCw,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Minus,
   Percent,
 } from "lucide-react";
@@ -120,6 +122,9 @@ function CopytradeContent() {
   const [addressError, setAddressError] = useState<string | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const modeDropdownRef = useRef<HTMLDivElement>(null);
+  const stoppedBotsScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
   const [botPositions, setBotPositions] = useState<
     Record<string, OpenPosition[]>
   >({});
@@ -246,6 +251,113 @@ function CopytradeContent() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showModeDropdown]);
+
+  // Check scroll position and update arrow visibility
+  const checkScrollPosition = () => {
+    if (!stoppedBotsScrollRef.current) return;
+
+    const container = stoppedBotsScrollRef.current;
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+
+    setCanScrollLeft(scrollLeft > 0);
+    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
+  };
+
+  // Hide scrollbar for stopped bots container
+  useEffect(() => {
+    const styleId = "hide-scrollbar-style";
+    if (document.getElementById(styleId)) return;
+
+    const style = document.createElement("style");
+    style.id = styleId;
+    style.textContent = `
+      .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+        width: 0;
+        height: 0;
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => {
+      const existingStyle = document.getElementById(styleId);
+      if (existingStyle) {
+        document.head.removeChild(existingStyle);
+      }
+    };
+  }, []);
+
+  // Update arrow visibility on scroll and resize
+  useEffect(() => {
+    if (activeTab !== "stopped" || !stoppedBotsScrollRef.current) {
+      setCanScrollLeft(false);
+      setCanScrollRight(false);
+      return;
+    }
+
+    checkScrollPosition();
+
+    const container = stoppedBotsScrollRef.current;
+    container.addEventListener("scroll", checkScrollPosition);
+    window.addEventListener("resize", checkScrollPosition);
+
+    return () => {
+      container.removeEventListener("scroll", checkScrollPosition);
+      window.removeEventListener("resize", checkScrollPosition);
+    };
+  }, [activeTab, stoppedBots.length]);
+
+  // Arrow key navigation for stopped bots scroll
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle arrow keys when stopped tab is active and container exists
+      if (
+        activeTab !== "stopped" ||
+        !stoppedBotsScrollRef.current ||
+        stoppedBots.length === 0
+      ) {
+        return;
+      }
+
+      // Don't handle if user is typing in an input/textarea
+      const target = event.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      const container = stoppedBotsScrollRef.current;
+
+      // Calculate scroll amount based on card width and gap
+      // min-w-[280px] sm:min-w-[320px] + gap-6 (24px)
+      const isMobile = window.innerWidth < 640;
+      const cardWidth = isMobile ? 280 : 320;
+      const gap = 24; // gap-6 = 1.5rem = 24px
+      const scrollAmount = cardWidth + gap;
+
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        container.scrollBy({
+          left: -scrollAmount,
+          behavior: "smooth",
+        });
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        container.scrollBy({
+          left: scrollAmount,
+          behavior: "smooth",
+        });
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [activeTab, stoppedBots.length]);
 
   // Fetch balance
   const fetchBalance = async () => {
@@ -1535,8 +1647,73 @@ function CopytradeContent() {
 
             {/* Stopped Bots Grid - Responsive with consistent gaps */}
             {activeTab === "stopped" && stoppedBots.length > 0 && (
-              <div className="flex justify-center">
-                <div className="flex overflow-x-auto pb-6 gap-6 max-w-7xl w-full snap-x scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900/50">
+              <div className="relative max-w-7xl w-full mx-auto">
+                {/* Left Arrow Button */}
+                {canScrollLeft && (
+                  <button
+                    onClick={() => {
+                      if (!stoppedBotsScrollRef.current) return;
+                      const isMobile = window.innerWidth < 640;
+                      const cardWidth = isMobile ? 280 : 320;
+                      const gap = 24;
+                      stoppedBotsScrollRef.current.scrollBy({
+                        left: -(cardWidth + gap),
+                        behavior: "smooth",
+                      });
+                    }}
+                    className="absolute left-0 sm:left-2 top-1/2 -translate-y-1/2 z-20 w-12 h-12 flex items-center justify-center rounded-full bg-gradient-to-br from-slate-900/98 via-slate-800/95 to-slate-900/98 hover:from-slate-800/98 hover:via-slate-700/95 hover:to-slate-800/98 border border-slate-700/70 hover:border-slate-600/90 backdrop-blur-xl shadow-2xl transition-all duration-300 hover:scale-110 hover:shadow-blue-500/20 group"
+                    style={{
+                      boxShadow:
+                        "0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset",
+                    }}
+                    aria-label="Scroll left"
+                  >
+                    <ChevronLeft
+                      size={22}
+                      className="text-slate-200 group-hover:text-white transition-all duration-300 group-hover:translate-x-[-2px]"
+                      strokeWidth={2.5}
+                    />
+                  </button>
+                )}
+
+                {/* Right Arrow Button */}
+                {canScrollRight && (
+                  <button
+                    onClick={() => {
+                      if (!stoppedBotsScrollRef.current) return;
+                      const isMobile = window.innerWidth < 640;
+                      const cardWidth = isMobile ? 280 : 320;
+                      const gap = 24;
+                      stoppedBotsScrollRef.current.scrollBy({
+                        left: cardWidth + gap,
+                        behavior: "smooth",
+                      });
+                    }}
+                    className="absolute right-0 sm:right-2 top-1/2 -translate-y-1/2 z-20 w-12 h-12 flex items-center justify-center rounded-full bg-gradient-to-br from-slate-900/98 via-slate-800/95 to-slate-900/98 hover:from-slate-800/98 hover:via-slate-700/95 hover:to-slate-800/98 border border-slate-700/70 hover:border-slate-600/90 backdrop-blur-xl shadow-2xl transition-all duration-300 hover:scale-110 hover:shadow-blue-500/20 group"
+                    style={{
+                      boxShadow:
+                        "0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05) inset",
+                    }}
+                    aria-label="Scroll right"
+                  >
+                    <ChevronRight
+                      size={22}
+                      className="text-slate-200 group-hover:text-white transition-all duration-300 group-hover:translate-x-[2px]"
+                      strokeWidth={2.5}
+                    />
+                  </button>
+                )}
+
+                <div
+                  ref={stoppedBotsScrollRef}
+                  className="flex overflow-x-auto pb-6 gap-6 px-2 snap-x snap-mandatory scroll-smooth focus:outline-none hide-scrollbar"
+                  tabIndex={0}
+                  style={{
+                    scrollBehavior: "smooth",
+                    scrollbarWidth: "none",
+                    msOverflowStyle: "none",
+                  }}
+                >
                   {stoppedBots.map((bot, index) => (
                     <div
                       key={bot.id}
