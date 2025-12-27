@@ -964,25 +964,27 @@ https://anthe.io`,
                       </div>
                     </div>
 
-                    {/* Copy Trader Button */}
+                    {/* Share my Profile Button */}
                     <button
-                      onClick={() => {
-                        if (user.wallet_address) {
-                          // Redirect to copytrade page with trader wallet address as query parameter
-                          router.push(
-                            `/copytrade?address=${encodeURIComponent(user.wallet_address)}`
-                          );
-                        } else {
-                          // If no wallet address, still redirect but without address (user can enter manually)
-                          router.push("/copytrade");
-                        }
-                      }}
-                      className={`group w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-5 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-lg font-semibold transition-all duration-300 shadow-lg shadow-blue-500/20 whitespace-nowrap ${outfit.className}`}
+                      onClick={handleDownloadStatsImage}
+                      disabled={isGeneratingImage}
+                      className={`group w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-5 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-lg font-semibold transition-all duration-300 shadow-lg shadow-blue-500/20 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${outfit.className}`}
                     >
-                      <span className="hidden min-[475px]:inline">
-                        Copy This Trader
-                      </span>
-                      <span className="min-[475px]:hidden">Copy Trader</span>
+                      {isGeneratingImage ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Generating...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="hidden min-[475px]:inline">
+                            Share my Profile
+                          </span>
+                          <span className="min-[475px]:hidden">
+                            Share Profile
+                          </span>
+                        </>
+                      )}
                     </button>
                   </div>
 
@@ -1249,41 +1251,50 @@ https://anthe.io`,
             </div>
 
             {/* Download Button */}
-            <button
-              onClick={handleDownloadFromPreview}
-              className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#3B82F6] hover:bg-[#3B82F6]/90 text-white rounded-lg font-semibold transition-colors ${outfit.className}`}
-            >
-              <Download size={16} />
-              <span>Download image</span>
-            </button>
+            <div className="flex justify-center">
+              <button
+                onClick={handleDownloadFromPreview}
+                className={`flex items-center justify-center gap-2 px-6 py-2.5 bg-[#3B82F6] hover:bg-[#3B82F6]/90 text-white rounded-lg font-semibold transition-colors min-w-[500px] ${outfit.className}`}
+              >
+                <Download size={16} />
+                <span>Download image</span>
+              </button>
+            </div>
+
+            {/* OR Text */}
+            <div className="mt-4 text-center">
+              <span className="text-xs text-slate-400">OR</span>
+            </div>
 
             {/* Share Options */}
-            <div className="mt-3 text-center">
-              <p className="text-xs text-slate-400 mb-2">Or share to</p>
-              <div className="flex items-center justify-center gap-3">
+            <div className="mt-3">
+              <div className="flex items-center justify-center gap-2.5">
                 <button
                   onClick={shareOnTwitter}
-                  className="p-2 hover:bg-slate-800/50 rounded-lg transition-colors border border-slate-700/50"
-                  title="Share on X"
+                  className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg transition-colors border border-slate-700/50 shadow-sm"
                 >
-                  <Twitter
-                    size={18}
-                    className="text-slate-400 hover:text-white"
-                  />
+                  <img src="/x.svg" alt="X" className="w-3 h-3" />
+                  <span className="text-slate-300 text-xs font-medium">
+                    Share on X
+                  </span>
                 </button>
                 <button
                   onClick={shareOnTelegram}
-                  className="p-2 hover:bg-slate-800/50 rounded-lg transition-colors border border-slate-700/50"
-                  title="Share on Telegram"
+                  className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg transition-colors border border-slate-700/50 shadow-sm"
                 >
-                  <Send size={18} className="text-slate-400 hover:text-white" />
+                  <Send size={14} className="text-slate-300" />
+                  <span className="text-slate-300 text-xs font-medium">
+                    Share on Telegram
+                  </span>
                 </button>
                 <button
                   onClick={() => copyToClipboard()}
-                  className="p-2 hover:bg-slate-800/50 rounded-lg transition-colors border border-slate-700/50"
-                  title="Copy to clipboard"
+                  className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg transition-colors border border-slate-700/50 shadow-sm"
                 >
-                  <Copy size={18} className="text-slate-400 hover:text-white" />
+                  <Copy size={14} className="text-slate-300" />
+                  <span className="text-slate-300 text-xs font-medium">
+                    Copy
+                  </span>
                 </button>
               </div>
             </div>
