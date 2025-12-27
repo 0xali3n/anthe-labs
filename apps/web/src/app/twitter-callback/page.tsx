@@ -9,7 +9,22 @@ export default function TwitterCallback() {
     const success = urlParams.get("twitter_connected");
     const username = urlParams.get("username");
 
-    const frontendUrl = window.location.origin;
+    // Normalize origin to handle both www and non-www versions
+    const normalizeOrigin = (origin: string): string => {
+      try {
+        const url = new URL(origin);
+        // Remove www. prefix if present
+        if (url.hostname.startsWith('www.')) {
+          url.hostname = url.hostname.substring(4);
+        }
+        return url.origin;
+      } catch {
+        return origin;
+      }
+    };
+
+    const frontendUrl = normalizeOrigin(window.location.origin);
+    const parentOrigin = window.opener ? normalizeOrigin(window.opener.location.origin) : frontendUrl;
 
     // If we're in a popup, send message to parent
     if (window.opener) {
@@ -20,7 +35,7 @@ export default function TwitterCallback() {
             type: "TWITTER_OAUTH_ERROR",
             error: decodeURIComponent(error),
           },
-          frontendUrl
+          parentOrigin
         );
         setTimeout(() => window.close(), 500);
         return;
@@ -33,7 +48,7 @@ export default function TwitterCallback() {
             type: "TWITTER_OAUTH_SUCCESS",
             username: username,
           },
-          frontendUrl
+          parentOrigin
         );
         setTimeout(() => window.close(), 500);
         return;

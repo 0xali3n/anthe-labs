@@ -146,7 +146,18 @@ export default function Navbar() {
       await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}`,
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            // Customize the OAuth flow appearance
+            // These parameters are passed to Google OAuth
+            hd: "", // Restrict to specific domain (optional)
+            prompt: "select_account", // Force account selection
+            // Note: Logo and branding are configured in:
+            // 1. Supabase Dashboard > Authentication > URL Configuration
+            // 2. Google Cloud Console > OAuth consent screen
+          },
+          // Custom scopes if needed
+          scopes: "email profile",
         },
       });
     } catch (error) {

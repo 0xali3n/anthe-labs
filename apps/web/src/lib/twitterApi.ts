@@ -40,9 +40,24 @@ export async function connectTwitter(): Promise<{ success: boolean; username?: s
 
     // Listen for messages from popup
     const messageListener = (event: MessageEvent) => {
-      // Security: Only accept messages from our frontend URL
-      const frontendUrl = window.location.origin;
-      if (event.origin !== frontendUrl) {
+      // Normalize origin to handle both www and non-www versions
+      const normalizeOrigin = (origin: string): string => {
+        try {
+          const url = new URL(origin);
+          // Remove www. prefix if present
+          if (url.hostname.startsWith('www.')) {
+            url.hostname = url.hostname.substring(4);
+          }
+          return url.origin;
+        } catch {
+          return origin;
+        }
+      };
+
+      // Security: Only accept messages from our frontend URL (normalized)
+      const frontendUrl = normalizeOrigin(window.location.origin);
+      const eventOrigin = normalizeOrigin(event.origin);
+      if (eventOrigin !== frontendUrl) {
         return;
       }
 
