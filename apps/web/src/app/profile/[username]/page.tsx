@@ -3,7 +3,13 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Palanquin_Dark, Outfit } from "next/font/google";
-import { UserData, getUserByUsername, getAllUsernames } from "@/lib/usersApi";
+import {
+  UserData,
+  getUserByUsername,
+  getAllUsernames,
+  getCurrentUser,
+} from "@/lib/usersApi";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Twitter,
   Send,
@@ -464,6 +470,8 @@ export default function ProfilePage() {
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [currentUser, setCurrentUser] = useState<UserData | null>(null);
+  const { user: authUser } = useAuth();
 
   // Load all usernames on mount
   useEffect(() => {
@@ -540,6 +548,22 @@ export default function ProfilePage() {
       document.removeEventListener("keydown", handleEscape);
     };
   }, [showImagePreview, previewImageUrl]);
+
+  // Load current user to check if this is their own profile
+  useEffect(() => {
+    if (authUser) {
+      getCurrentUser()
+        .then((userData) => {
+          setCurrentUser(userData);
+        })
+        .catch(() => {
+          // Silently fail if user is not logged in
+          setCurrentUser(null);
+        });
+    } else {
+      setCurrentUser(null);
+    }
+  }, [authUser]);
 
   useEffect(() => {
     async function fetchData() {
@@ -964,28 +988,30 @@ https://anthe.io`,
                       </div>
                     </div>
 
-                    {/* Share my Profile Button */}
-                    <button
-                      onClick={handleDownloadStatsImage}
-                      disabled={isGeneratingImage}
-                      className={`group w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-5 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-lg font-semibold transition-all duration-300 shadow-lg shadow-blue-500/20 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${outfit.className}`}
-                    >
-                      {isGeneratingImage ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span>Generating...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="hidden min-[475px]:inline">
-                            Share my Profile
-                          </span>
-                          <span className="min-[475px]:hidden">
-                            Share Profile
-                          </span>
-                        </>
-                      )}
-                    </button>
+                    {/* Share my Profile Button - Only show for current user */}
+                    {currentUser && currentUser.username === user.username && (
+                      <button
+                        onClick={handleDownloadStatsImage}
+                        disabled={isGeneratingImage}
+                        className={`group w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-5 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-lg font-semibold transition-all duration-300 shadow-lg shadow-blue-500/20 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${outfit.className}`}
+                      >
+                        {isGeneratingImage ? (
+                          <>
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <span>Generating...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="hidden min-[475px]:inline">
+                              Share my Profile
+                            </span>
+                            <span className="min-[475px]:hidden">
+                              Share Profile
+                            </span>
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
 
                   {user.bio && (
@@ -1121,88 +1147,6 @@ https://anthe.io`,
                   </p>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Share Profile Section - Improved */}
-      <section className="px-3 sm:px-4 lg:px-8 pb-8 sm:pb-12">
-        <div className="max-w-7xl mx-auto">
-          <div
-            className="bg-[#0b1220] border border-white/5 rounded-xl p-4 sm:p-5 lg:p-6"
-            style={{ boxShadow: "0px 3px 12px rgba(0,0,0,0.25)" }}
-          >
-            <h3
-              className={`${palanquinDark.className} text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4`}
-            >
-              Share Profile
-            </h3>
-            <div className="flex flex-col gap-3 mb-4">
-              <button
-                onClick={handleDownloadStatsImage}
-                disabled={isGeneratingImage}
-                className={`w-full flex items-center justify-center gap-2 px-5 py-3 bg-transparent border-2 border-[#3B82F6] rounded-lg hover:bg-[#3B82F6]/10 hover:border-[#3B82F6]/80 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${outfit.className}`}
-              >
-                {isGeneratingImage ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-[#3B82F6]/30 border-t-[#3B82F6] rounded-full animate-spin" />
-                    <span className="text-sm sm:text-base text-[#3B82F6] font-semibold">
-                      Generating...
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <Download size={18} className="text-[#3B82F6]" />
-                    <span className="text-sm sm:text-base text-[#3B82F6] font-semibold">
-                      Download image
-                    </span>
-                  </>
-                )}
-              </button>
-            </div>
-            <div className="text-center text-xs text-slate-400 mb-3">
-              Or share to
-            </div>
-            <div className="flex flex-wrap gap-2 sm:gap-3">
-              <button
-                onClick={shareOnTwitter}
-                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800 hover:border-[#3B82F6]/50 transition-all duration-200 ${outfit.className}`}
-              >
-                <Twitter size={16} className="text-[#3B82F6]" />
-                <span className="text-xs sm:text-sm text-white font-medium">
-                  Share on X
-                </span>
-              </button>
-              <button
-                onClick={shareOnTelegram}
-                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800 hover:border-[#3B82F6]/50 transition-all duration-200 ${outfit.className}`}
-              >
-                <Send size={16} className="text-[#3B82F6]" />
-                <span className="text-xs sm:text-sm text-white font-medium">
-                  Telegram
-                </span>
-              </button>
-              <button
-                onClick={copyProfileLink}
-                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800 hover:border-[#3B82F6]/50 transition-all duration-200 ${outfit.className}`}
-              >
-                {copied ? (
-                  <>
-                    <Check size={16} className="text-green-400" />
-                    <span className="text-xs sm:text-sm text-green-400 font-medium">
-                      Copied!
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <Copy size={16} className="text-[#3B82F6]" />
-                    <span className="text-xs sm:text-sm text-white font-medium">
-                      Copy Link
-                    </span>
-                  </>
-                )}
-              </button>
             </div>
           </div>
         </div>

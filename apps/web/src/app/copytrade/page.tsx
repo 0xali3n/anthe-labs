@@ -16,6 +16,8 @@ import {
   getOrderHistory,
   mapOrderHistoryToTradeHistory,
 } from "@/lib/orderHistoryApi";
+import { getCurrentUser } from "@/lib/usersApi";
+import ShareStatsModal from "@/components/ShareStatsModal";
 import {
   Play,
   Square,
@@ -43,6 +45,7 @@ import {
   ChevronRight,
   Minus,
   Percent,
+  Share2,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -136,6 +139,11 @@ function CopytradeContent() {
   // Trade history data
   const [tradeHistory, setTradeHistory] = useState<TradeHistory[]>([]);
   const [loadingTradeHistory, setLoadingTradeHistory] = useState(false);
+
+  // Share modal state
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [currentUserData, setCurrentUserData] = useState<any>(null);
+  const [userStats, setUserStats] = useState<any>(null);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -445,6 +453,39 @@ function CopytradeContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn]);
 
+  // Fetch user data and stats for sharing
+  useEffect(() => {
+    if (isSignedIn) {
+      getCurrentUser()
+        .then(async (userData) => {
+          setCurrentUserData(userData);
+          if (userData.wallet_address) {
+            try {
+              const statsResponse = await fetch(
+                `https://perpetual-leaderboard.kanalabs.io/fetchTopPnlUsers?period=overall&search=${userData.wallet_address}`
+              );
+              const statsData = await statsResponse.json();
+              if (
+                statsData?.success &&
+                statsData.data &&
+                statsData.data.length > 0
+              ) {
+                setUserStats(statsData.data[0]);
+              }
+            } catch (error) {
+              console.error("Failed to fetch stats:", error);
+            }
+          }
+        })
+        .catch(() => {
+          // Silently fail
+        });
+    } else {
+      setCurrentUserData(null);
+      setUserStats(null);
+    }
+  }, [isSignedIn]);
+
   // Handle address query parameter from leaderboard or open parameter for custom bot
   useEffect(() => {
     const addressParam = searchParams.get("address");
@@ -616,15 +657,13 @@ function CopytradeContent() {
       return;
     }
 
-    // Check minimum balance requirement (1 USDT) - only for new bots, not restarting
-    if (!botToRestart) {
-      const MIN_BALANCE = 1;
-      if (balanceNum < MIN_BALANCE) {
-        setError(
-          `Minimum balance of ${MIN_BALANCE} USDT required to start a copy trade bot. Your current balance: ${formatCurrency(balanceNum)}`
-        );
-        return;
-      }
+    // Check minimum balance requirement (10 USDT) - applies to both new bots and restarts
+    const MIN_BALANCE = 10;
+    if (balanceNum < MIN_BALANCE) {
+      setError(
+        `Minimum balance of ${MIN_BALANCE} USDT required to start a copy trade bot. Your current balance: ${formatCurrency(balanceNum)}`
+      );
+      return;
     }
 
     // Check if user already has a running bot (skip check if restarting the same bot)
@@ -1999,22 +2038,33 @@ function CopytradeContent() {
             >
               Copy Trade History
             </h2>
-            <button
-              onClick={refreshTradeHistory}
-              disabled={loadingTradeHistory}
-              className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 hover:border-slate-600/50 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group"
-              title="Refresh trade history"
-            >
-              <RefreshCw
-                size={14}
-                className={`${
-                  loadingTradeHistory
-                    ? "animate-spin"
-                    : "group-hover:rotate-180"
-                } transition-transform duration-300`}
-              />
-              <span className="hidden sm:inline">Refresh</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowShareModal(true)}
+                disabled={!currentUserData || !userStats}
+                className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/50 hover:border-blue-400/70 rounded-lg text-xs font-medium text-blue-300 hover:text-blue-200 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-blue-500/10 hover:shadow-blue-500/20"
+                title="Share your performance"
+              >
+                <Share2 size={14} />
+                <span className="hidden sm:inline">Share</span>
+              </button>
+              <button
+                onClick={refreshTradeHistory}
+                disabled={loadingTradeHistory}
+                className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 hover:border-slate-600/50 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group"
+                title="Refresh trade history"
+              >
+                <RefreshCw
+                  size={14}
+                  className={`${
+                    loadingTradeHistory
+                      ? "animate-spin"
+                      : "group-hover:rotate-180"
+                  } transition-transform duration-300`}
+                />
+                <span className="hidden sm:inline">Refresh</span>
+              </button>
+            </div>
           </div>
           {loadingTradeHistory ? (
             <div
@@ -2270,6 +2320,36 @@ function CopytradeContent() {
           )}
         </div>
       </div>
+
+      {/* Share Stats Modal */}
+      {currentUserData && userStats && (
+        <ShareStatsModal
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          stats={{
+            totalVolume: userStats.TotalVolume
+              ? `$${parseFloat(userStats.TotalVolume).toLocaleString()}`
+              : "$0",
+            pnl: userStats.PNL
+              ? `$${parseFloat(userStats.PNL).toLocaleString()}`
+              : "$0",
+            roi: userStats.ROI
+              ? `${parseFloat(userStats.ROI).toFixed(2)}%`
+              : "0.00%",
+            numberOfTxns: userStats.NumberOfTxns?.toLocaleString() || "0",
+          }}
+          user={{
+            walletAddress: currentUserData.wallet_address,
+            username: currentUserData.username,
+            displayName:
+              currentUserData.display_name ||
+              currentUserData.full_name ||
+              currentUserData.username,
+            avatarUrl:
+              currentUserData.selected_avatar_url || currentUserData.avatar_url,
+          }}
+        />
+      )}
     </div>
   );
 }

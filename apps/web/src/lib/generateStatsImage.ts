@@ -16,17 +16,6 @@ interface GenerateImageOptions {
   backgroundImageUrl?: string;
 }
 
-// Get random Unsplash image using Unsplash API
-const getRandomUnsplashImage = (): string => {
-  const categories = [
-    "abstract", "nature", "technology", "dark", "minimalist", 
-    "gradient", "geometric", "space", "neon", "cyber", "digital"
-  ];
-  const category = categories[Math.floor(Math.random() * categories.length)];
-  const seed = Math.floor(Math.random() * 10000);
-  // Use images.unsplash.com which supports CORS better
-  return `https://images.unsplash.com/photo-${seed}?w=1200&h=800&fit=crop&q=80`;
-};
 
 export async function generateStatsImage({
   stats,
@@ -137,76 +126,19 @@ export async function generateStatsImage({
         });
       };
 
-      // Get random Unsplash background if not provided
-      const getBackgroundUrl = (): string => {
-        if (backgroundImageUrl) return backgroundImageUrl;
-        // Use Unsplash Source API with random seed
-        const randomId = Math.floor(Math.random() * 1000000);
-        const categories = ["abstract", "nature", "technology", "dark", "minimalist", "gradient"];
-        const category = categories[Math.floor(Math.random() * categories.length)];
-        return `https://source.unsplash.com/featured/1200x800/?${category}&${randomId}`;
-      };
-      
-      const unsplashBg = getBackgroundUrl();
-
-      // Load all images with timeout
-      const loadImageWithTimeout = (url: string, timeout: number = 5000): Promise<HTMLImageElement | null> => {
-        return Promise.race([
-          loadImage(url),
-          new Promise<HTMLImageElement | null>((resolve) => {
-            setTimeout(() => {
-              console.warn("Image load timeout:", url);
-              resolve(null);
-            }, timeout);
-          }),
-        ]);
-      };
+      // Draw background gradient (no Unsplash)
+      const bgGradient = ctx.createLinearGradient(0, 0, width, height);
+      bgGradient.addColorStop(0, "#050709");
+      bgGradient.addColorStop(0.3, "#080a0d");
+      bgGradient.addColorStop(0.7, "#080a0d");
+      bgGradient.addColorStop(1, "#050709");
+      ctx.fillStyle = bgGradient;
+      ctx.fillRect(0, 0, width, height);
 
       Promise.all([
-        loadImageWithTimeout(unsplashBg, 8000),
         logoUrl ? loadImage(logoUrl) : Promise.resolve(null),
         stats.avatarUrl ? loadImage(stats.avatarUrl) : Promise.resolve(null),
-      ]).then(([bgImg, logoImg, avatarImg]) => {
-        // Draw background with Unsplash image
-        if (bgImg && bgImg.complete && bgImg.naturalWidth > 0) {
-          try {
-            // Draw background image
-            ctx.drawImage(bgImg, 0, 0, width, height);
-            
-            // Darker overlay for premium aesthetic
-            ctx.fillStyle = colors.overlay;
-            ctx.fillRect(0, 0, width, height);
-            
-            // Enhanced darker vignette effect
-            const vignette = ctx.createRadialGradient(
-              width / 2, height / 2, 0,
-              width / 2, height / 2, Math.max(width, height) / 1.4
-            );
-            vignette.addColorStop(0, "transparent");
-            vignette.addColorStop(1, "rgba(0, 0, 0, 0.5)");
-            ctx.fillStyle = vignette;
-            ctx.fillRect(0, 0, width, height);
-          } catch (error) {
-            console.warn("Error drawing background image, using fallback:", error);
-            // Enhanced darker fallback gradient background - Premium aesthetic
-            const bgGradient = ctx.createLinearGradient(0, 0, width, height);
-            bgGradient.addColorStop(0, "#050709");
-            bgGradient.addColorStop(0.3, "#080a0d");
-            bgGradient.addColorStop(0.7, "#080a0d");
-            bgGradient.addColorStop(1, "#050709");
-            ctx.fillStyle = bgGradient;
-            ctx.fillRect(0, 0, width, height);
-          }
-        } else {
-          // Enhanced darker fallback gradient background - Premium aesthetic
-          const bgGradient = ctx.createLinearGradient(0, 0, width, height);
-          bgGradient.addColorStop(0, "#050709");
-          bgGradient.addColorStop(0.3, "#080a0d");
-          bgGradient.addColorStop(0.7, "#080a0d");
-          bgGradient.addColorStop(1, "#050709");
-          ctx.fillStyle = bgGradient;
-          ctx.fillRect(0, 0, width, height);
-        }
+      ]).then(([logoImg, avatarImg]) => {
 
         // Draw comprehensive trading background with multiple elements
         drawTradingBackground(ctx, width, height, colors);
