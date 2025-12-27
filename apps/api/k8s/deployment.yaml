@@ -21,6 +21,25 @@ spec:
         - name: api
           image: REPLACE_WITH_IMAGE
           imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 4001
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 4001
+            initialDelaySeconds: 5
+            periodSeconds: 10
           ports:
             - containerPort: 4001
               name: app
@@ -43,3 +62,24 @@ spec:
     protocol: TCP
     port: 4001
     targetPort: 4001
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api
+  namespace: anthe-labs-mainnet
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50

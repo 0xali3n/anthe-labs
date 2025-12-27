@@ -21,6 +21,13 @@ spec:
         - name: trade
           image: REPLACE_WITH_IMAGE
           imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
           ports:
             - containerPort: 4001
               name: app
@@ -43,3 +50,24 @@ spec:
     protocol: TCP
     port: 4001
     targetPort: 4001
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: trade
+  namespace: anthe-labs-mainnet
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: trade
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
