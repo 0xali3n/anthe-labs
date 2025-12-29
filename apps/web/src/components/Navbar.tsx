@@ -58,15 +58,37 @@ export default function Navbar() {
   // Fetch wallet address when signed in
   useEffect(() => {
     if (!authLoading && isSignedIn) {
-      getCurrentUser()
-        .then((userData) => {
-          if (userData?.wallet_address) {
-            setWalletAddress(userData.wallet_address);
+      // Helper function to fetch user with retry logic for new accounts
+      const fetchUserWithRetry = async (retries = 5, initialDelay = 200) => {
+        for (let i = 0; i < retries; i++) {
+          try {
+            const userData = await getCurrentUser();
+            if (userData?.wallet_address) {
+              setWalletAddress(userData.wallet_address);
+            }
+            return; // Success, exit retry loop
+          } catch (error: any) {
+            const isUserNotFound = error.message?.includes("User not found");
+            
+            // If user not found and we have retries left, wait and retry
+            if (isUserNotFound && i < retries - 1) {
+              // Use shorter delays for faster UI response
+              const delay = initialDelay * (i + 1); // 200ms, 400ms, 600ms, 800ms, 1000ms
+              await new Promise(resolve => setTimeout(resolve, delay));
+              continue;
+            }
+            
+            // If it's the last retry or a different error, log it
+            if (i === retries - 1 || !isUserNotFound) {
+              console.error("[Navbar] Failed to fetch wallet address:", error);
+            }
           }
-        })
-        .catch((error) => {
-          console.error("[Navbar] Failed to fetch wallet address:", error);
-        });
+        }
+      };
+
+      // Start fetching immediately - retry logic will handle if user not ready yet
+      // No delay needed since upsertUser is now non-blocking
+      fetchUserWithRetry();
     } else if (!authLoading && !isSignedIn) {
       setWalletAddress(null);
       setBalance("0.00");

@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from './supabaseClient';
+import { upsertUser } from './usersApi';
 import type { Session } from '@supabase/supabase-js';
 
 interface AuthState {
@@ -20,13 +21,40 @@ export function useAuth() {
     loading: true,
     error: null,
   });
+  const upsertingRef = useRef<Set<string>>(new Set()); // Track users being upserted
+
+  // Helper function to upsert user with duplicate prevention
+  const upsertUserSafely = useCallback(async (userId: string, userData: Parameters<typeof upsertUser>[0]) => {
+    // Prevent duplicate concurrent calls for the same user
+    if (upsertingRef.current.has(userId)) {
+      console.log(`⏭️ Skipping duplicate upsert for user ${userId}`);
+      return;
+    }
+
+    upsertingRef.current.add(userId);
+    try {
+      await upsertUser(userData);
+    } catch (error: any) {
+      // Log error but don't throw - unique constraint errors are handled in backend
+      if (error.message?.includes("Unique constraint")) {
+        console.log(`ℹ️ User ${userId} already exists (handled gracefully)`);
+      } else {
+        console.error("Failed to save user:", error);
+      }
+    } finally {
+      // Remove after a short delay to allow for concurrent requests to settle
+      setTimeout(() => {
+        upsertingRef.current.delete(userId);
+      }, 1000);
+    }
+  }, []);
 
   // Initialize auth state once on mount
   useEffect(() => {
     let mounted = true;
 
     // Get initial session (cached by Supabase)
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
+    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
       if (!mounted) return;
 
       setAuthState({
@@ -35,12 +63,27 @@ export function useAuth() {
         loading: false,
         error: error?.message || null,
       });
+
+      // Save user to database if session exists (non-blocking - don't await)
+      // This allows UI to render immediately while DB operation happens in background
+      if (session?.user) {
+        upsertUserSafely(session.user.id, {
+          id: session.user.id,
+          email: session.user.email || "",
+          full_name: session.user.user_metadata?.full_name,
+          avatar_url: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture,
+          google_id: session.user.user_metadata?.google_id || session.user.user_metadata?.sub,
+        }).catch((error) => {
+          // Error already logged in upsertUserSafely, just catch to prevent unhandled rejection
+          console.error('[useAuth] Background upsert failed:', error);
+        });
+      }
     });
 
     // Listen for auth changes - this is the single source of truth
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!mounted) return;
 
       setAuthState({
@@ -49,6 +92,21 @@ export function useAuth() {
         loading: false,
         error: null,
       });
+
+      // Save user to database when signed in (non-blocking - don't await)
+      // This allows UI to render immediately while DB operation happens in background
+      if (session?.user) {
+        upsertUserSafely(session.user.id, {
+          id: session.user.id,
+          email: session.user.email || "",
+          full_name: session.user.user_metadata?.full_name,
+          avatar_url: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture,
+          google_id: session.user.user_metadata?.google_id || session.user.user_metadata?.sub,
+        }).catch((error) => {
+          // Error already logged in upsertUserSafely, just catch to prevent unhandled rejection
+          console.error('[useAuth] Background upsert failed:', error);
+        });
+      }
     });
 
     // Handle tab visibility - refresh session when tab becomes visible

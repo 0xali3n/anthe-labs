@@ -96,11 +96,44 @@ export class UsersService {
         }
       }
 
-      const user = await this.prisma.user.upsert({
-        where: { id: createUserDto.id },
-        update: updateData,
-        create: createData,
-      });
+      let user;
+      try {
+        user = await this.prisma.user.upsert({
+          where: { id: createUserDto.id },
+          update: updateData,
+          create: createData,
+        });
+      } catch (upsertError: any) {
+        // Handle unique constraint violation (email) - can happen with concurrent requests
+        if (upsertError.code === 'P2002' && upsertError.meta?.target?.includes('email')) {
+          console.log(`⚠️ Unique constraint on email detected, fetching existing user instead...`);
+          // User was created by another concurrent request, fetch it instead
+          user = await this.prisma.user.findUnique({
+            where: { id: createUserDto.id },
+          });
+          
+          if (!user) {
+            // If still not found, try to find by email as fallback
+            user = await this.prisma.user.findUnique({
+              where: { email: createUserDto.email },
+            });
+          }
+          
+          if (user) {
+            // Update last_login for the existing user
+            user = await this.prisma.user.update({
+              where: { id: user.id },
+              data: { last_login: new Date() },
+            });
+            console.log(`✅ Retrieved existing user ${user.id} after unique constraint error`);
+          } else {
+            throw new Error('Failed to create or retrieve user after unique constraint error');
+          }
+        } else {
+          // Re-throw other errors
+          throw upsertError;
+        }
+      }
 
       // Automatically check and create wallet if it doesn't exist
       // This happens in backend, no frontend API call needed

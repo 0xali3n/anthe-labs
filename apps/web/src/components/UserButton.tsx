@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/useAuth";
-import { upsertUser } from "@/lib/usersApi";
 import { formatWalletAddress } from "@/lib/walletsApi";
 import { Settings, LogOut, Wallet, Copy, Check, ChevronDown, User } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -32,45 +31,43 @@ export default function UserButton() {
   const router = useRouter();
 
   // Load user data when session is available
+  // Note: useAuth already handles upsertUser, so we just fetch the user data here
   useEffect(() => {
     if (authLoading) return;
 
     if (session?.user) {
-      // Save user to database - wallet is automatically created in backend
-      upsertUser({
-        id: session.user.id,
-        email: session.user.email || "",
-        full_name: session.user.user_metadata?.full_name,
-        avatar_url:
-          session.user.user_metadata?.avatar_url ||
-          session.user.user_metadata?.picture,
-        google_id:
-          session.user.user_metadata?.google_id ||
-          session.user.user_metadata?.sub,
-      })
-        .then((result) => {
-          // Wallet address is automatically included in user response
-          if (result?.wallet_address) {
-            setWalletAddress(result.wallet_address);
+      // Helper function to fetch user with retry logic for new accounts
+      const fetchUserWithRetry = async (retries = 5, initialDelay = 200) => {
+        for (let i = 0; i < retries; i++) {
+          try {
+            const currentUser = await getCurrentUser();
+            setUserData(currentUser);
+            if (currentUser?.wallet_address) {
+              setWalletAddress(currentUser.wallet_address);
+            }
+            return; // Success, exit retry loop
+          } catch (error: any) {
+            const isUserNotFound = error.message?.includes("User not found");
+            
+            // If user not found and we have retries left, wait and retry
+            if (isUserNotFound && i < retries - 1) {
+              // Use shorter delays for faster UI response
+              const delay = initialDelay * (i + 1); // 200ms, 400ms, 600ms, 800ms, 1000ms
+              await new Promise(resolve => setTimeout(resolve, delay));
+              continue;
+            }
+            
+            // If it's the last retry or a different error, log it
+            if (i === retries - 1 || !isUserNotFound) {
+              console.error("❌ Failed to fetch user data:", error);
+            }
           }
-          // Store full user data for username
-          setUserData(result);
-        })
-        .catch((error) => {
-          console.error("❌ Failed to save user to database:", error);
-        });
+        }
+      };
 
-      // Also fetch current user data to get username
-      getCurrentUser()
-        .then((currentUser) => {
-          setUserData(currentUser);
-          if (currentUser?.wallet_address) {
-            setWalletAddress(currentUser.wallet_address);
-          }
-        })
-        .catch((error) => {
-          console.error("❌ Failed to fetch user data:", error);
-        });
+      // Start fetching immediately - retry logic will handle if user not ready yet
+      // No delay needed since upsertUser is now non-blocking
+      fetchUserWithRetry();
     } else {
       setUserData(null);
       setWalletAddress(null);
