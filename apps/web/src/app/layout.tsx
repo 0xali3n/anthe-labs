@@ -80,10 +80,15 @@ export const metadata: Metadata = {
   // Note: Next.js 13+ automatically uses src/app/icon.png for favicon
   // Only specify if you need to override or add additional icons
   icons: {
-    // Favicon: Next.js 13+ uses src/app/icon.png automatically
-    // For custom favicon, we can also specify it here
-    icon: [{ url: "/logo.png", sizes: "32x32", type: "image/png" }],
+    // Favicon: Multiple sizes for better Google compatibility
+    icon: [
+      { url: "/logo.png", sizes: "16x16", type: "image/png" },
+      { url: "/logo.png", sizes: "32x32", type: "image/png" },
+      { url: "/logo.png", sizes: "48x48", type: "image/png" },
+      { url: "/logo.png", sizes: "96x96", type: "image/png" },
+    ],
     apple: [{ url: "/logo.png", sizes: "180x180", type: "image/png" }],
+    shortcut: [{ url: "/logo.png", sizes: "32x32", type: "image/png" }],
   },
   manifest: "/manifest.json",
   verification: {
