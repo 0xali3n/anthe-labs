@@ -17,6 +17,12 @@ spec:
       labels:
         app: ws
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 3000
+        fsGroup: 2000
+        runAsNonRoot: true
       containers:
         - name: ws
           image: REPLACE_WITH_IMAGE
