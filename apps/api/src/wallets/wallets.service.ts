@@ -693,23 +693,6 @@ export class WalletsService {
         };
       }
 
-      // Check APT balance for gas fees
-      try {
-        const aptBalance = await aptos.getAccountAPTAmount({
-          accountAddress: account.accountAddress,
-        });
-        const aptBalanceInAPT = Number(aptBalance) / 100000000;
-
-        if (aptBalanceInAPT < 0.001) {
-          return {
-            success: false,
-            error: `Insufficient APT for gas fees. Required: 0.001 APT, Available: ${aptBalanceInAPT.toFixed(8)} APT. Please deposit some APT first.`,
-          };
-        }
-      } catch (error: any) {
-        // Continue anyway, let the transaction fail if no gas
-      }
-
       // Get deposit payload from Kana API
       const amountForApi = amount;
       const response = await axios.get(`${kanaRest}/deposit`, {
@@ -738,12 +721,12 @@ export class WalletsService {
         };
       }
 
-      // Build and submit transaction
+      // Build and submit transaction with optimized gas fees
       const transactionPayload = await aptos.transaction.build.simple({
         sender: account.accountAddress,
         data: payloadData,
         options: {
-          maxGasAmount: 15000,
+          maxGasAmount: 10000,
           gasUnitPrice: 100,
         },
       });
@@ -957,29 +940,16 @@ export class WalletsService {
 
       // Check trading balance
       const tradingBalance = await this.getTradingBalance(walletAddress);
+      
+      // Ensure amount is a number and handle precision
+      const amountNum = typeof amount === 'number' ? amount : parseFloat(String(amount));
+      const balanceNum = typeof tradingBalance === 'number' ? tradingBalance : parseFloat(String(tradingBalance));
 
-      if (amount > tradingBalance) {
+      if (amountNum > balanceNum) {
         return {
           success: false,
-          error: `Insufficient balance. Trying to withdraw ${amount} USDT but only ${tradingBalance} USDT available.`,
+          error: `Insufficient balance. Trying to withdraw ${amountNum} USDT but only ${balanceNum} USDT available.`,
         };
-      }
-
-      // Check APT balance for gas fees
-      try {
-        const aptBalance = await aptos.getAccountAPTAmount({
-          accountAddress: account.accountAddress,
-        });
-        const aptBalanceInAPT = Number(aptBalance) / 100000000;
-
-        if (aptBalanceInAPT < 0.001) {
-          return {
-            success: false,
-            error: `Insufficient APT for gas fees. Required: 0.001 APT, Available: ${aptBalanceInAPT.toFixed(8)} APT.`,
-          };
-        }
-      } catch (error: any) {
-        // Continue anyway, let the transaction fail if no gas
       }
 
       // Get withdrawal payload from Kana API
@@ -987,7 +957,7 @@ export class WalletsService {
         params: {
           userAddress: walletAddress,
           marketId: marketId,
-          amount: amount,
+          amount: amountNum,
         },
         headers: {
           'x-api-key': kanaApiKey,
@@ -1010,12 +980,12 @@ export class WalletsService {
         };
       }
 
-      // Build and submit transaction
+      // Build and submit transaction with optimized gas fees
       const transactionPayload = await aptos.transaction.build.simple({
         sender: account.accountAddress,
         data: payloadData,
         options: {
-          maxGasAmount: 15000,
+          maxGasAmount: 10000,
           gasUnitPrice: 100,
         },
       });
@@ -1030,15 +1000,24 @@ export class WalletsService {
       });
 
       if (!executedTxn.success) {
+        // Extract error message from transaction
+        let errorMessage = 'Transaction failed on blockchain';
+        if ((executedTxn as any).vm_status) {
+          errorMessage = `Transaction failed: ${(executedTxn as any).vm_status}`;
+        } else if ((executedTxn as any).transaction?.vm_status) {
+          errorMessage = `Transaction failed: ${(executedTxn as any).transaction.vm_status}`;
+        }
+        
         return {
           success: false,
-          error: 'Transaction failed on blockchain',
+          error: errorMessage,
         };
       }
 
       const version =
         (executedTxn as any).version ||
         (executedTxn as any).transaction?.version;
+      
       return {
         success: true,
         txHash: committedTxn.hash,
@@ -1046,12 +1025,19 @@ export class WalletsService {
       };
     } catch (error: any) {
       console.error(
-        `❌ Error withdrawing from Kana trading account for user ${userId}:`,
+        `Error withdrawing from Kana trading account for user ${userId}:`,
         error,
       );
+      
+      // Try to extract error message
+      let errorMessage = error.message || 'Failed to withdraw from trading account';
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
       return {
         success: false,
-        error: error.message || 'Failed to withdraw from trading account',
+        error: errorMessage,
       };
     }
   }
@@ -1116,44 +1102,18 @@ export class WalletsService {
         };
       }
 
-      // Check wallet account balance from Kana API
-      const walletBalance = await this.getWalletAccountBalance(walletAddress);
-
-      if (amount > walletBalance) {
-        return {
-          success: false,
-          error: `Insufficient balance. Trying to transfer ${amount} USDT but only ${walletBalance} USDT available.`,
-        };
-      }
-
-      // Check APT balance for gas fees
-      try {
-        const aptBalance = await aptos.getAccountAPTAmount({
-          accountAddress: account.accountAddress,
-        });
-        const aptBalanceInAPT = Number(aptBalance) / 100000000;
-
-        if (aptBalanceInAPT < 0.001) {
-          return {
-            success: false,
-            error: `Insufficient APT for gas fees. Required: 0.001 APT, Available: ${aptBalanceInAPT.toFixed(8)} APT.`,
-          };
-        }
-      } catch (error: any) {
-        // Continue anyway, let the transaction fail if no gas
-      }
-
       // Convert amount to smallest units
       const amountUnits = BigInt(Math.round(amount * 1e6));
 
-      // Build and submit transfer transaction
+      // Build and submit transfer transaction with optimized gas fees
+      // No balance checks - just attempt the transaction
       const rawTx = await aptos.transferFungibleAsset({
         sender: account,
         fungibleAssetMetadataAddress: USDT_METADATA_ADDRESS,
         recipient: recipientAddress,
         amount: amountUnits,
         options: {
-          maxGasAmount: 5000,
+          maxGasAmount: 10000,
           gasUnitPrice: 100,
         },
       });
@@ -1644,23 +1604,6 @@ export class WalletsService {
         };
       }
 
-      // Check APT balance for gas fees
-      try {
-        const aptBalance = await aptos.getAccountAPTAmount({
-          accountAddress: account.accountAddress,
-        });
-        const aptBalanceInAPT = Number(aptBalance) / 100000000;
-
-        if (aptBalanceInAPT < 0.001) {
-          return {
-            success: false,
-            error: `Insufficient APT for gas fees. Required: 0.001 APT, Available: ${aptBalanceInAPT.toFixed(8)} APT.`,
-          };
-        }
-      } catch (error: any) {
-        // Continue anyway, let the transaction fail if no gas
-      }
-
       // If size or leverage not provided, fetch from positions
       let finalSize = size;
       let finalLeverage = leverage;
@@ -1744,12 +1687,12 @@ export class WalletsService {
         };
       }
 
-      // Build and submit transaction
+      // Build and submit transaction with optimized gas fees
       const transactionPayload = await aptos.transaction.build.simple({
         sender: account.accountAddress,
         data: payloadData,
         options: {
-          maxGasAmount: 15000,
+          maxGasAmount: 10000,
           gasUnitPrice: 100,
         },
       });
@@ -1845,23 +1788,6 @@ export class WalletsService {
         };
       }
 
-      // Check APT balance for gas fees
-      try {
-        const aptBalance = await aptos.getAccountAPTAmount({
-          accountAddress: account.accountAddress,
-        });
-        const aptBalanceInAPT = Number(aptBalance) / 100000000;
-
-        if (aptBalanceInAPT < 0.001) {
-          return {
-            success: false,
-            error: `Insufficient APT for gas fees. Required: 0.001 APT, Available: ${aptBalanceInAPT.toFixed(8)} APT.`,
-          };
-        }
-      } catch (error: any) {
-        // Continue anyway, let the transaction fail if no gas
-      }
-
       // Get collapse position payload from Kana API
       // marketId is required for collapse position
       const params: any = {
@@ -1903,12 +1829,12 @@ export class WalletsService {
         };
       }
 
-      // Build and submit transaction
+      // Build and submit transaction with optimized gas fees
       const transactionPayload = await aptos.transaction.build.simple({
         sender: account.accountAddress,
         data: payloadData,
         options: {
-          maxGasAmount: 15000,
+          maxGasAmount: 10000,
           gasUnitPrice: 100,
         },
       });

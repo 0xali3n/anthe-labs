@@ -459,11 +459,10 @@ export default function DepositWithdrawModal({
       });
 
       // Step 2: Wait for wallet balance to update and verify before transfer
-      // Retry mechanism: Check wallet balance with retries (API might have delay)
       let walletBalance = 0;
       let retryCount = 0;
       const maxRetries = 5;
-      const retryDelay = 2000; // 2 seconds between retries
+      const retryDelay = 1000; // 1 second between retries
 
       while (retryCount < maxRetries) {
         const walletBalanceResult = await getWalletAccountBalance();
