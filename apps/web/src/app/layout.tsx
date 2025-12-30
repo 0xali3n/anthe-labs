@@ -1,6 +1,7 @@
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import WalletProvider from "@/components/WalletProvider";
 import type { Metadata } from "next";
 import Script from "next/script";
 
@@ -211,9 +212,11 @@ export default function RootLayout({
           `}
         </Script>
 
-        <Navbar />
-        <main className="flex-1 relative z-10">{children}</main>
-        <Footer />
+        <WalletProvider>
+          <Navbar />
+          <main className="flex-1 relative z-10">{children}</main>
+          <Footer />
+        </WalletProvider>
       </body>
     </html>
   );

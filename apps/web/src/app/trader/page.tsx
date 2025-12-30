@@ -152,11 +152,17 @@ export default function TraderPage() {
   };
 
   const handleWalletConnected = (address: string, walletName: string) => {
-    setWalletAddress(address);
-    setConnectedWalletName(walletName);
-    setSuccess(true);
-    setError(null);
-    setTimeout(() => setSuccess(false), 3000);
+    // Ensure address is a valid string
+    if (typeof address === 'string' && address.length > 0) {
+      setWalletAddress(address);
+      setConnectedWalletName(walletName);
+      setSuccess(true);
+      setError(null);
+      setTimeout(() => setSuccess(false), 3000);
+    } else {
+      console.error('Invalid wallet address received:', address);
+      setError('Invalid wallet address. Please try connecting again.');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -423,7 +429,7 @@ export default function TraderPage() {
                       : "bg-slate-800/50 hover:bg-slate-800 border-slate-700 text-slate-200"
                       }`}
                   >
-                    {walletAddress ? (
+                    {walletAddress && typeof walletAddress === 'string' ? (
                       <>
                         <CheckCircle2 size={16} className="text-green-400" />
                         <span className="truncate">
