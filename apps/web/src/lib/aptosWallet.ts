@@ -4,7 +4,7 @@
  * This file provides a compatibility layer for existing code
  */
 
-import { useWallet, WalletName } from "@aptos-labs/wallet-adapter-react";
+import { useWallet } from "@aptos-labs/wallet-adapter-react";
 
 export interface AptosWallet {
   name: string;

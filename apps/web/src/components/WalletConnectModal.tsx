@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { X, Wallet, Loader } from "lucide-react";
 import { useWallet, WalletReadyState, groupAndSortWallets } from "@aptos-labs/wallet-adapter-react";
-import { AccountAddress } from "@aptos-labs/ts-sdk";
 
 interface WalletConnectModalProps {
   isOpen: boolean;
@@ -16,7 +15,7 @@ export default function WalletConnectModal({
   onClose,
   onConnect,
 }: WalletConnectModalProps) {
-  const { connect, select, wallets = [], notDetectedWallets = [], account, connected, wallet } = useWallet();
+  const { connect, wallets = [], notDetectedWallets = [], account, connected, wallet } = useWallet();
   const [connectingWallet, setConnectingWallet] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const hasCalledOnConnect = useRef(false);
@@ -83,10 +82,9 @@ export default function WalletConnectModal({
       return address;
     }
     
-    // Try using AccountAddress from SDK if it's an AccountAddress object
+    // If it's an object with a toString method, try it first
     if (address && typeof address === 'object') {
       try {
-        // If it has a toString method, try it first
         if (typeof address.toString === 'function') {
           const str = address.toString();
           if (typeof str === 'string' && str.length > 0 && str.startsWith('0x')) {
@@ -94,20 +92,10 @@ export default function WalletConnectModal({
           }
         }
         
-        // Try to create AccountAddress from the data
-        if (address.data && address.data instanceof Uint8Array) {
-          try {
-            const accountAddress = AccountAddress.fromBytes(address.data);
-            return accountAddress.toString();
-          } catch (e) {
-            // Continue to fallback
-          }
-        }
-        
-        // Fallback: manual Uint8Array to hex conversion
+        // Manual Uint8Array to hex conversion
         if (address.data && address.data instanceof Uint8Array) {
           const uint8Array = address.data;
-          const hex = Array.from(uint8Array)
+          const hex = [...uint8Array]
             .map(b => b.toString(16).padStart(2, '0'))
             .join('');
           return '0x' + hex;
@@ -119,16 +107,10 @@ export default function WalletConnectModal({
     
     // If it's a Uint8Array directly
     if (address instanceof Uint8Array) {
-      try {
-        const accountAddress = AccountAddress.fromBytes(address);
-        return accountAddress.toString();
-      } catch (e) {
-        // Fallback to manual conversion
-        const hex = Array.from(address)
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join('');
-        return '0x' + hex;
-      }
+      const hex = [...address]
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      return '0x' + hex;
     }
     
     return null;
@@ -142,8 +124,8 @@ export default function WalletConnectModal({
     // 3. We're actually in a connection attempt (connectingWallet is set)
     // 4. Modal is still open
     if (connected && wallet && !hasCalledOnConnect.current && connectingWallet && isOpen) {
-      // Get address from account or wallet.account
-      const rawAddress = account?.address || wallet.account?.address;
+      // Get address from account or wallet accounts
+      const rawAddress = account?.address || (wallet.accounts && wallet.accounts[0]?.address);
       
       // Convert address to string (handles both string and object formats)
       const address = convertAddressToString(rawAddress);
@@ -173,17 +155,6 @@ export default function WalletConnectModal({
     setError(null);
 
     try {
-      // First select the wallet (if select function exists)
-      if (select) {
-        try {
-          select(walletName as any);
-          // Small delay to ensure selection is processed
-          await new Promise(resolve => setTimeout(resolve, 100));
-        } catch (selectError) {
-          // Select error is optional, continue with connection
-        }
-      }
-
       // Connect to the wallet - this should trigger the wallet extension popup
       // The promise will resolve when user approves/rejects in the wallet extension
       await connect(walletName as any);
