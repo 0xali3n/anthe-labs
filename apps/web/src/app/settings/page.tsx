@@ -403,17 +403,20 @@ export default function Settings() {
     try {
       setConnectingTwitter(true);
       setError(null);
+      setSuccess(false);
       const result = await connectTwitter();
       if (result.success) {
         // Reload user data to get updated Twitter info
         const userData = await getCurrentUser();
         setUser(userData);
+        setError(null); // Clear any previous errors
         setSuccess(true);
         setTimeout(() => setSuccess(false), 3000);
       }
     } catch (error: any) {
-      console.error("Twitter connect error:", error);
+      console.error("[Settings] Twitter connect error:", error);
       setError(error.message || "Failed to connect Twitter");
+      setSuccess(false);
     } finally {
       setConnectingTwitter(false);
     }

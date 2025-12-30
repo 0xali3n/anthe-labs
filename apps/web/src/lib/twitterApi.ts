@@ -38,35 +38,69 @@ export async function connectTwitter(): Promise<{ success: boolean; username?: s
       return;
     }
 
+    let messageReceived = false;
+    let checkClosedInterval: NodeJS.Timeout | null = null;
+
     // Listen for messages from popup
     const messageListener = (event: MessageEvent) => {
       // Security: Only accept messages from our frontend URL
       const frontendUrl = window.location.origin;
+      
+      // Filter out messages that don't have the expected type (like HMR messages)
+      if (!event.data || typeof event.data !== 'object' || !event.data.type) {
+        // Silently ignore messages without type (likely from HMR or other scripts)
+        return;
+      }
+      
       if (event.origin !== frontendUrl) {
         return;
       }
 
       if (event.data.type === 'TWITTER_OAUTH_SUCCESS') {
+        messageReceived = true;
+        if (checkClosedInterval) {
+          clearInterval(checkClosedInterval);
+        }
         window.removeEventListener('message', messageListener);
-        popup.close();
+        // Popup should close itself, but close it here too just in case
+        if (!popup.closed) {
+          popup.close();
+        }
         resolve({ success: true, username: event.data.username });
       } else if (event.data.type === 'TWITTER_OAUTH_ERROR') {
+        messageReceived = true;
+        if (checkClosedInterval) {
+          clearInterval(checkClosedInterval);
+        }
         window.removeEventListener('message', messageListener);
-        popup.close();
+        // Popup should close itself, but close it here too just in case
+        if (!popup.closed) {
+          popup.close();
+        }
         reject(new Error(event.data.error || 'Twitter connection failed'));
       }
     };
 
     window.addEventListener('message', messageListener);
 
-    // Check if popup is closed manually
-    const checkClosed = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(checkClosed);
-        window.removeEventListener('message', messageListener);
-        reject(new Error('Connection cancelled'));
-      }
-    }, 500);
+    // Check if popup is closed manually (but only after a delay to allow message to be sent)
+    // Start checking after 2 seconds to give time for redirect and message
+    setTimeout(() => {
+      checkClosedInterval = setInterval(() => {
+        if (popup.closed && !messageReceived) {
+          // Wait a bit more to see if message arrives
+          setTimeout(() => {
+            if (!messageReceived) {
+              if (checkClosedInterval) {
+                clearInterval(checkClosedInterval);
+              }
+              window.removeEventListener('message', messageListener);
+              reject(new Error('Connection cancelled'));
+            }
+          }, 2000); // Wait 2 more seconds
+        }
+      }, 1000); // Check every 1 second
+    }, 2000); // Start checking after 2 seconds
 
     // Cleanup after 10 minutes
     setTimeout(() => {

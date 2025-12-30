@@ -20,8 +20,6 @@ export class TwitterService {
 
     if (!this.clientId || !this.clientSecret) {
       console.warn('⚠️ Twitter OAuth credentials not configured. Twitter connection will not work.');
-    } else {
-      console.log('✅ Twitter service initialized');
     }
 
     // Periodic cleanup of expired entries (every 5 minutes)

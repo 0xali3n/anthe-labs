@@ -11,8 +11,8 @@ export default function TwitterCallback() {
 
     const frontendUrl = window.location.origin;
 
-    // If we're in a popup, send message to parent
-    if (window.opener) {
+    // If we're in a popup, send message to parent and close immediately
+    if (window.opener && !window.opener.closed) {
       if (error) {
         // Send error to parent window
         window.opener.postMessage(
@@ -22,7 +22,10 @@ export default function TwitterCallback() {
           },
           frontendUrl
         );
-        setTimeout(() => window.close(), 500);
+        // Small delay to ensure message is sent before closing
+        setTimeout(() => {
+          window.close();
+        }, 100);
         return;
       }
 
@@ -35,7 +38,25 @@ export default function TwitterCallback() {
           },
           frontendUrl
         );
-        setTimeout(() => window.close(), 500);
+        // Small delay to ensure message is sent before closing
+        setTimeout(() => {
+          window.close();
+        }, 100);
+        return;
+      }
+
+      // If no success/error params but in popup, close anyway (might be a redirect issue)
+      if (!success && !error) {
+        window.opener.postMessage(
+          {
+            type: "TWITTER_OAUTH_ERROR",
+            error: "Connection cancelled",
+          },
+          frontendUrl
+        );
+        setTimeout(() => {
+          window.close();
+        }, 100);
         return;
       }
     } else {
