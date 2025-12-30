@@ -531,31 +531,31 @@ export default function Settings() {
       <div className="space-y-6">
         {/* Profile Section */}
         <div
-          className="relative bg-slate-900/50 border border-slate-800 rounded-2xl p-6 sm:p-8 backdrop-blur-sm"
+          className="relative bg-slate-900/50 border border-slate-800 rounded-2xl p-4 sm:p-6 lg:p-8 backdrop-blur-sm"
           style={{ boxShadow: "0 6px 18px rgba(2,8,20,0.45)" }}
         >
           {/* Top-right action area: Edit OR Save/Cancel */}
-          <div className="absolute top-6 right-6 flex items-center gap-3">
+          <div className="absolute top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-2 sm:gap-3 z-10">
             {!isEditing ? (
               <button
                 onClick={() => setIsEditing(true)}
                 aria-label="Edit profile"
-                className={`group flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-lg font-semibold transition-all duration-300 shadow-lg shadow-blue-500/20 ${outfit.className}`}
+                className={`group flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-sm sm:text-base lg:text-lg font-semibold transition-all duration-300 shadow-lg shadow-blue-500/20 ${outfit.className}`}
               >
-                <span className="text-lg font-semibold">Edit Profile</span>
+                <span>Edit Profile</span>
               </button>
             ) : (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 {/* Save button - disabled until changes */}
                 <button
                   onClick={handleSave}
                   disabled={saving || !hasChanges()}
                   aria-label="Save changes"
-                  className={`group flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-lg font-semibold transition-all duration-300 shadow-lg shadow-blue-500/20 ${outfit.className}`}
+                  className={`group flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-sm sm:text-base lg:text-lg font-semibold transition-all duration-300 shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed ${outfit.className}`}
                 >
                   {saving ? (
                     <svg
-                      className="animate-spin h-5 w-5"
+                      className="animate-spin h-4 w-4 sm:h-5 sm:w-5"
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
@@ -575,22 +575,22 @@ export default function Settings() {
                       ></path>
                     </svg>
                   ) : null}
-                  <span className="text-lg font-semibold">Save</span>
+                  <span>Save</span>
                 </button>
 
                 <button
                   onClick={handleCancel}
                   disabled={saving}
-                  className="w-10 h-10 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition-all duration-200 border border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+                  className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition-all duration-200 border border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-900"
                   aria-label="Cancel editing"
                 >
-                  <X size={18} />
+                  <X size={16} className="sm:w-[18px] sm:h-[18px]" />
                 </button>
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-6 pl-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 pt-10 sm:pt-0 pl-0 sm:pl-2">
             <div className="relative">
               <div className="relative">
                 <img
@@ -649,38 +649,36 @@ export default function Settings() {
               )}
             </div>
 
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1 break-words">
-                    {displayName || user.email?.split("@")[0] || "User"}
-                  </h2>
-                  {username ? (
-                    <p className="text-blue-400 font-mono text-sm sm:text-base break-all">
-                      @{username}
-                    </p>
-                  ) : (
-                    <p className="text-slate-500 text-sm">No username set</p>
-                  )}
-                </div>
+            <div className="flex-1 min-w-0 w-full sm:w-auto">
+              <div className="mb-3 sm:mb-4">
+                <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-1 break-words">
+                  {displayName || user.email?.split("@")[0] || "User"}
+                </h2>
+                {username ? (
+                  <p className="text-blue-400 font-mono text-xs sm:text-sm lg:text-base break-all">
+                    @{username}
+                  </p>
+                ) : (
+                  <p className="text-slate-500 text-xs sm:text-sm">No username set</p>
+                )}
               </div>
 
               {/* Twitter Connection (kept inside main flow) */}
-              <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                 {user.twitter_connected && user.twitter_username ? (
-                  <div className="flex items-center gap-2 group">
+                  <div className="flex items-center gap-2 group w-full sm:w-auto">
                     <a
                       href={`https://twitter.com/${user.twitter_username}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-5 py-2.5 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 text-slate-200 rounded-xl transition-all font-medium shadow-lg shadow-slate-900/20 hover:shadow-slate-900/30"
+                      className="flex items-center gap-2 px-3 sm:px-4 lg:px-5 py-2 sm:py-2.5 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 text-slate-200 rounded-lg sm:rounded-xl transition-all text-sm sm:text-base font-medium shadow-lg shadow-slate-900/20 hover:shadow-slate-900/30"
                     >
                       <span>@{user.twitter_username}</span>
                     </a>
                     <button
                       onClick={handleDisconnectTwitter}
                       disabled={disconnectingTwitter}
-                      className="p-2.5 text-slate-400 hover:text-red-400 hover:bg-red-600/10 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed opacity-0 group-hover:opacity-100"
+                      className="p-2 sm:p-2.5 text-slate-400 hover:text-red-400 hover:bg-red-600/10 rounded-lg sm:rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed sm:opacity-0 sm:group-hover:opacity-100"
                       title="Disconnect Twitter"
                     >
                       {disconnectingTwitter ? (
@@ -705,7 +703,7 @@ export default function Settings() {
                           ></path>
                         </svg>
                       ) : (
-                        <X size={18} />
+                        <X size={16} className="sm:w-[18px] sm:h-[18px]" />
                       )}
                     </button>
                   </div>
@@ -713,12 +711,12 @@ export default function Settings() {
                   <button
                     onClick={handleConnectTwitter}
                     disabled={connectingTwitter}
-                    className={`group flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-lg font-semibold transition-all duration-300 shadow-lg shadow-blue-500/20 ${outfit.className}`}
+                    className={`group flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-sm sm:text-base lg:text-lg font-semibold transition-all duration-300 shadow-lg shadow-blue-500/20 w-full sm:w-auto ${outfit.className}`}
                   >
                     {connectingTwitter ? (
                       <>
                         <svg
-                          className="animate-spin h-5 w-5"
+                          className="animate-spin h-4 w-4 sm:h-5 sm:w-5"
                           xmlns="http://www.w3.org/2000/svg"
                           fill="none"
                           viewBox="0 0 24 24"
@@ -813,39 +811,39 @@ export default function Settings() {
 
         {/* Avatar Picker Modal */}
         {showAvatarPicker && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm">
             <div
               ref={modalRef}
-              className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden transform transition-all"
+              className="bg-slate-900 border border-slate-800 rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden transform transition-all"
               style={{
                 animation: "modalSlideIn 0.2s ease-out",
               }}
             >
               {/* Modal Header */}
-              <div className="flex items-center justify-between p-6 border-b border-slate-800 bg-gradient-to-r from-slate-900 to-slate-900/50">
-                <div>
-                  <h3 className={`${palanquinDark.className} text-xl font-bold text-white mb-1`}>
+              <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-800 bg-gradient-to-r from-slate-900 to-slate-900/50">
+                <div className="flex-1 min-w-0 pr-2">
+                  <h3 className={`${palanquinDark.className} text-lg sm:text-xl font-bold text-white mb-1`}>
                     Choose Profile Picture
                   </h3>
-                  <p className="text-sm text-slate-400">
+                  <p className="text-xs sm:text-sm text-slate-400">
                     Select your Google photo or a custom avatar
                   </p>
                 </div>
                 <button
                   onClick={() => setShowAvatarPicker(false)}
-                  className="p-2 hover:bg-slate-800 rounded-xl transition-all text-slate-400 hover:text-slate-200"
+                  className="p-2 hover:bg-slate-800 rounded-lg sm:rounded-xl transition-all text-slate-400 hover:text-slate-200 flex-shrink-0"
                 >
-                  <X size={20} />
+                  <X size={18} className="sm:w-5 sm:h-5" />
                 </button>
               </div>
 
               {/* Modal Content */}
-              <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] custom-scrollbar">
+              <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(95vh-100px)] sm:max-h-[calc(90vh-120px)] custom-scrollbar">
                 {/* Google Photo Option */}
                 {user?.avatar_url && (
-                  <div className="mb-8">
-                    <div className="mb-4">
-                      <p className="text-sm font-semibold text-slate-300 uppercase tracking-wide">
+                  <div className="mb-6 sm:mb-8">
+                    <div className="mb-3 sm:mb-4">
+                      <p className="text-xs sm:text-sm font-semibold text-slate-300 uppercase tracking-wide">
                         Your Google Photo
                       </p>
                     </div>
@@ -854,10 +852,10 @@ export default function Settings() {
                         onClick={() =>
                           handleAvatarSelect(user.avatar_url!, "google")
                         }
-                        className={`relative w-32 h-32 rounded-2xl overflow-hidden border-2 transition-all duration-200 group ${user.avatar_source === "google" ||
+                        className={`relative w-24 h-24 sm:w-32 sm:h-32 rounded-xl sm:rounded-2xl overflow-hidden border-2 transition-all duration-200 group ${user.avatar_source === "google" ||
                           (!user.avatar_source &&
                             selectedAvatarUrl === user.avatar_url)
-                          ? "border-blue-500 ring-4 ring-blue-500/30 shadow-xl shadow-blue-500/30 scale-105"
+                          ? "border-blue-500 ring-2 sm:ring-4 ring-blue-500/30 shadow-xl shadow-blue-500/30 scale-105"
                           : "border-slate-700 hover:border-blue-400 hover:shadow-xl hover:scale-105"
                           }`}
                       >
@@ -894,8 +892,8 @@ export default function Settings() {
                               </div>
                             </div>
                           )}
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 via-black/80 to-transparent p-3">
-                          <p className="text-xs text-white font-bold text-center">
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/95 via-black/80 to-transparent p-2 sm:p-3">
+                          <p className="text-[10px] sm:text-xs text-white font-bold text-center">
                             Google Photo
                           </p>
                         </div>
@@ -907,28 +905,28 @@ export default function Settings() {
                 {/* Custom Avatars */}
                 {loadingAvatars ? (
                   <div>
-                    <div className="mb-4">
-                      <p className="text-sm font-semibold text-slate-300 uppercase tracking-wide">
+                    <div className="mb-3 sm:mb-4">
+                      <p className="text-xs sm:text-sm font-semibold text-slate-300 uppercase tracking-wide">
                         Custom Avatars
                       </p>
                     </div>
-                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-4">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-4">
                       {[...Array(6)].map((_, i) => (
                         <div
                           key={i}
-                          className="aspect-square bg-slate-800/50 rounded-xl animate-pulse"
+                          className="aspect-square bg-slate-800/50 rounded-lg sm:rounded-xl animate-pulse"
                         />
                       ))}
                     </div>
                   </div>
                 ) : avatars.length > 0 ? (
                   <div>
-                    <div className="mb-4">
-                      <p className="text-sm font-semibold text-slate-300 uppercase tracking-wide">
+                    <div className="mb-3 sm:mb-4">
+                      <p className="text-xs sm:text-sm font-semibold text-slate-300 uppercase tracking-wide">
                         Custom Avatars
                       </p>
                     </div>
-                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-4">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-4">
                       {avatars.map((avatar) => {
                         const isSelected =
                           user?.avatar_source === "custom" &&
@@ -939,8 +937,8 @@ export default function Settings() {
                             onClick={() =>
                               handleAvatarSelect(avatar.url, "custom")
                             }
-                            className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all duration-200 group ${isSelected
-                              ? "border-blue-500 ring-4 ring-blue-500/30 shadow-xl shadow-blue-500/30 scale-105"
+                            className={`relative aspect-square rounded-lg sm:rounded-xl overflow-hidden border-2 transition-all duration-200 group ${isSelected
+                              ? "border-blue-500 ring-2 sm:ring-4 ring-blue-500/30 shadow-xl shadow-blue-500/30 scale-105"
                               : "border-slate-700 hover:border-blue-400 hover:shadow-xl hover:scale-105"
                               }`}
                           >
@@ -1004,22 +1002,22 @@ export default function Settings() {
         )}
 
         {/* Become a Creator Section */}
-        <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className={`${palanquinDark.className} text-lg font-bold text-white mb-1`}>
+        <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 sm:p-6 mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <h3 className={`${palanquinDark.className} text-base sm:text-lg font-bold text-white mb-1`}>
                 Become a Creator
               </h3>
-              <p className="text-sm text-slate-400">
+              <p className="text-xs sm:text-sm text-slate-400">
                 Register as a creator and start earning from your trading
                 strategies
               </p>
             </div>
             <button
               onClick={() => router.push("/trader")}
-              className={`group flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-lg font-semibold transition-all duration-300 shadow-lg shadow-blue-500/20 ${outfit.className}`}
+              className={`group flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-sm sm:text-base lg:text-lg font-semibold transition-all duration-300 shadow-lg shadow-blue-500/20 w-full sm:w-auto ${outfit.className}`}
             >
-              <UserPlus size={18} />
+              <UserPlus size={16} className="sm:w-[18px] sm:h-[18px]" />
               <span>Become a Creator</span>
             </button>
           </div>
@@ -1027,31 +1025,31 @@ export default function Settings() {
 
         {/* Account Details */}
         <div
-          className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm"
+          className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 sm:p-6 backdrop-blur-sm"
           style={{ boxShadow: "0 6px 18px rgba(2,8,20,0.45)" }}
         >
-          <h2 className={`${palanquinDark.className} text-xl font-semibold text-white mb-6`}>
+          <h2 className={`${palanquinDark.className} text-lg sm:text-xl font-semibold text-white mb-4 sm:mb-6`}>
             Account Details
           </h2>
           <div className="space-y-3">
             {/* Email */}
-            <div className="p-4 bg-slate-800/50 rounded-xl hover:bg-slate-800/70 transition-all border border-slate-800/50">
+            <div className="p-3 sm:p-4 bg-slate-800/50 rounded-lg sm:rounded-xl hover:bg-slate-800/70 transition-all border border-slate-800/50">
               <p className="text-xs text-slate-500 mb-1.5 font-medium uppercase tracking-wide">
                 Email Address
               </p>
-              <p className="text-slate-100 font-medium break-all">
+              <p className="text-sm sm:text-base text-slate-100 font-medium break-all">
                 {user.email}
               </p>
             </div>
 
             {/* Wallet Address */}
             {user.wallet_address && (
-              <div className="p-4 bg-slate-800/50 rounded-xl hover:bg-slate-800/70 transition-all border border-slate-800/50">
+              <div className="p-3 sm:p-4 bg-slate-800/50 rounded-lg sm:rounded-xl hover:bg-slate-800/70 transition-all border border-slate-800/50">
                 <p className="text-xs text-slate-500 mb-1.5 font-medium uppercase tracking-wide">
                   Wallet Address
                 </p>
-                <div className="flex items-center gap-3">
-                  <p className="text-slate-100 font-mono text-sm break-all flex-1">
+                <div className="flex items-start sm:items-center gap-2 sm:gap-3">
+                  <p className="text-xs sm:text-sm text-slate-100 font-mono break-all flex-1 min-w-0">
                     {user.wallet_address}
                   </p>
                   <button
@@ -1067,16 +1065,16 @@ export default function Settings() {
                         setError("Failed to copy address to clipboard");
                       }
                     }}
-                    className="p-2.5 hover:bg-slate-700 rounded-lg transition-all duration-200 flex-shrink-0 border border-slate-700 hover:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+                    className="p-2 sm:p-2.5 hover:bg-slate-700 rounded-lg transition-all duration-200 flex-shrink-0 border border-slate-700 hover:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900"
                     title={copied ? "Copied!" : "Copy wallet address"}
                     aria-label={copied ? "Copied!" : "Copy wallet address"}
                   >
                     {copied ? (
-                      <Check size={18} className="text-green-400" />
+                      <Check size={16} className="sm:w-[18px] sm:h-[18px] text-green-400" />
                     ) : (
                       <Copy
-                        size={18}
-                        className="text-slate-400 hover:text-blue-400 transition-colors"
+                        size={16}
+                        className="sm:w-[18px] sm:h-[18px] text-slate-400 hover:text-blue-400 transition-colors"
                       />
                     )}
                   </button>
@@ -1087,7 +1085,7 @@ export default function Settings() {
                     role="status"
                     aria-live="polite"
                     aria-atomic="true"
-                    className="fixed top-20 right-4 px-3 py-2 bg-green-900/90 border border-green-500/50 rounded-lg text-green-400 text-sm font-medium shadow-lg z-50"
+                    className="fixed top-16 sm:top-20 right-2 sm:right-4 px-3 py-2 bg-green-900/90 border border-green-500/50 rounded-lg text-green-400 text-xs sm:text-sm font-medium shadow-lg z-50"
                   >
                     Copied!
                   </div>
@@ -1099,18 +1097,18 @@ export default function Settings() {
 
         {/* Logout Button */}
         <div
-          className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 backdrop-blur-sm"
+          className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 sm:p-6 backdrop-blur-sm"
           style={{ boxShadow: "0 6px 18px rgba(2,8,20,0.45)" }}
         >
           <button
             onClick={handleSignOutClick}
             disabled={signingOut}
-            className={`w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 text-red-400 rounded-lg text-lg font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${outfit.className}`}
+            className={`w-full flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3.5 bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 text-red-400 rounded-lg text-sm sm:text-base lg:text-lg font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${outfit.className}`}
           >
             {signingOut ? (
               <>
                 <svg
-                  className="animate-spin h-5 w-5"
+                  className="animate-spin h-4 w-4 sm:h-5 sm:w-5"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -1141,24 +1139,24 @@ export default function Settings() {
       {/* Sign Out Confirmation Modal */}
       {showSignOutModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <h3 className={`${palanquinDark.className} text-xl font-bold text-white mb-2`}>Sign Out</h3>
-            <p className="text-slate-400 mb-6">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-4 sm:p-6">
+            <h3 className={`${palanquinDark.className} text-lg sm:text-xl font-bold text-white mb-2`}>Sign Out</h3>
+            <p className="text-sm sm:text-base text-slate-400 mb-4 sm:mb-6">
               Are you sure you want to sign out? You'll need to sign in again to
               access your account.
             </p>
-            <div className="flex items-center gap-3 justify-end">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 sm:justify-end">
               <button
                 onClick={() => setShowSignOutModal(false)}
                 disabled={signingOut}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+                className="w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg sm:rounded-xl transition-all duration-200 text-sm sm:text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-900"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSignOut}
                 disabled={signingOut}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+                className="w-full sm:w-auto px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg sm:rounded-xl transition-all duration-200 text-sm sm:text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-slate-900"
               >
                 {signingOut ? "Signing out..." : "Sign Out"}
               </button>

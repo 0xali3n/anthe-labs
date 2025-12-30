@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Twitter, Linkedin, Send, Mail } from "lucide-react";
+import { Linkedin, Send, Mail } from "lucide-react";
+import Image from "next/image";
 
 export default function Footer() {
   return (
@@ -33,11 +34,14 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-9 h-9 rounded-lg bg-slate-800/50 border border-slate-700/50 flex items-center justify-center hover:bg-slate-800 hover:border-blue-500/40 hover:shadow-[0_0_10px_rgba(59,130,246,0.2)] transition-all duration-200"
-                aria-label="Follow Anthe Labs on Twitter"
+                aria-label="Follow Anthe Labs on X"
               >
-                <Twitter
-                  size={16}
-                  className="text-slate-400 hover:text-blue-400 transition-colors"
+                <Image
+                  src="/x.svg"
+                  alt="X"
+                  width={16}
+                  height={16}
+                  className="opacity-70 hover:opacity-100 transition-opacity"
                 />
               </a>
               <a
@@ -138,6 +142,14 @@ export default function Footer() {
                   className="text-slate-400 hover:text-blue-400 text-sm transition-colors duration-200 inline-block"
                 >
                   Terms of Service
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/privacy"
+                  className="text-slate-400 hover:text-blue-400 text-sm transition-colors duration-200 inline-block"
+                >
+                  Privacy Policy
                 </Link>
               </li>
             </ul>

@@ -11,7 +11,6 @@ import {
 } from "@/lib/usersApi";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  Twitter,
   Send,
   Copy,
   Check,
@@ -26,6 +25,7 @@ import {
   Download,
   X,
 } from "lucide-react";
+import Image from "next/image";
 import { getTier, TierConfig, TIER_THRESHOLDS } from "@/lib/tiers";
 import { generateStatsImage } from "@/lib/generateStatsImage";
 
@@ -1020,7 +1020,7 @@ https://anthe.io`,
                     </p>
                   )}
 
-                  {/* Twitter Button - Improved */}
+                  {/* X (Twitter) Button - Improved */}
                   {user.twitter_connected && user.twitter_username && (
                     <a
                       href={`https://twitter.com/${user.twitter_username}`}
@@ -1028,9 +1028,12 @@ https://anthe.io`,
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 border border-slate-700/50 rounded-lg hover:bg-slate-800 hover:border-[#3B82F6]/50 transition-all duration-200 group text-xs sm:text-sm mx-auto sm:mx-0"
                     >
-                      <Twitter
-                        size={14}
-                        className="sm:w-[16px] sm:h-[16px] text-[#3B82F6] group-hover:scale-110 transition-transform"
+                      <Image
+                        src="/x.svg"
+                        alt="X"
+                        width={14}
+                        height={14}
+                        className="sm:w-4 sm:h-4 opacity-90 group-hover:opacity-100 group-hover:scale-110 transition-all"
                       />
                       <span className="text-xs sm:text-sm text-[#3B82F6] font-medium">
                         @{user.twitter_username}
