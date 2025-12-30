@@ -8,7 +8,7 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: Recreate
+    type: RollingUpdate
   selector:
     matchLabels:
       app: web
@@ -17,6 +17,12 @@ spec:
       labels:
         app: web
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsUser: 1001
+        runAsGroup: 3000
+        fsGroup: 2000
+        runAsNonRoot: true
       containers:
         - name: web
           image: REPLACE_WITH_IMAGE
@@ -38,10 +44,10 @@ spec:
             httpGet:
               path: /
               port: 3000
-            initialDelaySeconds: 5
+            initialDelaySeconds: 30
             periodSeconds: 10
           ports:
-            - containerPort: 4001
+            - containerPort: 3000
               name: app
           envFrom:
             - secretRef:
