@@ -1,6 +1,7 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 
+import * as http from "http";
 import { Logger } from "./utils/logger";
 import { validateConfig } from "./config";
 import { redisService } from "./services/redis.service";
@@ -102,8 +103,35 @@ async function initializeServices(): Promise<void> {
   }
 }
 
+/**
+ * Start HTTP server for health checks
+ */
+function startHealthServer(): void {
+  const port = Number(process.env.PORT) || 4001;
+  const server = http.createServer((req, res) => {
+    if (req.url === "/health" && req.method === "GET") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          ok: true,
+          message: "✅ Trade service is running!",
+          timestamp: new Date().toISOString(),
+        })
+      );
+    } else {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Not found" }));
+    }
+  });
+
+  server.listen(port, "0.0.0.0", () => {
+    Logger.info(`🏥 Health check server running on port ${port}`);
+  });
+}
+
 // Start the service
 Logger.info("🚀 Trade Service starting...");
+startHealthServer();
 initializeServices();
 
 process.on("uncaughtException", (error: Error) => {
