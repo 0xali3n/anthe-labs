@@ -106,7 +106,9 @@ export async function connectTwitter(): Promise<{ success: boolean; username?: s
     setTimeout(() => {
       if (!popup.closed) {
         popup.close();
-        clearInterval(checkClosed);
+        if (checkClosedInterval) {
+          clearInterval(checkClosedInterval);
+        }
         window.removeEventListener('message', messageListener);
         reject(new Error('Connection timeout'));
       }
