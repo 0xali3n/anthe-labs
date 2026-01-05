@@ -40,6 +40,26 @@ spec:
           envFrom:
             - secretRef:
                 name: ws-secret
+                
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4001
+              scheme: HTTP
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4001
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
         
 ---
 apiVersion: v1
