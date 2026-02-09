@@ -9,7 +9,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://anthe.io";
 
 export const metadata: Metadata = {
   title: {
-    default: "Anthe Labs - Automated Copy Trading Platform on Aptos",
+    default: "Anthe Labs",
     template: "%s | Anthe Labs",
   },
   description:
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: siteUrl,
-    title: "Anthe Labs - Automated Copy Trading Platform on Aptos",
+    title: "Anthe Labs",
     description:
       "Automatically mirror top traders on Aptos with real-time copy trading. Non-custodial, secure, and audited. Smart position sizing, live analytics, and instant execution.",
     siteName: "Anthe Labs",

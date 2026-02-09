@@ -77,7 +77,7 @@ export default function TraderDetailsModal({
   const [loadingPositions, setLoadingPositions] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [activeTab, setActiveTab] = useState<"positions" | "history">("positions");
-  const maxTradesToShow = 9;
+  const maxTradesToShow = 10;
 
   useEffect(() => {
     if (isOpen) {
@@ -206,7 +206,7 @@ export default function TraderDetailsModal({
                 : "text-slate-400 hover:text-slate-300"
             }`}
           >
-            Trade History ({tradeHistory.length})
+            Recent Trades
           </button>
         </div>
 
@@ -369,12 +369,7 @@ export default function TraderDetailsModal({
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h3 className={`${palanquinDark.className} text-lg font-semibold text-white`}>
-                  Trade History
-                  {tradeHistory.length > maxTradesToShow && (
-                    <span className="text-sm text-slate-400 font-normal ml-2">
-                      (Showing {maxTradesToShow} of {tradeHistory.length} recent trades)
-                    </span>
-                  )}
+                  Recent Trades
                 </h3>
                 <button
                   onClick={refreshData}

@@ -162,7 +162,6 @@ export default function LeaderboardPage() {
     }
   });
 
-
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center relative">
@@ -226,12 +225,13 @@ export default function LeaderboardPage() {
         </div>
       )}
 
-
       <div className="max-w-7xl mx-auto pt-24 pb-10 sm:pt-28 sm:pb-12 px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Header Section - Premium Styling */}
         <div className="mb-6">
           <div className="mb-6">
-            <h1 className={`${palanquinDark.className} text-3xl sm:text-4xl font-semibold text-white tracking-tight mb-3`}>
+            <h1
+              className={`${palanquinDark.className} text-3xl sm:text-4xl font-semibold text-white tracking-tight mb-3`}
+            >
               Top Traders to Copy
             </h1>
             <p className="text-slate-300 text-base sm:text-lg max-w-2xl leading-relaxed font-medium">
@@ -281,195 +281,197 @@ export default function LeaderboardPage() {
                 title="Refresh leaderboard"
                 className="flex items-center gap-2 px-4 py-2.5 bg-transparent hover:bg-slate-800/50 border border-slate-700/50 hover:border-slate-600/50 text-slate-300 rounded-[15px] text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+                <RefreshCw
+                  size={16}
+                  className={loading ? "animate-spin" : ""}
+                />
                 <span>Refresh</span>
               </button>
             </div>
           </div>
-        </div >
+        </div>
 
         {/* Traders Grid - Premium Styling */}
-        < div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8" >
-          {
-            sortedTraders.map((trader, index) => {
-              const pnl = parseFloat(trader.pnl);
-              const roi = parseFloat(trader.roi);
-              const isPositive = pnl >= 0;
-              const displayPnl =
-                pnlValues[trader.id] !== undefined ? pnlValues[trader.id] : pnl;
-              const isHovered = hoveredCard === trader.id;
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+          {sortedTraders.map((trader, index) => {
+            const pnl = parseFloat(trader.pnl);
+            const roi = parseFloat(trader.roi);
+            const isPositive = pnl >= 0;
+            const displayPnl =
+              pnlValues[trader.id] !== undefined ? pnlValues[trader.id] : pnl;
+            const isHovered = hoveredCard === trader.id;
 
-              return (
-                <div
-                  key={trader.id}
-                  onMouseEnter={() => setHoveredCard(trader.id)}
-                  onMouseLeave={() => setHoveredCard(null)}
-                  className="relative rounded-lg p-5 bg-slate-900/50 border border-slate-800 hover:border-slate-700 transition-all duration-200"
-                >
-                  {/* Header: Avatar, Name, Details Button */}
-                  <div className="flex items-center gap-3 mb-5">
-                    {/* Avatar */}
-                    <div className="w-10 h-10 rounded-lg border border-slate-700 flex-shrink-0 overflow-hidden">
-                      {trader.avatarUrl ? (
-                        <img
-                          src={trader.avatarUrl}
-                          alt={trader.botName || formatAddress(trader.address)}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = "none";
-                          }}
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-slate-800 flex items-center justify-center text-slate-400 font-medium text-sm">
-                          {(trader.botName || formatAddress(trader.address))
-                            .charAt(0)
-                            .toUpperCase()}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Bot Name and Address */}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-base text-slate-200 font-semibold mb-0.5 truncate">
-                        {trader.botName || formatAddress(trader.address)}
-                      </p>
-                      <p className="text-xs text-slate-500 font-mono truncate">
-                        {formatAddress(trader.address)}
-                      </p>
-                    </div>
-
-                    {/* Details Button */}
-                    <button
-                      onClick={() => {
-                        if (isSignedIn) {
-                          setSelectedTrader(trader);
-                          setIsModalOpen(true);
-                        } else {
-                          setShowSignInAlert(true);
-                          setTimeout(() => setShowSignInAlert(false), 3000);
-                        }
-                      }}
-                      className="flex-shrink-0 px-3 py-1.5 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 hover:border-slate-600/50 text-slate-300 hover:text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2"
-                      title="View details"
-                    >
-                      <Eye size={14} />
-                      <span>Details</span>
-                    </button>
+            return (
+              <div
+                key={trader.id}
+                onMouseEnter={() => setHoveredCard(trader.id)}
+                onMouseLeave={() => setHoveredCard(null)}
+                className="relative rounded-lg p-5 bg-slate-900/50 border border-slate-800 hover:border-slate-700 transition-all duration-200"
+              >
+                {/* Header: Avatar, Name, Details Button */}
+                <div className="flex items-center gap-3 mb-5">
+                  {/* Avatar */}
+                  <div className="w-10 h-10 rounded-lg border border-slate-700 flex-shrink-0 overflow-hidden">
+                    {trader.avatarUrl ? (
+                      <img
+                        src={trader.avatarUrl}
+                        alt={trader.botName || formatAddress(trader.address)}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-slate-800 flex items-center justify-center text-slate-400 font-medium text-sm">
+                        {(trader.botName || formatAddress(trader.address))
+                          .charAt(0)
+                          .toUpperCase()}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Metrics Section */}
-                  <div className="space-y-3">
-                    {/* PNL */}
+                  {/* Bot Name and Address */}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-base text-slate-200 font-semibold mb-0.5 truncate">
+                      {trader.botName || formatAddress(trader.address)}
+                    </p>
+                    <p className="text-xs text-slate-500 font-mono truncate">
+                      {formatAddress(trader.address)}
+                    </p>
+                  </div>
+
+                  {/* Details Button */}
+                  <button
+                    onClick={() => {
+                      if (isSignedIn) {
+                        setSelectedTrader(trader);
+                        setIsModalOpen(true);
+                      } else {
+                        setShowSignInAlert(true);
+                        setTimeout(() => setShowSignInAlert(false), 3000);
+                      }
+                    }}
+                    className="flex-shrink-0 px-3 py-1.5 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 hover:border-slate-600/50 text-slate-300 hover:text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2"
+                    title="View details"
+                  >
+                    <Eye size={14} />
+                    <span>Details</span>
+                  </button>
+                </div>
+
+                {/* Metrics Section */}
+                <div className="space-y-3">
+                  {/* PNL */}
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">
+                        PNL <span className="normal-case">(recent)</span>
+                      </p>
+                      <div
+                        onMouseEnter={(e) =>
+                          showTooltip(
+                            e,
+                            "Profit and Loss: Total profit or loss in USD",
+                          )
+                        }
+                        onMouseLeave={hideTooltip}
+                        className="cursor-help"
+                      >
+                        <Info size={11} className="text-slate-500" />
+                      </div>
+                    </div>
+                    <p
+                      className={`text-2xl font-semibold ${
+                        isPositive ? "text-green-400" : "text-red-400"
+                      }`}
+                    >
+                      {isPositive ? "+" : ""}
+                      {formatCurrency(displayPnl)}
+                    </p>
+                  </div>
+
+                  {/* Metrics Grid */}
+                  <div className="grid grid-cols-3 gap-4 pt-3 border-t border-slate-800/50">
+                    {/* Volume */}
                     <div>
-                      <div className="flex items-center gap-1.5 mb-1">
+                      <div className="flex items-center gap-1 mb-1">
                         <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">
-                          PNL (USD)
+                          Volume
+                        </p>
+                        <div
+                          onMouseEnter={(e) =>
+                            showTooltip(e, "Total trading volume in USD")
+                          }
+                          onMouseLeave={hideTooltip}
+                          className="cursor-help"
+                        >
+                          <Info size={10} className="text-slate-500" />
+                        </div>
+                      </div>
+                      <p className="text-sm font-semibold text-slate-200">
+                        {formatCurrency(trader.totalVolume)}
+                      </p>
+                    </div>
+
+                    {/* ROI */}
+                    <div>
+                      <div className="flex items-center gap-1 mb-1">
+                        <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">
+                          ROI <span className="normal-case">(recent)</span>
                         </p>
                         <div
                           onMouseEnter={(e) =>
                             showTooltip(
                               e,
-                              "Profit and Loss: Total profit or loss in USD"
+                              "Return on Investment: Percentage return on executed trades",
                             )
                           }
                           onMouseLeave={hideTooltip}
                           className="cursor-help"
                         >
-                          <Info size={11} className="text-slate-500" />
+                          <Info size={10} className="text-slate-500" />
                         </div>
                       </div>
-                      <p
-                        className={`text-2xl font-semibold ${isPositive ? "text-green-400" : "text-red-400"
-                          }`}
-                      >
-                        {isPositive ? "+" : ""}
-                        {formatCurrency(displayPnl)}
+                      <p className="text-sm font-semibold text-slate-200">
+                        {formatNumber(trader.roi)}%
                       </p>
                     </div>
 
-                    {/* Metrics Grid */}
-                    <div className="grid grid-cols-3 gap-4 pt-3 border-t border-slate-800/50">
-                      {/* Volume */}
-                      <div>
-                        <div className="flex items-center gap-1 mb-1">
-                          <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">
-                            Volume
-                          </p>
-                          <div
-                            onMouseEnter={(e) =>
-                              showTooltip(e, "Total trading volume in USD")
-                            }
-                            onMouseLeave={hideTooltip}
-                            className="cursor-help"
-                          >
-                            <Info size={10} className="text-slate-500" />
-                          </div>
-                        </div>
-                        <p className="text-sm font-semibold text-slate-200">
-                          {formatCurrency(trader.totalVolume)}
+                    {/* Trades */}
+                    <div>
+                      <div className="flex items-center gap-1 mb-1">
+                        <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">
+                          Trades
                         </p>
-                      </div>
-
-                      {/* ROI */}
-                      <div>
-                        <div className="flex items-center gap-1 mb-1">
-                          <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">
-                            ROI
-                          </p>
-                          <div
-                            onMouseEnter={(e) =>
-                              showTooltip(
-                                e,
-                                "Return on Investment: Percentage return on executed trades"
-                              )
-                            }
-                            onMouseLeave={hideTooltip}
-                            className="cursor-help"
-                          >
-                            <Info size={10} className="text-slate-500" />
-                          </div>
+                        <div
+                          onMouseEnter={(e) =>
+                            showTooltip(e, "Total number of executed trades")
+                          }
+                          onMouseLeave={hideTooltip}
+                          className="cursor-help"
+                        >
+                          <Info size={10} className="text-slate-500" />
                         </div>
-                        <p className="text-sm font-semibold text-slate-200">
-                          {formatNumber(trader.roi)}%
-                        </p>
                       </div>
-
-                      {/* Trades */}
-                      <div>
-                        <div className="flex items-center gap-1 mb-1">
-                          <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">
-                            Trades
-                          </p>
-                          <div
-                            onMouseEnter={(e) =>
-                              showTooltip(e, "Total number of executed trades")
-                            }
-                            onMouseLeave={hideTooltip}
-                            className="cursor-help"
-                          >
-                            <Info size={10} className="text-slate-500" />
-                          </div>
-                        </div>
-                        <p className="text-sm font-semibold text-slate-200">
-                          {trader.numberOfTxns}
-                        </p>
-                      </div>
+                      <p className="text-sm font-semibold text-slate-200">
+                        {trader.numberOfTxns}
+                      </p>
                     </div>
                   </div>
-
-                  {/* Copy Button - Below Metrics */}
-                  <div className="mt-4 pt-4 border-t border-slate-800/50">
-                    <button
-                      onClick={() => handleCopyTrade(trader)}
-                      className="w-full px-3 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2"
-                    >
-                      <span>Copy</span>
-                    </button>
-                  </div>
                 </div>
-              );
-            })
-          }
+
+                {/* Copy Button - Below Metrics */}
+                <div className="mt-4 pt-4 border-t border-slate-800/50">
+                  <button
+                    onClick={() => handleCopyTrade(trader)}
+                    className="w-full px-3 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+                  >
+                    <span>Copy</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
 
           {/* Custom Bot CTA Card */}
           <div
@@ -478,17 +480,15 @@ export default function LeaderboardPage() {
           >
             <div className="flex flex-col items-center justify-center gap-4 text-center">
               <div className="w-14 h-14 rounded-full bg-slate-800/50 border border-slate-700 flex items-center justify-center">
-                <Plus
-                  size={28}
-                  className="text-slate-400"
-                />
+                <Plus size={28} className="text-slate-400" />
               </div>
               <div>
                 <h3 className="text-lg font-bold text-white mb-2">
                   Create Your Own Bot
                 </h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Use known target wallet addresses to build custom trading bots.
+                  Use known target wallet addresses to build custom trading
+                  bots.
                 </p>
               </div>
               <button
@@ -503,21 +503,19 @@ export default function LeaderboardPage() {
               </button>
             </div>
           </div>
-        </div >
+        </div>
 
         {/* Empty State */}
-        {
-          traders.length === 0 && !loading && (
-            <div className="text-center py-16">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-800/50 border border-slate-700/50 mb-4">
-                <AlertCircle size={24} className="text-slate-500" />
-              </div>
-              <p className="text-slate-400 text-sm">
-                No traders available at the moment.
-              </p>
+        {traders.length === 0 && !loading && (
+          <div className="text-center py-16">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-800/50 border border-slate-700/50 mb-4">
+              <AlertCircle size={24} className="text-slate-500" />
             </div>
-          )
-        }
+            <p className="text-slate-400 text-sm">
+              No traders available at the moment.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Sign In Alert */}
@@ -552,9 +550,11 @@ export default function LeaderboardPage() {
             setSelectedTrader(null);
           }}
           traderAddress={selectedTrader.address}
-          traderName={selectedTrader.botName || formatAddress(selectedTrader.address)}
+          traderName={
+            selectedTrader.botName || formatAddress(selectedTrader.address)
+          }
         />
       )}
-    </div >
+    </div>
   );
 }

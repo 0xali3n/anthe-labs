@@ -31,7 +31,20 @@ export default function Navbar() {
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const betaTooltipRef = useRef<HTMLDivElement>(null);
   const betaButtonRef = useRef<HTMLDivElement>(null);
+  const betaCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const balanceFetchedRef = useRef(false);
+
+  const clearBetaCloseTimeout = useCallback(() => {
+    if (betaCloseTimeoutRef.current) {
+      clearTimeout(betaCloseTimeoutRef.current);
+      betaCloseTimeoutRef.current = null;
+    }
+  }, []);
+
+  const scheduleBetaClose = useCallback(() => {
+    clearBetaCloseTimeout();
+    betaCloseTimeoutRef.current = setTimeout(() => setShowBetaTooltip(false), 200);
+  }, [clearBetaCloseTimeout]);
 
   // Fetch balance function - memoized to avoid unnecessary re-renders
   // Now fetches trading account balance instead of wallet balance
@@ -154,7 +167,11 @@ export default function Navbar() {
       ) {
         setShowMobileMenu(false);
       }
-      if (
+      // Don't close when clicking the feedback link so navigation can happen
+      const target = event.target as HTMLElement;
+      if (target?.closest?.('a[href="/feedback"]')) {
+        // Let the link navigate; do not close tooltip on this click
+      } else if (
         betaButtonRef.current &&
         !betaButtonRef.current.contains(event.target as Node) &&
         betaTooltipRef.current &&
@@ -265,8 +282,11 @@ export default function Navbar() {
             <div 
               className="hidden lg:flex items-center relative" 
               ref={betaButtonRef}
-              onMouseEnter={() => setShowBetaTooltip(true)}
-              onMouseLeave={() => setShowBetaTooltip(false)}
+              onMouseEnter={() => {
+                clearBetaCloseTimeout();
+                setShowBetaTooltip(true);
+              }}
+              onMouseLeave={scheduleBetaClose}
             >
               <div 
                 className="px-3 py-1.5 rounded-full border border-blue-500/30 cursor-pointer transition-all duration-200 hover:border-blue-500/50"
@@ -293,8 +313,11 @@ export default function Navbar() {
                     boxShadow:
                       "0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
                   }}
-                  onMouseEnter={() => setShowBetaTooltip(true)}
-                  onMouseLeave={() => setShowBetaTooltip(false)}
+                  onMouseEnter={() => {
+                    clearBetaCloseTimeout();
+                    setShowBetaTooltip(true);
+                  }}
+                  onMouseLeave={scheduleBetaClose}
                 >
                   <div className="space-y-1.5">
                     <h3 className="text-xs font-semibold text-white mb-1">
