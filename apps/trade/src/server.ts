@@ -107,7 +107,7 @@ async function initializeServices(): Promise<void> {
  * Start HTTP server for health checks
  */
 function startHealthServer(): void {
-  const port = Number(process.env.PORT) || 4001;
+  const port = Number(process.env.PORT) || 4003;
   const server = http.createServer((req, res) => {
     if (req.url === "/health" && req.method === "GET") {
       res.writeHead(200, { "Content-Type": "application/json" });

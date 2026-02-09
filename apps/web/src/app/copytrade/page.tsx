@@ -123,6 +123,7 @@ function CopytradeContent() {
   const [botToRestart, setBotToRestart] = useState<CopyTradeBot | null>(null);
   const [botToStop, setBotToStop] = useState<CopyTradeBot | null>(null);
   const [addressError, setAddressError] = useState<string | null>(null);
+  const [isAddressFromLeaderboard, setIsAddressFromLeaderboard] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const modeDropdownRef = useRef<HTMLDivElement>(null);
   const stoppedBotsScrollRef = useRef<HTMLDivElement>(null);
@@ -496,6 +497,7 @@ function CopytradeContent() {
       // Validate the address
       if (isValidAptosAddress(decodedAddress)) {
         setTraderAddress(decodedAddress);
+        setIsAddressFromLeaderboard(true); // Mark as coming from leaderboard
         // Refresh bots list to get latest running bots count
         if (isSignedIn) {
           fetchBots();
@@ -697,6 +699,7 @@ function CopytradeContent() {
         if (result.success && result.data) {
           setSuccess(true);
           setTraderAddress("");
+          setIsAddressFromLeaderboard(false);
           setBotToRestart(null);
           setShowForm(false);
 
@@ -721,6 +724,7 @@ function CopytradeContent() {
         if (result.success && result.data) {
           setSuccess(true);
           setTraderAddress("");
+          setIsAddressFromLeaderboard(false);
           setShowForm(false);
 
           // Refresh bots list
@@ -878,6 +882,7 @@ function CopytradeContent() {
               // Reset form for new bot creation
               setBotToRestart(null);
               setTraderAddress("");
+              setIsAddressFromLeaderboard(false);
               setAllocation(0);
               setTradingMode("smart_ratio");
               setShowForm(true);
@@ -904,6 +909,7 @@ function CopytradeContent() {
                 setAddressError(null);
                 setBotToRestart(null);
                 setTraderAddress("");
+                setIsAddressFromLeaderboard(false);
                 setAllocation(0);
               }
             }}
@@ -941,6 +947,7 @@ function CopytradeContent() {
                       setAddressError(null);
                       setBotToRestart(null);
                       setTraderAddress("");
+                      setIsAddressFromLeaderboard(false);
                       setAllocation(0);
                     }}
                     className="p-1 hover:bg-slate-800/50 rounded transition-all duration-200 text-slate-400 hover:text-white"
@@ -986,47 +993,67 @@ function CopytradeContent() {
                             }
                           />
                         </div>
-                        <input
-                          id="trader-address"
-                          type="text"
-                          value={traderAddress}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            setTraderAddress(value);
-                            // Real-time validation
-                            if (value.trim() && !isValidAptosAddress(value)) {
-                              setAddressError("Invalid Aptos address format");
-                            } else {
-                              setAddressError(null);
-                            }
-                          }}
-                          onBlur={(e) => {
-                            // Validate on blur
-                            const value = e.target.value.trim();
-                            if (value && !isValidAptosAddress(value)) {
-                              setAddressError(
-                                "Invalid Aptos wallet address. Must be 66 characters starting with 0x followed by 64 hex characters."
-                              );
-                            } else {
-                              setAddressError(null);
-                            }
-                          }}
-                          placeholder="0x1234..."
-                          className={`w-full pl-9 pr-3 py-2 bg-slate-900/50 border rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 transition-all font-mono ${
-                            addressError
-                              ? "border-red-500/50 focus:ring-red-500/50 focus:border-red-500/50"
-                              : "border-slate-700/50 focus:ring-blue-500/50 focus:border-blue-500/50"
-                          }`}
-                        />
-                        {traderAddress &&
-                          isValidAptosAddress(traderAddress) && (
-                            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10">
-                              <CheckCircle2
+                        <div className="relative">
+                          {isAddressFromLeaderboard ? (
+                            <div className="w-full pl-9 pr-3 py-2 bg-slate-900/50 border border-slate-700/50 rounded-lg text-xs text-slate-100 font-mono opacity-90 flex items-center">
+                              <div className="absolute left-2.5 top-1/2 -translate-y-1/2 z-10">
+                                <Wallet size={14} className="text-slate-500" />
+                              </div>
+                              <span className="text-slate-300">{formatAddress(traderAddress)}</span>
+                            </div>
+                          ) : (
+                            <input
+                              id="trader-address"
+                              type="text"
+                              value={traderAddress}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setTraderAddress(value);
+                                // Real-time validation
+                                if (value.trim() && !isValidAptosAddress(value)) {
+                                  setAddressError("Invalid Aptos address format");
+                                } else {
+                                  setAddressError(null);
+                                }
+                              }}
+                              onBlur={(e) => {
+                                // Validate on blur
+                                const value = e.target.value.trim();
+                                if (value && !isValidAptosAddress(value)) {
+                                  setAddressError(
+                                    "Invalid Aptos wallet address. Must be 66 characters starting with 0x followed by 64 hex characters."
+                                  );
+                                } else {
+                                  setAddressError(null);
+                                }
+                              }}
+                              placeholder="0x1234..."
+                              className={`w-full pl-9 pr-3 py-2 bg-slate-900/50 border rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 transition-all font-mono ${
+                                addressError
+                                  ? "border-red-500/50 focus:ring-red-500/50 focus:border-red-500/50"
+                                  : "border-slate-700/50 focus:ring-blue-500/50 focus:border-blue-500/50"
+                              }`}
+                            />
+                          )}
+                          {!isAddressFromLeaderboard && (
+                            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 z-10">
+                              <Wallet
                                 size={14}
-                                className="text-green-500"
+                                className={
+                                  addressError ? "text-red-500" : "text-slate-500"
+                                }
                               />
                             </div>
                           )}
+                        </div>
+                        {traderAddress && isValidAptosAddress(traderAddress) && (
+                          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10">
+                            <CheckCircle2
+                              size={14}
+                              className="text-green-500"
+                            />
+                          </div>
+                        )}
                       </div>
                       {addressError && (
                         <p className="mt-1 text-[10px] text-red-400">

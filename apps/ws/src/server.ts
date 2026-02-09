@@ -200,7 +200,7 @@ async function handleUnsubscribeSignal(traderAddress: string): Promise<void> {
  * Start HTTP server for health checks
  */
 function startHealthServer(): void {
-  const port = Number(process.env.PORT) || 4001;
+  const port = Number(process.env.PORT) || 4002;
   const server = http.createServer((req, res) => {
     if (req.url === "/health" && req.method === "GET") {
       res.writeHead(200, { "Content-Type": "application/json" });
@@ -217,6 +217,16 @@ function startHealthServer(): void {
     }
   });
 
+  server.on("error", (error: NodeJS.ErrnoException) => {
+    if (error.code === "EADDRINUSE") {
+      Logger.error(`Port ${port} is already in use. Please set a different PORT environment variable.`);
+      process.exit(1);
+    } else {
+      Logger.error("Health server error", error);
+      process.exit(1);
+    }
+  });
+
   server.listen(port, "0.0.0.0", () => {
     Logger.info(`🏥 Health check server running on port ${port}`);
   });
@@ -225,7 +235,10 @@ function startHealthServer(): void {
 // Start the service
 Logger.info("🚀 Order History Monitor starting...");
 startHealthServer();
-initializeServices();
+initializeServices().catch((error) => {
+  Logger.error("Failed to initialize services", error);
+  process.exit(1);
+});
 
 process.on("uncaughtException", (error: Error) => {
   Logger.error("Uncaught Exception", error);
