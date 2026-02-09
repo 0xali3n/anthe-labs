@@ -25,9 +25,12 @@ export default function Navbar() {
   const [balance, setBalance] = useState<string>("0.00");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showDepositModal, setShowDepositModal] = useState(false);
+  const [showBetaTooltip, setShowBetaTooltip] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isRefreshingBalance, setIsRefreshingBalance] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const betaTooltipRef = useRef<HTMLDivElement>(null);
+  const betaButtonRef = useRef<HTMLDivElement>(null);
   const balanceFetchedRef = useRef(false);
 
   // Fetch balance function - memoized to avoid unnecessary re-renders
@@ -142,7 +145,7 @@ export default function Navbar() {
     };
   }, [isSignedIn, walletAddress, fetchBalance]);
 
-  // Close mobile menu when clicking outside
+  // Close mobile menu and beta tooltip when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -151,16 +154,24 @@ export default function Navbar() {
       ) {
         setShowMobileMenu(false);
       }
+      if (
+        betaButtonRef.current &&
+        !betaButtonRef.current.contains(event.target as Node) &&
+        betaTooltipRef.current &&
+        !betaTooltipRef.current.contains(event.target as Node)
+      ) {
+        setShowBetaTooltip(false);
+      }
     }
 
-    if (showMobileMenu) {
+    if (showMobileMenu || showBetaTooltip) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showMobileMenu]);
+  }, [showMobileMenu, showBetaTooltip]);
   async function signInGoogle() {
     setSigningIn(true);
     try {
@@ -248,8 +259,121 @@ export default function Navbar() {
             </button>
           </div>
 
-          {/* Right: deposit / balance / profile */}
+          {/* Right: Beta badge / deposit / balance / profile */}
           <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 shrink-0">
+            {/* Beta Badge - Desktop - Next to Deposit Button */}
+            <div 
+              className="hidden lg:flex items-center relative" 
+              ref={betaButtonRef}
+              onMouseEnter={() => setShowBetaTooltip(true)}
+              onMouseLeave={() => setShowBetaTooltip(false)}
+            >
+              <div 
+                className="px-3 py-1.5 rounded-full border border-blue-500/30 cursor-pointer transition-all duration-200 hover:border-blue-500/50"
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(99, 102, 241, 0.12))",
+                }}
+                onClick={() => setShowBetaTooltip(!showBetaTooltip)}
+              >
+                <span className="text-xs font-semibold text-blue-300 tracking-wider">BETA</span>
+              </div>
+
+              {/* Beta Tooltip/Popup */}
+              {showBetaTooltip && (
+                <div
+                  ref={betaTooltipRef}
+                  className="absolute top-full right-0 mt-2 w-64 p-3 rounded-lg shadow-xl z-50 animate-modalSlideIn pointer-events-auto"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, rgba(15, 17, 26, 0.98) 0%, rgba(11, 13, 20, 0.98) 100%)",
+                    border: "1px solid rgba(59, 130, 246, 0.2)",
+                    backdropFilter: "blur(20px) saturate(180%)",
+                    WebkitBackdropFilter: "blur(20px) saturate(180%)",
+                    boxShadow:
+                      "0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+                  }}
+                  onMouseEnter={() => setShowBetaTooltip(true)}
+                  onMouseLeave={() => setShowBetaTooltip(false)}
+                >
+                  <div className="space-y-1.5">
+                    <h3 className="text-xs font-semibold text-white mb-1">
+                      Beta Version
+                    </h3>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      This is a beta release for early users. We're refining the platform based on feedback.
+                    </p>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      Share your feedback on our{" "}
+                      <Link
+                        href="/feedback"
+                        className="text-blue-400 hover:text-blue-300 underline transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                      >
+                        feedback page
+                      </Link>
+                      .
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Beta Badge - Mobile - Next to Deposit Button */}
+            <div 
+              className="lg:hidden flex items-center relative" 
+              ref={betaButtonRef}
+            >
+              <div 
+                className="px-2 py-1 rounded-full border border-blue-500/30 cursor-pointer transition-all duration-200"
+                style={{
+                  background:
+                    "linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(99, 102, 241, 0.12))",
+                }}
+                onClick={() => setShowBetaTooltip(!showBetaTooltip)}
+              >
+                <span className="text-[10px] font-semibold text-blue-300 tracking-wider">BETA</span>
+              </div>
+
+              {/* Beta Tooltip/Popup - Mobile */}
+              {showBetaTooltip && (
+                <div
+                  ref={betaTooltipRef}
+                  className="absolute top-full right-0 mt-2 w-56 p-2.5 rounded-lg shadow-xl z-50 animate-modalSlideIn pointer-events-auto"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, rgba(15, 17, 26, 0.98) 0%, rgba(11, 13, 20, 0.98) 100%)",
+                    border: "1px solid rgba(59, 130, 246, 0.2)",
+                    backdropFilter: "blur(20px) saturate(180%)",
+                    WebkitBackdropFilter: "blur(20px) saturate(180%)",
+                    boxShadow:
+                      "0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+                  }}
+                >
+                  <div className="space-y-1">
+                    <h3 className="text-[11px] font-semibold text-white mb-1">
+                      Beta Version
+                    </h3>
+                    <p className="text-[10px] text-slate-400 leading-relaxed">
+                      Beta release for early users. Share feedback on our{" "}
+                      <Link
+                        href="/feedback"
+                        className="text-blue-400 hover:text-blue-300 underline transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                      >
+                        feedback page
+                      </Link>
+                      .
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {authLoading ? (
               <div className="flex items-center gap-2">
                 <div className="h-8 sm:h-9 w-16 sm:w-20 bg-slate-800/50 rounded-lg animate-pulse"></div>
