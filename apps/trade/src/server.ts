@@ -38,7 +38,7 @@ async function listenToStream(): Promise<void> {
       const entries = await redisService.readStream(
         STREAM_KEY,
         lastProcessedId || "$",
-        BLOCK_TIME_MS
+        BLOCK_TIME_MS,
       );
 
       if (entries && entries.length > 0) {
@@ -95,8 +95,8 @@ async function initializeServices(): Promise<void> {
 
     Logger.success("✅ Services connected");
 
-    // Start listening to stream
-    await listenToStream();
+    // Start listening to stream (don't await; it runs until shutdown)
+    void listenToStream();
   } catch (error) {
     Logger.error("Failed to initialize services", error);
     process.exit(1);
@@ -104,35 +104,57 @@ async function initializeServices(): Promise<void> {
 }
 
 /**
- * Start HTTP server for health checks
+ * Start HTTP server for health checks (init first, then health; retry on EADDRINUSE)
  */
 function startHealthServer(): void {
   const port = Number(process.env.PORT) || 4003;
-  const server = http.createServer((req, res) => {
-    if (req.url === "/health" && req.method === "GET") {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(
-        JSON.stringify({
-          ok: true,
-          message: "✅ Trade service is running!",
-          timestamp: new Date().toISOString(),
-        })
-      );
-    } else {
-      res.writeHead(404, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Not found" }));
-    }
-  });
 
-  server.listen(port, "0.0.0.0", () => {
-    Logger.info(`🏥 Health check server running on port ${port}`);
-  });
+  const createAndListen = (): void => {
+    const server = http.createServer((req, res) => {
+      if (req.url === "/health" && req.method === "GET") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            ok: true,
+            message: "✅ Trade service is running!",
+            timestamp: new Date().toISOString(),
+          })
+        );
+      } else {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Not found" }));
+      }
+    });
+
+    server.on("error", (err: NodeJS.ErrnoException) => {
+      if (err.code === "EADDRINUSE") {
+        Logger.warn(`Port ${port} in use or TIME_WAIT; retrying in 5s...`);
+        server.removeAllListeners();
+        setTimeout(createAndListen, 5000);
+      } else {
+        Logger.error("Health server error", err);
+        process.exit(1);
+      }
+    });
+
+    server.listen(port, "0.0.0.0", () => {
+      Logger.info(`🏥 Health check server running on port ${port}`);
+    });
+  };
+
+  createAndListen();
 }
 
-// Start the service
+// Start the service (initialize Redis/DB and stream first, then health server)
 Logger.info("🚀 Trade Service starting...");
-startHealthServer();
-initializeServices();
+initializeServices()
+  .then(() => {
+    startHealthServer();
+  })
+  .catch((error) => {
+    Logger.error("Failed to initialize services", error);
+    process.exit(1);
+  });
 
 process.on("uncaughtException", (error: Error) => {
   Logger.error("Uncaught Exception", error);

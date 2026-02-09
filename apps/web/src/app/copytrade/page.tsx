@@ -123,7 +123,8 @@ function CopytradeContent() {
   const [botToRestart, setBotToRestart] = useState<CopyTradeBot | null>(null);
   const [botToStop, setBotToStop] = useState<CopyTradeBot | null>(null);
   const [addressError, setAddressError] = useState<string | null>(null);
-  const [isAddressFromLeaderboard, setIsAddressFromLeaderboard] = useState(false);
+  const [isAddressFromLeaderboard, setIsAddressFromLeaderboard] =
+    useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const modeDropdownRef = useRef<HTMLDivElement>(null);
   const stoppedBotsScrollRef = useRef<HTMLDivElement>(null);
@@ -153,7 +154,7 @@ function CopytradeContent() {
   const totalPages = Math.ceil(tradeHistory.length / itemsPerPage);
   const currentTrades = tradeHistory.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
   );
 
   // Fetch all data in parallel (positions and trade history)
@@ -182,7 +183,7 @@ function CopytradeContent() {
 
         if (positionsResult.success && positionsResult.data) {
           const mappedPositions = positionsResult.data.map(
-            mapPositionToOpenPosition
+            mapPositionToOpenPosition,
           );
           setBotPositions((prev) => {
             const newState = { ...prev };
@@ -203,7 +204,7 @@ function CopytradeContent() {
 
         if (tradeHistoryResult.success && tradeHistoryResult.data) {
           setTradeHistory(
-            tradeHistoryResult.data.map(mapOrderHistoryToTradeHistory)
+            tradeHistoryResult.data.map(mapOrderHistoryToTradeHistory),
           );
         } else {
           setTradeHistory([]);
@@ -463,7 +464,7 @@ function CopytradeContent() {
           if (userData.wallet_address) {
             try {
               const statsResponse = await fetch(
-                `https://perpetual-leaderboard.kanalabs.io/fetchTopPnlUsers?period=overall&search=${userData.wallet_address}`
+                `https://perpetual-leaderboard.kanalabs.io/fetchTopPnlUsers?period=overall&search=${userData.wallet_address}`,
               );
               const statsData = await statsResponse.json();
               if (
@@ -584,7 +585,7 @@ function CopytradeContent() {
 
       if (positionsResult.success && positionsResult.data) {
         const mappedPositions = positionsResult.data.map(
-          mapPositionToOpenPosition
+          mapPositionToOpenPosition,
         );
         setBotPositions((prev) => ({
           ...prev,
@@ -621,7 +622,7 @@ function CopytradeContent() {
 
       if (tradeHistoryResult.success && tradeHistoryResult.data) {
         setTradeHistory(
-          tradeHistoryResult.data.map(mapOrderHistoryToTradeHistory)
+          tradeHistoryResult.data.map(mapOrderHistoryToTradeHistory),
         );
       } else {
         setTradeHistory([]);
@@ -654,16 +655,16 @@ function CopytradeContent() {
 
     if (!isValidAptosAddress(trimmedAddress)) {
       setAddressError(
-        "Invalid Aptos wallet address. Must be 66 characters starting with 0x followed by 64 hex characters."
+        "Invalid Aptos wallet address. Must be 66 characters starting with 0x followed by 64 hex characters.",
       );
       return;
     }
 
     // Check minimum balance requirement (10 USDT) - applies to both new bots and restarts
-    const MIN_BALANCE = 10;
+    const MIN_BALANCE = 1;
     if (balanceNum < MIN_BALANCE) {
       setError(
-        `Minimum balance of ${MIN_BALANCE} USDT required to start a copy trade bot. Your current balance: ${formatCurrency(balanceNum)}`
+        `Minimum balance of ${MIN_BALANCE} USDT required to start a copy trade bot. Your current balance: ${formatCurrency(balanceNum)}`,
       );
       return;
     }
@@ -671,13 +672,13 @@ function CopytradeContent() {
     // Check if user already has a running bot (skip check if restarting the same bot)
     const hasOtherRunningBot = botToRestart
       ? runningBots.some(
-          (bot) => bot.id !== botToRestart.id && bot.status === "running"
+          (bot) => bot.id !== botToRestart.id && bot.status === "running",
         )
       : runningBots.length >= 1;
 
     if (hasOtherRunningBot) {
       setError(
-        "You can only run 1 copy trade bot at a time. Please stop your running bot first to start a new one. Multiple bots support coming soon!"
+        "You can only run 1 copy trade bot at a time. Please stop your running bot first to start a new one. Multiple bots support coming soon!",
       );
       return;
     }
@@ -759,7 +760,7 @@ function CopytradeContent() {
         closeResult.error !== "No open positions found"
       ) {
         setError(
-          closeResult.error || "Failed to close positions. Bot not stopped."
+          closeResult.error || "Failed to close positions. Bot not stopped.",
         );
         setSubmitting(false);
         return;
@@ -999,7 +1000,9 @@ function CopytradeContent() {
                               <div className="absolute left-2.5 top-1/2 -translate-y-1/2 z-10">
                                 <Wallet size={14} className="text-slate-500" />
                               </div>
-                              <span className="text-slate-300">{formatAddress(traderAddress)}</span>
+                              <span className="text-slate-300">
+                                {formatAddress(traderAddress)}
+                              </span>
                             </div>
                           ) : (
                             <input
@@ -1010,8 +1013,13 @@ function CopytradeContent() {
                                 const value = e.target.value;
                                 setTraderAddress(value);
                                 // Real-time validation
-                                if (value.trim() && !isValidAptosAddress(value)) {
-                                  setAddressError("Invalid Aptos address format");
+                                if (
+                                  value.trim() &&
+                                  !isValidAptosAddress(value)
+                                ) {
+                                  setAddressError(
+                                    "Invalid Aptos address format",
+                                  );
                                 } else {
                                   setAddressError(null);
                                 }
@@ -1021,7 +1029,7 @@ function CopytradeContent() {
                                 const value = e.target.value.trim();
                                 if (value && !isValidAptosAddress(value)) {
                                   setAddressError(
-                                    "Invalid Aptos wallet address. Must be 66 characters starting with 0x followed by 64 hex characters."
+                                    "Invalid Aptos wallet address. Must be 66 characters starting with 0x followed by 64 hex characters.",
                                   );
                                 } else {
                                   setAddressError(null);
@@ -1040,20 +1048,23 @@ function CopytradeContent() {
                               <Wallet
                                 size={14}
                                 className={
-                                  addressError ? "text-red-500" : "text-slate-500"
+                                  addressError
+                                    ? "text-red-500"
+                                    : "text-slate-500"
                                 }
                               />
                             </div>
                           )}
                         </div>
-                        {traderAddress && isValidAptosAddress(traderAddress) && (
-                          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10">
-                            <CheckCircle2
-                              size={14}
-                              className="text-green-500"
-                            />
-                          </div>
-                        )}
+                        {traderAddress &&
+                          isValidAptosAddress(traderAddress) && (
+                            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 z-10">
+                              <CheckCircle2
+                                size={14}
+                                className="text-green-500"
+                              />
+                            </div>
+                          )}
                       </div>
                       {addressError && (
                         <p className="mt-1 text-[10px] text-red-400">
@@ -1567,7 +1578,7 @@ function CopytradeContent() {
                                               <div className="relative">
                                                 <Image
                                                   src={getSymbolLogo(
-                                                    position.symbol
+                                                    position.symbol,
                                                   )}
                                                   alt={position.symbol}
                                                   width={24}
@@ -1653,7 +1664,7 @@ function CopytradeContent() {
                                               <span
                                                 className={`text-xs font-medium ${
                                                   position.pnlPercent.startsWith(
-                                                    "+"
+                                                    "+",
                                                   )
                                                     ? "text-green-500/70"
                                                     : "text-red-500/70"
@@ -1664,7 +1675,7 @@ function CopytradeContent() {
                                             </div>
                                           </td>
                                         </tr>
-                                      )
+                                      ),
                                     )}
                                   </tbody>
                                 </table>
@@ -2280,7 +2291,7 @@ function CopytradeContent() {
                         <span className="font-medium">
                           {Math.min(
                             currentPage * itemsPerPage,
-                            tradeHistory.length
+                            tradeHistory.length,
                           )}
                         </span>{" "}
                         of{" "}
@@ -2311,7 +2322,7 @@ function CopytradeContent() {
                         <button
                           onClick={() =>
                             setCurrentPage((prev) =>
-                              Math.min(prev + 1, totalPages)
+                              Math.min(prev + 1, totalPages),
                             )
                           }
                           disabled={currentPage === totalPages}

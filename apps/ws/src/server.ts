@@ -197,48 +197,57 @@ async function handleUnsubscribeSignal(traderAddress: string): Promise<void> {
 }
 
 /**
- * Start HTTP server for health checks
+ * Start HTTP server for health checks (matches GitHub flow: init first, then health)
  */
 function startHealthServer(): void {
   const port = Number(process.env.PORT) || 4002;
-  const server = http.createServer((req, res) => {
-    if (req.url === "/health" && req.method === "GET") {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(
-        JSON.stringify({
-          ok: true,
-          message: "✅ WS service is running!",
-          timestamp: new Date().toISOString(),
-        })
-      );
-    } else {
-      res.writeHead(404, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Not found" }));
-    }
-  });
 
-  server.on("error", (error: NodeJS.ErrnoException) => {
-    if (error.code === "EADDRINUSE") {
-      Logger.error(`Port ${port} is already in use. Please set a different PORT environment variable.`);
-      process.exit(1);
-    } else {
-      Logger.error("Health server error", error);
-      process.exit(1);
-    }
-  });
+  const createAndListen = (): void => {
+    const server = http.createServer((req, res) => {
+      if (req.url === "/health" && req.method === "GET") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            ok: true,
+            message: "✅ WS service is running!",
+            timestamp: new Date().toISOString(),
+          })
+        );
+      } else {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Not found" }));
+      }
+    });
 
-  server.listen(port, "0.0.0.0", () => {
-    Logger.info(`🏥 Health check server running on port ${port}`);
-  });
+    server.on("error", (err: NodeJS.ErrnoException) => {
+      if (err.code === "EADDRINUSE") {
+        Logger.warn(`Port ${port} in use or TIME_WAIT; retrying in 5s...`);
+        server.removeAllListeners();
+        setTimeout(createAndListen, 5000);
+      } else {
+        Logger.error("Health server error", err);
+        process.exit(1);
+      }
+    });
+
+    server.listen(port, "0.0.0.0", () => {
+      Logger.info(`🏥 Health check server running on port ${port}`);
+    });
+  };
+
+  createAndListen();
 }
 
-// Start the service
+// Start the service (GitHub order: initialize first, then start health server)
 Logger.info("🚀 Order History Monitor starting...");
-startHealthServer();
-initializeServices().catch((error) => {
-  Logger.error("Failed to initialize services", error);
-  process.exit(1);
-});
+initializeServices()
+  .then(() => {
+    startHealthServer();
+  })
+  .catch((error) => {
+    Logger.error("Failed to initialize services", error);
+    process.exit(1);
+  });
 
 process.on("uncaughtException", (error: Error) => {
   Logger.error("Uncaught Exception", error);
