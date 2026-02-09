@@ -61,6 +61,11 @@ const getSymbolLogo = (symbol: string) => {
   return logos[symbol] || "/btc.png";
 };
 
+const formatAddress = (address: string) => {
+  if (!address || address.length < 10) return address;
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};
+
 export default function TraderDetailsModal({
   isOpen,
   onClose,
@@ -72,26 +77,19 @@ export default function TraderDetailsModal({
   const [loadingPositions, setLoadingPositions] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [activeTab, setActiveTab] = useState<"positions" | "history">("positions");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const maxTradesToShow = 9;
 
   useEffect(() => {
     if (isOpen) {
       fetchData();
-      setCurrentPage(1); // Reset to first page when modal opens
     } else {
       // Reset state when modal closes
       setPositions([]);
       setTradeHistory([]);
       setActiveTab("positions");
-      setCurrentPage(1);
     }
   }, [isOpen, traderAddress]);
 
-  // Reset to first page when switching tabs
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeTab]);
 
   const fetchData = async () => {
     setLoadingPositions(true);
@@ -178,7 +176,7 @@ export default function TraderDetailsModal({
             <h2 className={`${palanquinDark.className} text-2xl font-semibold text-white mb-1`}>
               {traderName}
             </h2>
-            <p className="text-sm text-slate-400 font-mono">{traderAddress}</p>
+            <p className="text-sm text-slate-400 font-mono">{formatAddress(traderAddress)}</p>
           </div>
           <button
             onClick={onClose}
@@ -372,6 +370,11 @@ export default function TraderDetailsModal({
               <div className="flex items-center justify-between mb-4">
                 <h3 className={`${palanquinDark.className} text-lg font-semibold text-white`}>
                   Trade History
+                  {tradeHistory.length > maxTradesToShow && (
+                    <span className="text-sm text-slate-400 font-normal ml-2">
+                      (Showing {maxTradesToShow} of {tradeHistory.length} recent trades)
+                    </span>
+                  )}
                 </h3>
                 <button
                   onClick={refreshData}
@@ -425,12 +428,7 @@ export default function TraderDetailsModal({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/50">
-                          {tradeHistory
-                            .slice(
-                              (currentPage - 1) * itemsPerPage,
-                              currentPage * itemsPerPage
-                            )
-                            .map((trade) => (
+                          {tradeHistory.slice(0, maxTradesToShow).map((trade) => (
                           <tr
                             key={trade.id}
                             className="hover:bg-slate-800/30 transition-colors"
@@ -507,39 +505,6 @@ export default function TraderDetailsModal({
                     </div>
                   </div>
 
-                  {/* Pagination */}
-                  {Math.ceil(tradeHistory.length / itemsPerPage) > 1 && (
-                    <div className="flex items-center justify-between mt-4 px-2">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                          disabled={currentPage === 1}
-                          className="px-3 py-1.5 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 rounded-lg text-sm font-medium text-slate-300 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Previous
-                        </button>
-                        <span className="text-sm text-slate-400 px-3">
-                          Page {currentPage} of {Math.ceil(tradeHistory.length / itemsPerPage)}
-                        </span>
-                        <button
-                          onClick={() =>
-                            setCurrentPage((prev) =>
-                              Math.min(prev + 1, Math.ceil(tradeHistory.length / itemsPerPage))
-                            )
-                          }
-                          disabled={currentPage === Math.ceil(tradeHistory.length / itemsPerPage)}
-                          className="px-3 py-1.5 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 rounded-lg text-sm font-medium text-slate-300 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Next
-                        </button>
-                      </div>
-                      <div className="text-sm text-slate-400">
-                        Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                        {Math.min(currentPage * itemsPerPage, tradeHistory.length)} of{" "}
-                        {tradeHistory.length} trades
-                      </div>
-                    </div>
-                  )}
                 </>
               ) : (
                 <div className="text-center py-12 rounded-lg border border-slate-800">

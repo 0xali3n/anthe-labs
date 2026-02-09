@@ -162,32 +162,6 @@ export default function LeaderboardPage() {
     }
   });
 
-  const getRankStyle = (rank: number) => {
-    if (rank === 1) {
-      return {
-        badge: "bg-yellow-500/10 border-yellow-500/30 text-yellow-400",
-        border: "border-yellow-500/20",
-        icon: "🥇",
-      };
-    } else if (rank === 2) {
-      return {
-        badge: "bg-slate-400/10 border-slate-400/30 text-slate-300",
-        border: "border-slate-400/20",
-        icon: "🥈",
-      };
-    } else if (rank === 3) {
-      return {
-        badge: "bg-orange-600/10 border-orange-600/30 text-orange-400",
-        border: "border-orange-600/20",
-        icon: "🥉",
-      };
-    }
-    return {
-      badge: "bg-slate-800 border-slate-700 text-slate-400",
-      border: "border-slate-800",
-      icon: null,
-    };
-  };
 
   if (loading) {
     return (
@@ -321,8 +295,6 @@ export default function LeaderboardPage() {
               const pnl = parseFloat(trader.pnl);
               const roi = parseFloat(trader.roi);
               const isPositive = pnl >= 0;
-              const rank = index + 1;
-              const rankStyle = getRankStyle(rank);
               const displayPnl =
                 pnlValues[trader.id] !== undefined ? pnlValues[trader.id] : pnl;
               const isHovered = hoveredCard === trader.id;
@@ -332,21 +304,10 @@ export default function LeaderboardPage() {
                   key={trader.id}
                   onMouseEnter={() => setHoveredCard(trader.id)}
                   onMouseLeave={() => setHoveredCard(null)}
-                  className={`relative rounded-lg p-5 bg-slate-900/50 border transition-all duration-200 ${rank <= 3 ? rankStyle.border : "border-slate-800 hover:border-slate-700"
-                    }`}
+                  className="relative rounded-lg p-5 bg-slate-900/50 border border-slate-800 hover:border-slate-700 transition-all duration-200"
                 >
-                  {/* Header: Rank, Avatar, Name, Copy Button */}
+                  {/* Header: Avatar, Name, Details Button */}
                   <div className="flex items-center gap-3 mb-5">
-                    {/* Rank Badge */}
-                    <div
-                      className={`w-8 h-8 rounded-md flex items-center justify-center font-bold text-sm flex-shrink-0 border ${rank <= 3
-                        ? rankStyle.badge
-                        : "bg-slate-800/50 border-slate-700 text-slate-400"
-                        }`}
-                    >
-                      {rank <= 3 ? rankStyle.icon : `#${rank}`}
-                    </div>
-
                     {/* Avatar */}
                     <div className="w-10 h-10 rounded-lg border border-slate-700 flex-shrink-0 overflow-hidden">
                       {trader.avatarUrl ? (
@@ -377,12 +338,22 @@ export default function LeaderboardPage() {
                       </p>
                     </div>
 
-                    {/* Copy Button */}
+                    {/* Details Button */}
                     <button
-                      onClick={() => handleCopyTrade(trader)}
-                      className="flex-shrink-0 px-3 py-1.5 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-sm font-semibold transition-all duration-200"
+                      onClick={() => {
+                        if (isSignedIn) {
+                          setSelectedTrader(trader);
+                          setIsModalOpen(true);
+                        } else {
+                          setShowSignInAlert(true);
+                          setTimeout(() => setShowSignInAlert(false), 3000);
+                        }
+                      }}
+                      className="flex-shrink-0 px-3 py-1.5 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 hover:border-slate-600/50 text-slate-300 hover:text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2"
+                      title="View details"
                     >
-                      Copy
+                      <Eye size={14} />
+                      <span>Details</span>
                     </button>
                   </div>
 
@@ -486,23 +457,13 @@ export default function LeaderboardPage() {
                     </div>
                   </div>
 
-                  {/* Details Button - Below Metrics */}
+                  {/* Copy Button - Below Metrics */}
                   <div className="mt-4 pt-4 border-t border-slate-800/50">
                     <button
-                      onClick={() => {
-                        if (isSignedIn) {
-                          setSelectedTrader(trader);
-                          setIsModalOpen(true);
-                        } else {
-                          setShowSignInAlert(true);
-                          setTimeout(() => setShowSignInAlert(false), 3000);
-                        }
-                      }}
-                      className="w-full px-3 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 hover:border-slate-600/50 text-slate-300 hover:text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2"
-                      title="View details"
+                      onClick={() => handleCopyTrade(trader)}
+                      className="w-full px-3 py-2 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2"
                     >
-                      <Eye size={14} />
-                      <span>Details</span>
+                      <span>Copy</span>
                     </button>
                   </div>
                 </div>
